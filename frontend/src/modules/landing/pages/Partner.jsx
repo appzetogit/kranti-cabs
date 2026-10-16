@@ -53,7 +53,7 @@ const Partner = () => {
                 const PerkIcon = perk.icon;
                 return (
                   <div className="perk-card" key={index}>
-                    <PerkIcon size={28} color="#00BBA9" />
+                    <PerkIcon size={28} color="#F5B400" />
                     <h4>{perk.title}</h4>
                     <p>{perk.desc}</p>
                   </div>
@@ -82,7 +82,7 @@ const Partner = () => {
 
             {submitted ? (
               <div className="form-success text-center py-6">
-                <CheckCircle2 size={50} color="#00BBA9" className="mx-auto mb-4" />
+                <CheckCircle2 size={50} color="#F5B400" className="mx-auto mb-4" />
                 <h4 className="text-xl font-bold text-white mb-2">Application Received!</h4>
                 <p className="text-gray-300 text-sm">
                   Our Fleet Onboarding officer will call <strong>{mobile}</strong> to verify your vehicle documents.
@@ -136,7 +136,7 @@ const Partner = () => {
                 {error && (
                   <p style={{ color: '#e11d48', fontSize: '0.85rem', marginBottom: '0.75rem' }}>{error}</p>
                 )}
-                <button type="submit" className="btn btn-teal w-full mt-4" disabled={sending}>
+                <button type="submit" className="btn btn-brand w-full mt-4" disabled={sending}>
                   {sending ? 'Sending\u2026' : 'Submit Attachment Form'} <ArrowRight size={16} />
                 </button>
               </form>
@@ -146,7 +146,7 @@ const Partner = () => {
       </section>
 
       <style>{`
-        .zicab-landing {
+        .kranti-landing {
           .partner-grid {
             display: grid;
             grid-template-columns: 1.1fr 0.9fr;
@@ -163,7 +163,7 @@ const Partner = () => {
 
           .perk-card {
             background: #FFFFFF;
-            border: 1px solid #E2E8F0;
+            border: 1px solid #E9E9E6;
             border-radius: 12px;
             padding: 20px;
           }
@@ -171,19 +171,19 @@ const Partner = () => {
           .perk-card h4 {
             font-size: 15px;
             font-weight: 700;
-            color: #0F172A;
+            color: #1D1D1F;
             margin: 10px 0 6px;
           }
 
           .perk-card p {
             font-size: 13px;
-            color: #64748B;
+            color: #78787A;
             line-height: 1.5;
           }
 
           .earnings-box {
-            background: #07152B;
-            border: 1px solid rgba(0, 187, 169, 0.3);
+            background: #0A0A0B;
+            border: 1px solid rgba(245, 180, 0, 0.3);
             border-radius: 12px;
             padding: 20px;
             color: #FFFFFF;
@@ -192,7 +192,7 @@ const Partner = () => {
           .earnings-title {
             font-size: 16px;
             font-weight: 700;
-            color: #00BBA9;
+            color: #F5B400;
             margin-bottom: 14px;
           }
 
@@ -211,13 +211,13 @@ const Partner = () => {
           }
 
           .e-val {
-            color: #00BBA9;
+            color: #F5B400;
             font-weight: 700;
           }
 
           .partner-form-card {
-            background: #0C1B30;
-            border: 1px solid rgba(0, 187, 169, 0.3);
+            background: #18181B;
+            border: 1px solid rgba(245, 180, 0, 0.3);
             border-radius: 16px;
             padding: 32px;
             color: #FFFFFF;

@@ -1,6 +1,6 @@
-/* ZI CAB landing styles.
+/* Kranti Cabs landing styles.
 
-   Everything below is nested under `.zicab-landing` so it cannot reach the taxi
+   Everything below is nested under `.kranti-landing` so it cannot reach the taxi
    app: both sides use generic class names (`container`, `btn`, `section-title`)
    and the taxi side is Tailwind 4, which an unscoped `*` or `h1` rule would
    restyle wholesale.
@@ -9,42 +9,47 @@
    by the booking modal, which renders outside the landing subtree. */
 
 :root {
-  --primary-navy: #0B1F3A;
-  --navy-dark: #07152B;
-  --navy-card: #0C1B30;
-  /* one step deeper than navy-dark, for the recessed bands */
-  --navy-deep: #050F20;
+  /* Kranti Cabs palette, taken from the logo: near-black ink and taxi amber. */
+  --ink: #111113;
+  --ink-dark: #0A0A0B;
+  --ink-card: #18181B;
+  /* one step deeper than ink-dark, for the recessed bands */
+  --ink-deep: #050506;
 
-  --primary-teal: #00BBA9;
-  --teal-hover: #00a394;
-  --teal-light: rgba(0, 187, 169, 0.12);
-  --teal-bright: #46E3D2;
-  --teal-ink: #04645C;
+  --brand: #F5B400;
+  --brand-hover: #E0A200;
+  --brand-soft: rgba(245, 180, 0, 0.12);
+  --brand-bright: #FFD23F;
+  --brand-ink: #8A5A00;
+  /* Amber fails contrast as text on light fields; this is the readable shade. */
+  --brand-deep: #9A6A00;
+  /* Text that sits on an amber fill. White on amber is unreadable. */
+  --on-brand: #111113;
 
   /* Warm off-white instead of #FFF for large fields — pure white next to a
-     saturated teal reads cheap and glares on an OLED phone. */
-  --bg-light: #F1F3F7;
-  --bg-white: #FBFBFC;
+     saturated amber reads cheap and glares on an OLED phone. */
+  --bg-light: #F6F4EF;
+  --bg-white: #FCFBF8;
   --bg-raised: #FFFFFF;
 
-  --text-dark: #0B1220;
-  --text-body: #334155;
-  --text-muted: #64748B;
-  --text-light: #94A3B8;
+  --text-dark: #111113;
+  --text-body: #444446;
+  --text-muted: #78787A;
+  --text-light: #A6A6A3;
   --text-white: #FFFFFF;
 
   --border-light: #E4E8EF;
-  --border-dark: #1E293B;
+  --border-dark: #2D2D2F;
 
   --font-main: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-display: 'Sora', 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
 
   /* Layered shadows with a hairline top highlight, so surfaces read as material
      rather than as a rectangle with a grey outline. */
-  --shadow-sm: 0 1px 2px rgba(11, 18, 32, 0.04), 0 4px 12px rgba(11, 18, 32, 0.045);
-  --shadow-md: 0 2px 4px rgba(11, 18, 32, 0.045), 0 12px 28px rgba(11, 18, 32, 0.07);
-  --shadow-lg: 0 4px 8px rgba(11, 18, 32, 0.05), 0 24px 54px rgba(11, 18, 32, 0.1);
-  --shadow-teal: 0 6px 14px rgba(0, 187, 169, 0.28), 0 18px 40px rgba(0, 187, 169, 0.18);
+  --shadow-sm: 0 1px 2px rgba(22, 22, 24, 0.04), 0 4px 12px rgba(22, 22, 24, 0.045);
+  --shadow-md: 0 2px 4px rgba(22, 22, 24, 0.045), 0 12px 28px rgba(22, 22, 24, 0.07);
+  --shadow-lg: 0 4px 8px rgba(22, 22, 24, 0.05), 0 24px 54px rgba(22, 22, 24, 0.1);
+  --shadow-brand: 0 6px 14px rgba(245, 180, 0, 0.28), 0 18px 40px rgba(245, 180, 0, 0.18);
   --hairline: inset 0 1px 0 rgba(255, 255, 255, 0.85);
   --hairline-dark: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 
@@ -65,13 +70,13 @@
 /* The taxi app enforces its font with `* { font-family: ... !important }`, so the
    landing has to answer in kind. Higher specificity wins between two important
    declarations, which is why the heading rules below still take precedence. All
-   of it stays inside .zicab-landing. */
-.zicab-landing,
-.zicab-landing * {
+   of it stays inside .kranti-landing. */
+.kranti-landing,
+.kranti-landing * {
   font-family: var(--font-main) !important;
 }
 
-.zicab-landing {
+.kranti-landing {
   box-sizing: border-box;
   background-color: var(--bg-light);
   color: var(--text-body);
@@ -80,14 +85,14 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-.zicab-landing *,
-.zicab-landing *::before,
-.zicab-landing *::after {
+.kranti-landing *,
+.kranti-landing *::before,
+.kranti-landing *::after {
   box-sizing: border-box;
 }
 
-.zicab-landing {
-  /* ZI CAB Custom CSS Design System */
+.kranti-landing {
+  /* Kranti Cabs Custom CSS Design System */
 
 
   /* Display type: tighter tracking and optical sizing at large sizes. Default
@@ -143,10 +148,10 @@
     width: 8px;
   }
   ::-webkit-scrollbar-track {
-    background: #0B1F3A;
+    background: #111113;
   }
   ::-webkit-scrollbar-thumb {
-    background: #00BBA9;
+    background: #F5B400;
     border-radius: 4px;
   }
 
@@ -211,7 +216,7 @@
     font-weight: 600;
     letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: var(--primary-teal);
+    color: var(--brand-deep);
   }
 
   .eyebrow::after {
@@ -219,12 +224,18 @@
     flex: 1 1 auto;
     max-width: 88px;
     height: 1px;
-    background: linear-gradient(90deg, var(--primary-teal), transparent);
+    background: linear-gradient(90deg, var(--brand), transparent);
   }
 
   .eyebrow-num {
     font-variant-numeric: tabular-nums;
     color: var(--text-light);
+  }
+
+  /* on dark bands the full amber reads fine */
+  .section-title-group.light .eyebrow,
+  .section-title-group.light .section-link {
+    color: var(--brand);
   }
 
   .section-title-group.light .eyebrow-num {
@@ -241,7 +252,7 @@
     padding: 0;
     outline: none;
     cursor: pointer;
-    color: var(--primary-teal);
+    color: var(--brand-deep);
     font-weight: 600;
     font-size: 14px;
     display: inline-flex;
@@ -251,7 +262,7 @@
   }
 
   .section-link:hover {
-    color: var(--teal-hover);
+    color: var(--brand-hover);
     transform: translateX(4px);
   }
 
@@ -267,11 +278,11 @@
     color: var(--text-white);
     text-align: center;
     overflow: hidden;
-    background-color: var(--navy-deep);
+    background-color: var(--ink-deep);
     background-image:
-      radial-gradient(110% 130% at 12% -10%, rgba(0, 187, 169, 0.22) 0%, transparent 52%),
-      radial-gradient(90% 120% at 88% 0%, rgba(43, 92, 168, 0.28) 0%, transparent 55%),
-      linear-gradient(160deg, #08182F 0%, #0B1F3A 55%, #071328 100%);
+      radial-gradient(110% 130% at 12% -10%, rgba(245, 180, 0, 0.22) 0%, transparent 52%),
+      radial-gradient(90% 120% at 88% 0%, rgba(245, 180, 0, 0.28) 0%, transparent 55%),
+      linear-gradient(160deg, #1C1C1E 0%, #111113 55%, #18181A 100%);
     border-bottom: 1px solid rgba(255, 255, 255, 0.07);
   }
 
@@ -288,14 +299,14 @@
 
   .page-hero .page-tag {
     backdrop-filter: blur(6px);
-    border: 1px solid rgba(0, 187, 169, 0.3);
+    border: 1px solid rgba(245, 180, 0, 0.3);
   }
 
   .page-tag {
     font-size: 12px;
     font-weight: 700;
-    color: var(--primary-teal);
-    background: var(--teal-light);
+    color: var(--brand);
+    background: var(--brand-soft);
     padding: 4px 12px;
     border-radius: var(--radius-full);
     text-transform: uppercase;
@@ -311,12 +322,12 @@
     color: var(--text-white);
   }
 
-  /* Faint gradient for depth against the navy. Behind @supports because the
+  /* Faint gradient for depth against the ink. Behind @supports because the
      technique needs `color: transparent` — without background-clip support that
      would render the headline invisible. */
   @supports (background-clip: text) or (-webkit-background-clip: text) {
     .page-title {
-      background-image: linear-gradient(180deg, #FFFFFF 30%, #C6D3E4 100%);
+      background-image: linear-gradient(180deg, #FFFFFF 30%, #D5D5D2 100%);
       -webkit-background-clip: text;
       background-clip: text;
       color: transparent;
@@ -325,7 +336,7 @@
 
   .page-subtitle {
     font-size: clamp(0.9rem, 0.84rem + 0.25vw, 1.05rem);
-    color: #A9B6C9;
+    color: #B9B9B6;
     max-width: 660px;
     margin: 0 auto;
     line-height: 1.65;
@@ -333,7 +344,7 @@
 
   .body-text {
     font-size: 15px;
-    color: #475569;
+    color: #58585A;
     line-height: 1.7;
     margin-bottom: 16px;
   }
@@ -409,16 +420,16 @@
     transform: translateY(0) scale(0.985);
   }
 
-  .btn-teal {
-    background-image: linear-gradient(180deg, #14CDBA 0%, var(--primary-teal) 48%, #009C8D 100%);
-    color: var(--text-white);
-    box-shadow: var(--shadow-teal), inset 0 1px 0 rgba(255, 255, 255, 0.34),
+  .btn-brand {
+    background-image: linear-gradient(180deg, #FFC72C 0%, var(--brand) 48%, #D99A00 100%);
+    color: var(--on-brand);
+    box-shadow: var(--shadow-brand), inset 0 1px 0 rgba(255, 255, 255, 0.34),
       inset 0 -1px 0 rgba(0, 0, 0, 0.12);
   }
 
-  .btn-teal:hover {
+  .btn-brand:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 20px rgba(0, 187, 169, 0.34), 0 26px 52px rgba(0, 187, 169, 0.22),
+    box-shadow: 0 10px 20px rgba(245, 180, 0, 0.34), 0 26px 52px rgba(245, 180, 0, 0.22),
       inset 0 1px 0 rgba(255, 255, 255, 0.4);
   }
 
@@ -432,7 +443,7 @@
 
   .btn-outline-light:hover {
     background: rgba(255, 255, 255, 0.13);
-    border-color: rgba(0, 187, 169, 0.65);
+    border-color: rgba(245, 180, 0, 0.65);
     color: #FFFFFF;
     transform: translateY(-2px);
   }
@@ -447,16 +458,16 @@
   }
 
   :where(button, a, input, select, textarea):focus-visible {
-    outline: 2px solid var(--teal-bright);
+    outline: 2px solid var(--brand-bright);
     outline-offset: 2px;
   }
 
-  .btn-navy {
-    background-color: var(--primary-navy);
+  .btn-ink {
+    background-color: var(--ink);
     color: var(--text-white);
   }
-  .btn-navy:hover {
-    background-color: var(--navy-dark);
+  .btn-ink:hover {
+    background-color: var(--ink-dark);
     transform: translateY(-2px);
   }
 
@@ -470,7 +481,7 @@
 
   .input-group label {
     font-size: 13px;
-    color: #CBD5E1;
+    color: #D6D6D3;
     display: flex;
     align-items: center;
     gap: 6px;
@@ -490,12 +501,12 @@
 
   .input-group input:focus,
   .input-group select:focus {
-    border-color: var(--primary-teal);
-    box-shadow: 0 0 0 2px rgba(0, 187, 169, 0.2);
+    border-color: var(--brand);
+    box-shadow: 0 0 0 2px rgba(245, 180, 0, 0.2);
   }
 
   .input-group select option {
-    background: var(--navy-card);
+    background: var(--ink-card);
   }
 
   /* ---- Intro curtain ---- */
@@ -514,7 +525,7 @@
     left: 0;
     width: 100%;
     height: 50.5%;
-    background: var(--navy-dark);
+    background: var(--ink-dark);
   }
 
   .pl-panel-top {
@@ -563,7 +574,7 @@
   }
 
   .pl-cab {
-    color: var(--primary-teal);
+    color: var(--brand);
     margin-left: 4px;
     letter-spacing: 1px;
   }
@@ -585,7 +596,7 @@
     display: block;
     width: 100%;
     height: 100%;
-    background: var(--primary-teal);
+    background: var(--brand);
     transform: scaleX(0);
     transform-origin: 0 50%;
   }
@@ -712,8 +723,8 @@
       width: 100%;
       z-index: 1100;
       transform-origin: 0 50%;
-      background: linear-gradient(90deg, var(--primary-teal), #6ee7db);
-      animation: zc-scrollProgress linear;
+      background: linear-gradient(90deg, var(--brand), #F5B400);
+      animation: kc-scrollProgress linear;
       animation-timeline: scroll(root block);
     }
 
@@ -767,7 +778,7 @@
        is no scroll listener and no JS at all. */
     @supports (animation-timeline: view()) {
       .container .snap-row > * {
-        animation: zc-railFocus linear both;
+        animation: kc-railFocus linear both;
         animation-timeline: view(inline);
         /* ramp in over the first/last 40% of the pass, flat through the middle */
         animation-range: entry 0% cover 40%, cover 60% exit 100%;
@@ -802,8 +813,8 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    background: rgba(0, 187, 169, 0.15);
-    color: var(--primary-teal);
+    background: rgba(245, 180, 0, 0.15);
+    color: var(--brand);
     font-weight: 700;
     letter-spacing: 0.5px;
   }
@@ -845,7 +856,7 @@
     inset: 0;
     border-radius: 50%;
     border: 2px solid #25D366;
-    animation: zc-waPulse 2.4s ease-out infinite;
+    animation: kc-waPulse 2.4s ease-out infinite;
   }
 
   
@@ -869,18 +880,201 @@
   
 
   .animate-fade-in {
-    animation: zc-fadeIn 0.4s ease-out forwards;
+    animation: kc-fadeIn 0.4s ease-out forwards;
+  }
+}
+
+/* Kranti Cabs brand motion: the hero tint, the road and cab from the logo,
+   the shimmering headline and the taxi-stripe ticker. All decorative, and all
+   switched off for prefers-reduced-motion. */
+.kranti-landing {
+  /* The hero photo is a blue night city; Home.jsx blends an amber layer over
+     it. This left-side ink fade keeps the headline readable on top. */
+  .hero-section::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(90deg, rgba(10, 10, 11, 0.9) 0%, rgba(10, 10, 11, 0.55) 45%, rgba(10, 10, 11, 0.1) 100%),
+      linear-gradient(0deg, rgba(10, 10, 11, 0.85) 0%, transparent 40%);
+  }
+
+  .hero-section {
+    isolation: isolate;
+  }
+
+  .hero-backdrop-glow {
+    background: radial-gradient(circle, rgba(245, 180, 0, 0.28) 0%, rgba(0, 0, 0, 0) 70%);
+    animation: kc-breathe 6s ease-in-out infinite;
+  }
+
+
+  /* "Revolution." glows like a lit taxi sign. A text-shadow rather than a
+     clipped gradient: the words are split into per-character spans for the
+     entrance, and background-clip breaks across transformed children. */
+  .hero-title .brand-text {
+    animation: kc-glow 3.2s ease-in-out 1.6s infinite;
+  }
+
+  /* Taxi-roof light pulse on the main call to action. */
+  .hero-btn-main {
+    animation: kc-beacon 2.8s ease-out 2s infinite;
+  }
+
+  .kc-road {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 18px;
+    height: 34px;
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  .kc-road-lane {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 3px;
+    transform: translateY(-50%);
+    background: repeating-linear-gradient(90deg, rgba(245, 180, 0, 0.75) 0 26px, transparent 26px 52px);
+    mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+    animation: kc-lane 1.1s linear infinite;
+  }
+
+  .kc-road-cab {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 44px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+    background: var(--brand);
+    color: var(--on-brand);
+    box-shadow: 0 6px 20px rgba(245, 180, 0, 0.45);
+    transform: translate(-60px, -50%);
+    animation: kc-drive 9s cubic-bezier(0.45, 0.05, 0.4, 0.95) 1.2s infinite;
+  }
+
+  /* headlight beam ahead of the cab */
+  .kc-cab-glow {
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    width: 90px;
+    height: 26px;
+    transform: translateY(-50%);
+    background: radial-gradient(60% 50% at 0% 50%, rgba(255, 225, 120, 0.55), transparent 70%);
+  }
+
+  .kc-ticker {
+    position: relative;
+    overflow: hidden;
+    background: var(--brand);
+    color: var(--on-brand);
+    border-block: 6px solid transparent;
+    border-image: repeating-linear-gradient(90deg, #111113 0 12px, #F5B400 12px 24px) 6;
+    padding: 12px 0;
+  }
+
+  .kc-ticker-track {
+    display: flex;
+    width: max-content;
+    animation: kc-marquee 32s linear infinite;
+  }
+
+  .kc-ticker:hover .kc-ticker-track {
+    animation-play-state: paused;
+  }
+
+  .kc-ticker-group {
+    display: flex;
+    flex-shrink: 0;
+  }
+
+  .kc-ticker-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 28px;
+    padding-right: 28px;
+    font-family: var(--font-display) !important;
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .kc-ticker-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    background: var(--on-brand);
+    transform: rotate(45deg);
+  }
+
+  /* Lift and glow on the content cards so the page responds to the cursor. */
+  .service-card,
+  .vehicle-card {
+    transition: transform 0.35s var(--ease-out), box-shadow 0.35s var(--ease-out), border-color 0.35s var(--ease-out);
+  }
+
+  .service-card:hover,
+  .vehicle-card:hover {
+    border-color: rgba(245, 180, 0, 0.55);
+    box-shadow: 0 10px 30px rgba(245, 180, 0, 0.16), var(--shadow-md);
+  }
+
+  .service-card:hover .service-icon-wrapper {
+    animation: kc-bounce 0.6s var(--ease-out);
+  }
+
+  .brand-logo-img {
+    transition: transform 0.4s var(--ease-out);
+  }
+
+  .brand-logo:hover .brand-logo-img {
+    transform: rotate(-6deg) scale(1.06);
+  }
+
+  @media (max-width: 768px) {
+    .kc-road {
+      bottom: 8px;
+    }
+    .kc-ticker-item {
+      font-size: 13px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .kc-road-lane,
+    .kc-road-cab,
+    .kc-ticker-track,
+    .hero-btn-main,
+    .hero-backdrop-glow,
+    .hero-title .brand-text {
+      animation: none;
+    }
+    .kc-road-cab {
+      display: none;
+    }
   }
 }
 
 /* Keyframes live at the top level: they are invalid inside a nested rule,
-   and their names are global regardless, so they carry a zc- prefix. */
-@keyframes zc-scrollProgress {
+   and their names are global regardless, so they carry a kc- (Kranti Cabs) prefix. */
+@keyframes kc-scrollProgress {
 from { transform: scaleX(0); }
 to { transform: scaleX(1); }
 }
 
-@keyframes zc-railFocus {
+@keyframes kc-railFocus {
 0% {
 opacity: 0.55;
 transform: scale(0.9) translateY(10px);
@@ -891,13 +1085,50 @@ transform: scale(1) translateY(0);
 }
 }
 
-@keyframes zc-waPulse {
+@keyframes kc-waPulse {
 0% { transform: scale(1); opacity: 0.7; }
 70% { transform: scale(1.7); opacity: 0; }
 100% { transform: scale(1.7); opacity: 0; }
 }
 
-@keyframes zc-fadeIn {
+@keyframes kc-fadeIn {
 from { opacity: 0; transform: translateY(12px); }
 to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes kc-glow {
+0%, 100% { text-shadow: 0 0 0 rgba(245, 180, 0, 0); }
+50% { text-shadow: 0 0 22px rgba(245, 180, 0, 0.55), 0 0 2px rgba(255, 220, 120, 0.6); }
+}
+
+@keyframes kc-beacon {
+0% { box-shadow: var(--shadow-brand), 0 0 0 0 rgba(245, 180, 0, 0.55); }
+70% { box-shadow: var(--shadow-brand), 0 0 0 16px rgba(245, 180, 0, 0); }
+100% { box-shadow: var(--shadow-brand), 0 0 0 0 rgba(245, 180, 0, 0); }
+}
+
+@keyframes kc-lane {
+from { background-position: 0 0; }
+to { background-position: -52px 0; }
+}
+
+@keyframes kc-drive {
+0% { transform: translate(-60px, -50%); }
+85%, 100% { transform: translate(calc(100vw + 60px), -50%); }
+}
+
+@keyframes kc-marquee {
+from { transform: translateX(0); }
+to { transform: translateX(-50%); }
+}
+
+@keyframes kc-bounce {
+0%, 100% { transform: translateY(0); }
+40% { transform: translateY(-6px) rotate(-4deg); }
+70% { transform: translateY(1px); }
+}
+
+@keyframes kc-breathe {
+0%, 100% { opacity: 0.65; }
+50% { opacity: 1; }
 }

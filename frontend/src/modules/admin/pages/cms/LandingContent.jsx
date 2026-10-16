@@ -5,7 +5,7 @@ import { adminService } from '../../services/adminService';
 import { uploadService } from '../../../../shared/services/uploadService';
 
 /**
- * Editor for the public marketing site (zicab.in).
+ * Editor for the public marketing site (kranticabs.buytogetherindia.com).
  *
  * Mirrors the backend's section whitelist in landingContentService.js — adding a
  * section means updating the model, that whitelist, defaultLandingContent.js and
@@ -42,7 +42,7 @@ const SECTIONS = [
   {
     key: 'valueProps',
     title: 'Why Choose Us',
-    help: 'The "Why Choose ZI CAB?" cards.',
+    help: 'The "Why Choose Kranti Cabs?" cards.',
     itemLabel: 'point',
     fields: [
       { name: 'title', label: 'Title', placeholder: 'Verified & Trained Drivers' },
@@ -92,52 +92,52 @@ const CONTACT_FIELDS = [
   { name: 'tollFree', label: 'Toll-Free Number', placeholder: '1800 200 9999' },
   { name: 'whatsappDisplay', label: 'WhatsApp (displayed)', placeholder: '+91 98765 00000' },
   { name: 'whatsapp', label: 'WhatsApp (dial format)', placeholder: '919876500000', help: 'Country code, digits only — used to build the wa.me link.' },
-  { name: 'email', label: 'Email', placeholder: 'support@zicab.in' },
+  { name: 'email', label: 'Email', placeholder: 'support@kranticabs.buytogetherindia.com' },
   { name: 'addressShort', label: 'Short Address', placeholder: 'Grand Majestic Mall, Gandhinagar, Bengaluru', wide: true },
   { name: 'address', label: 'Full Address', placeholder: 'Grand Majestic Mall, Gandhinagar, Bengaluru, Karnataka 560009', wide: true },
   { name: 'mapsUrl', label: 'Google Maps URL', placeholder: 'https://www.google.com/maps/search/?api=1&query=...', wide: true },
 ];
 
 const ABOUT_FIELDS = [
-  { name: 'tag', label: 'Page tag', placeholder: 'About ZI CAB' },
+  { name: 'tag', label: 'Page tag', placeholder: 'About Kranti Cabs' },
   { name: 'title', label: 'Page title', placeholder: 'Redefining Premium Cab Services...' },
   { name: 'subtitle', label: 'Page subtitle', wide: true },
   { name: 'foundersTag', label: 'Founders tag', placeholder: 'Leadership' },
   { name: 'foundersHeading', label: 'Founders heading', placeholder: 'Meet the Founders' },
-  { name: 'pillarsHeading', label: 'Pillars heading', placeholder: 'The Pillars of ZI CAB', wide: true },
+  { name: 'pillarsHeading', label: 'Pillars heading', placeholder: 'The Pillars of Kranti Cabs', wide: true },
 ];
 
 const SERVICES_PAGE_FIELDS = [
-  { name: 'tag', label: 'Page tag', placeholder: 'ZI CAB Offerings' },
+  { name: 'tag', label: 'Page tag', placeholder: 'Kranti Cabs Offerings' },
   { name: 'title', label: 'Page title', placeholder: 'Comprehensive Mobility Services' },
   { name: 'subtitle', label: 'Page subtitle', wide: true },
   { name: 'ctaLabel', label: 'Card button label', placeholder: 'Book This Service' },
 ];
 
 const HERO_FIELDS = [
-  { name: 'titleLine1', label: 'Headline line 1', placeholder: 'Your Ride.' },
-  { name: 'titleLine2', label: 'Headline line 2', placeholder: 'Our Priority.', help: 'Shown in the accent colour.' },
+  { name: 'titleLine1', label: 'Headline line 1', placeholder: 'Ride the' },
+  { name: 'titleLine2', label: 'Headline line 2', placeholder: 'Revolution.', help: 'Shown in the accent colour.' },
   { name: 'subtitle', label: 'Subtitle', placeholder: 'Premium rides, verified drivers...', wide: true },
   { name: 'primaryCta', label: 'Primary button', placeholder: 'Book a Ride' },
   { name: 'secondaryCta', label: 'Secondary button', placeholder: 'Download App' },
 ];
 
 const SEO_FIELDS = [
-  { name: 'title', label: 'Browser tab title', placeholder: 'ZI CAB - Your Ride. Our Priority.', wide: true },
-  { name: 'description', label: 'Search description', placeholder: 'ZI CAB - city, outstation and airport cabs...', wide: true },
+  { name: 'title', label: 'Browser tab title', placeholder: 'Kranti Cabs - Ride the Revolution.', wide: true },
+  { name: 'description', label: 'Search description', placeholder: 'Kranti Cabs - city, outstation and airport cabs...', wide: true },
 ];
 
 const FOOTER_FIELDS = [
-  { name: 'description', label: 'About blurb', placeholder: 'ZI CAB is a premium cab booking platform...', wide: true },
+  { name: 'description', label: 'About blurb', placeholder: 'Kranti Cabs is a premium cab booking platform...', wide: true },
   { name: 'servicesHeading', label: 'Services column heading', placeholder: 'Cab Services' },
-  { name: 'copyright', label: 'Copyright line', placeholder: '© 2026 ZI CAB Technologies Pvt Ltd. All Rights Reserved.', wide: true },
+  { name: 'copyright', label: 'Copyright line', placeholder: '© 2026 Kranti Cabs. All Rights Reserved.', wide: true },
 ];
 
 const BRAND_FIELDS = [
   { name: 'logo', label: 'Logo', type: 'image', wide: true, help: 'Shown in the header, footer and intro screen. Leave empty to use the logo from General Settings.' },
   { name: 'wordmarkPrimary', label: 'Wordmark (first part)', placeholder: 'ZI' },
   { name: 'wordmarkSecondary', label: 'Wordmark (second part)', placeholder: 'CAB' },
-  { name: 'tagline', label: 'Tagline', placeholder: 'Your Ride. Our Priority.', wide: true },
+  { name: 'tagline', label: 'Tagline', placeholder: 'Ride the Revolution.', wide: true },
   { name: 'appBlurb', label: 'App blurb', placeholder: 'Book rides in seconds...', wide: true },
   { name: 'playStoreUrl', label: 'Google Play URL', placeholder: 'https://play.google.com/store/apps/details?id=...', wide: true, help: 'Leave blank and the badge stays unclickable.' },
   { name: 'appStoreUrl', label: 'App Store URL', placeholder: 'https://apps.apple.com/app/...', wide: true },
@@ -541,7 +541,7 @@ export default function LandingContent() {
         <div>
           <h1 className="text-xl font-bold text-gray-900">Website Content</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Controls the public site at zicab.in. Changes appear within about a minute.
+            Controls the public site at kranticabs.buytogetherindia.com. Changes appear within about a minute.
           </p>
         </div>
         <button

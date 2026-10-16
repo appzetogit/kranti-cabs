@@ -49,7 +49,7 @@ const Corporate = () => {
           <div className="corp-info">
             <h2 className="section-title">{corporatePage.benefitsHeading}</h2>
             <p className="body-text">
-              Managing corporate travel expenses and ensuring employee safety can be challenging. ZI CAB simplifies B2B travel with automated booking tools, zero surge pricing, and customized billing contracts.
+              Managing corporate travel expenses and ensuring employee safety can be challenging. Kranti Cabs simplifies B2B travel with automated booking tools, zero surge pricing, and customized billing contracts.
             </p>
 
             <div className="benefits-column">
@@ -58,7 +58,7 @@ const Corporate = () => {
                 return (
                   <div key={i} className="b-item">
                     <div className="b-icon">
-                      <Icon size={22} color="#00BBA9" />
+                      <Icon size={22} color="#F5B400" />
                     </div>
                     <div>
                       <h4 className="b-title">{b.title}</h4>
@@ -77,7 +77,7 @@ const Corporate = () => {
 
             {submitted ? (
               <div className="form-success text-center py-6">
-                <CheckCircle2 size={50} color="#00BBA9" className="mx-auto mb-4" />
+                <CheckCircle2 size={50} color="#F5B400" className="mx-auto mb-4" />
                 <h4 className="text-xl font-bold text-white mb-2">Inquiry Submitted!</h4>
                 <p className="text-gray-300 text-sm">
                   Our Corporate Account Manager will contact <strong>{contactPerson}</strong> at <strong>{email}</strong> shortly.
@@ -141,7 +141,7 @@ const Corporate = () => {
                 {error && (
                   <p style={{ color: '#e11d48', fontSize: '0.85rem', marginBottom: '0.75rem' }}>{error}</p>
                 )}
-                <button type="submit" className="btn btn-teal w-full mt-4" disabled={sending}>
+                <button type="submit" className="btn btn-brand w-full mt-4" disabled={sending}>
                   {sending ? 'Sending\u2026' : 'Submit Corporate Inquiry'} <Send size={16} />
                 </button>
               </form>
@@ -151,7 +151,7 @@ const Corporate = () => {
       </section>
 
       <style>{`
-        .zicab-landing {
+        .kranti-landing {
           .corp-grid {
             display: grid;
             grid-template-columns: 1.1fr 0.9fr;
@@ -170,7 +170,7 @@ const Corporate = () => {
             display: flex;
             gap: 16px;
             background: #FFFFFF;
-            border: 1px solid #E2E8F0;
+            border: 1px solid #E9E9E6;
             padding: 18px;
             border-radius: 12px;
           }
@@ -178,7 +178,7 @@ const Corporate = () => {
           .b-icon {
             width: 44px;
             height: 44px;
-            background: rgba(0, 187, 169, 0.1);
+            background: rgba(245, 180, 0, 0.1);
             border-radius: 10px;
             display: flex;
             align-items: center;
@@ -189,19 +189,19 @@ const Corporate = () => {
           .b-title {
             font-size: 16px;
             font-weight: 700;
-            color: #0F172A;
+            color: #1D1D1F;
             margin-bottom: 4px;
           }
 
           .b-desc {
             font-size: 13.5px;
-            color: #64748B;
+            color: #78787A;
             line-height: 1.5;
           }
 
           .corp-form-card {
-            background: #0C1B30;
-            border: 1px solid rgba(0, 187, 169, 0.3);
+            background: #18181B;
+            border: 1px solid rgba(245, 180, 0, 0.3);
             border-radius: 16px;
             padding: 32px;
             color: #FFFFFF;
@@ -216,7 +216,7 @@ const Corporate = () => {
 
           .form-card-sub {
             font-size: 13.5px;
-            color: #94A3B8;
+            color: #A6A6A3;
             margin-bottom: 24px;
           }
 

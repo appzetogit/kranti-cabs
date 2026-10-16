@@ -1637,8 +1637,8 @@ export const sendTestMail = asyncHandler(async (req, res) => {
   try {
     await sendEmail({
       to,
-      subject: 'ZI CAB SMTP test',
-      text: `This is a test message from the ZI CAB admin panel.
+      subject: 'Kranti Cabs SMTP test',
+      text: `This is a test message from the Kranti Cabs admin panel.
 
 SMTP host: ${status.host}:${status.port}
 If you received this, outgoing mail works.`,

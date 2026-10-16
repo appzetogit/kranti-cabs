@@ -1,12 +1,12 @@
 export const createDefaultBusinessSettings = () => ({
   scope: 'default',
   general: {
-    app_name: 'Appzeto',
+    app_name: 'Kranti Cabs',
     contact_phone_1: '0000000000',
     contact_phone_2: '0000000000',
     contact_booking_number: '9999999999',
-    footer_1: '2024 © Appzeto.',
-    footer_2: 'Design & Develop by Appzeto',
+    footer_1: '2026 © Kranti Cabs.',
+    footer_2: 'Kranti Cabs',
     default_lat: '22.7196',
     default_lng: '75.8577',
     logo: '',

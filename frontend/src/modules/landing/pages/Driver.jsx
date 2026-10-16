@@ -39,7 +39,7 @@ const Driver = () => {
           <span className="page-tag">{driverPage.tag}</span>
           <h1 className="page-title">{driverPage.title}</h1>
           <p className="page-subtitle">
-            Become a ZI CAB Driver Partner. Enjoy daily/weekly settlements, zero arbitrary account blocks, and dedicated support for captains.
+            Become a Kranti Cabs Driver Partner. Enjoy daily/weekly settlements, zero arbitrary account blocks, and dedicated support for captains.
           </p>
         </div>
       </div>
@@ -55,7 +55,7 @@ const Driver = () => {
                 const PerkIcon = perk.icon;
                 return (
                   <div className="d-perk" key={index}>
-                    <PerkIcon size={24} color="#00BBA9" />
+                    <PerkIcon size={24} color="#F5B400" />
                     <div>
                       <h4>{perk.title}</h4>
                       <p>{perk.desc}</p>
@@ -66,11 +66,11 @@ const Driver = () => {
             </div>
 
             <div className="docs-box mt-8">
-              <h3 className="docs-title"><FileText size={18} color="#00BBA9" /> Documents Required for Verification</h3>
+              <h3 className="docs-title"><FileText size={18} color="#F5B400" /> Documents Required for Verification</h3>
               <div className="docs-list">
                 {requiredDocs.map((doc, idx) => (
                   <div key={idx} className="doc-item">
-                    <CheckCircle2 size={16} color="#00BBA9" />
+                    <CheckCircle2 size={16} color="#F5B400" />
                     <span>{doc}</span>
                   </div>
                 ))}
@@ -85,7 +85,7 @@ const Driver = () => {
 
             {submitted ? (
               <div className="form-success text-center py-6">
-                <CheckCircle2 size={50} color="#00BBA9" className="mx-auto mb-4" />
+                <CheckCircle2 size={50} color="#F5B400" className="mx-auto mb-4" />
                 <h4 className="text-xl font-bold text-white mb-2">Registration Submitted!</h4>
                 <p className="text-gray-300 text-sm">
                   Our Driver Onboarding Center will call <strong>{phone}</strong> to schedule document verification.
@@ -136,7 +136,7 @@ const Driver = () => {
                 {error && (
                   <p style={{ color: '#e11d48', fontSize: '0.85rem', marginBottom: '0.75rem' }}>{error}</p>
                 )}
-                <button type="submit" className="btn btn-teal w-full mt-4" disabled={sending}>
+                <button type="submit" className="btn btn-brand w-full mt-4" disabled={sending}>
                   {sending ? 'Sending\u2026' : 'Register as Driver Captain'} </button>
               </form>
             )}
@@ -145,7 +145,7 @@ const Driver = () => {
       </section>
 
       <style>{`
-        .zicab-landing {
+        .kranti-landing {
           .driver-grid {
             display: grid;
             grid-template-columns: 1.1fr 0.9fr;
@@ -164,7 +164,7 @@ const Driver = () => {
             display: flex;
             gap: 16px;
             background: #FFFFFF;
-            border: 1px solid #E2E8F0;
+            border: 1px solid #E9E9E6;
             border-radius: 12px;
             padding: 20px;
           }
@@ -172,19 +172,19 @@ const Driver = () => {
           .d-perk h4 {
             font-size: 16px;
             font-weight: 700;
-            color: #0F172A;
+            color: #1D1D1F;
             margin-bottom: 4px;
           }
 
           .d-perk p {
             font-size: 13.5px;
-            color: #64748B;
+            color: #78787A;
             line-height: 1.5;
           }
 
           .docs-box {
-            background: #07152B;
-            border: 1px solid rgba(0, 187, 169, 0.3);
+            background: #0A0A0B;
+            border: 1px solid rgba(245, 180, 0, 0.3);
             border-radius: 12px;
             padding: 20px;
             color: #FFFFFF;
@@ -193,7 +193,7 @@ const Driver = () => {
           .docs-title {
             font-size: 16px;
             font-weight: 700;
-            color: #00BBA9;
+            color: #F5B400;
             margin-bottom: 14px;
             display: flex;
             align-items: center;
@@ -211,12 +211,12 @@ const Driver = () => {
             align-items: center;
             gap: 10px;
             font-size: 13.5px;
-            color: #CBD5E1;
+            color: #D6D6D3;
           }
 
           .driver-form-card {
-            background: #0C1B30;
-            border: 1px solid rgba(0, 187, 169, 0.3);
+            background: #18181B;
+            border: 1px solid rgba(245, 180, 0, 0.3);
             border-radius: 16px;
             padding: 32px;
             color: #FFFFFF;

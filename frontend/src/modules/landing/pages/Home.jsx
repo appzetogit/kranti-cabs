@@ -152,7 +152,7 @@ const fallbackVehicles = [
   // All page content comes from the CMS, falling back to the bundled copy so the
   // page is never blank while the request is in flight or if it fails.
   const { services, valueProps, drivers, partners, launchCities, contact, brand, hero } = useLanding();
-  // The app's own module list is the source of truth for what ZI CAB sells;
+  // The app's own module list is the source of truth for what Kranti Cabs sells;
   // the CMS list is only a fallback for when it cannot be reached.
   const appModules = useAppModules();
   const serviceCards = appModules.length ? appModules : services;
@@ -176,7 +176,7 @@ const fallbackVehicles = [
                 <span className="hero-line" key={lineIndex}>
                   {String(line || '').split(/\s+/).filter(Boolean).map((word, wordIndex, words) => (
                     <span key={wordIndex}>
-                      <span className={lineIndex === 1 ? 'hero-word teal-text' : 'hero-word'}>{word}</span>
+                      <span className={lineIndex === 1 ? 'hero-word brand-text' : 'hero-word'}>{word}</span>
                       {wordIndex < words.length - 1 ? ' ' : null}
                     </span>
                   ))}
@@ -186,7 +186,7 @@ const fallbackVehicles = [
             <p className="hero-subtitle">{hero.subtitle}</p>
 
             <div className="hero-cta-group">
-              <button className="btn btn-teal hero-btn-main" data-magnetic onClick={openBookingModal}>
+              <button className="btn btn-brand hero-btn-main" data-magnetic onClick={openBookingModal}>
                 {hero.primaryCta} <ArrowRight size={18} />
               </button>
               <button className="btn btn-outline-light hero-btn-app" onClick={() => setActiveTab('contact')}>
@@ -200,7 +200,7 @@ const fallbackVehicles = [
                 const BadgeIcon = HERO_BADGE_ICONS[badge.icon] || ShieldCheck;
                 return (
                   <div className="badge-item" key={index}>
-                    <BadgeIcon size={16} color="#00BBA9" />
+                    <BadgeIcon size={16} color="#F5B400" />
                     <span>{badge.label}</span>
                   </div>
                 );
@@ -238,7 +238,7 @@ const fallbackVehicles = [
                       value={pickup}
                       onChange={(e) => setPickup(e.target.value)}
                     />
-                    <MapPin className="field-icon" size={16} color="#00BBA9" />
+                    <MapPin className="field-icon" size={16} color="#F5B400" />
                   </div>
                 </div>
 
@@ -251,7 +251,7 @@ const fallbackVehicles = [
                       value={drop}
                       onChange={(e) => setDrop(e.target.value)}
                     />
-                    <MapPin className="field-icon" size={16} color="#00BBA9" />
+                    <MapPin className="field-icon" size={16} color="#F5B400" />
                   </div>
                 </div>
 
@@ -282,14 +282,40 @@ const fallbackVehicles = [
                   </div>
                 </div>
 
-                <button type="submit" className="btn btn-teal w-full booking-submit-btn">
+                <button type="submit" className="btn btn-brand w-full booking-submit-btn">
                   Find My Ride
                 </button>
               </form>
             </div>
           </div>
         </div>
+
+        {/* The road from the logo: lane dashes stream past while a cab drives
+            the length of the hero. Decorative only. */}
+        <div className="kc-road" aria-hidden="true">
+          <div className="kc-road-lane" />
+          <div className="kc-road-cab">
+            <span className="kc-cab-glow" />
+            <Car size={22} strokeWidth={2.2} />
+          </div>
+        </div>
       </section>
+
+      {/* Taxi-stripe ticker between the hero and the content below. */}
+      <div className="kc-ticker" aria-hidden="true">
+        <div className="kc-ticker-track">
+          {[0, 1].map((copy) => (
+            <div className="kc-ticker-group" key={copy}>
+              {['City Rides', 'Outstation', 'Airport Transfers', 'Rentals', 'Parcel Delivery', 'Verified Drivers', '24x7 Support'].map((item) => (
+                <span className="kc-ticker-item" key={item}>
+                  {item}
+                  <span className="kc-ticker-dot" />
+                </span>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* OUR SERVICES SECTION */}
       <section className="section-padding services-section">
@@ -316,7 +342,7 @@ const fallbackVehicles = [
                     {s.image ? (
                       <img src={s.image} alt="" className="service-icon-img" loading="lazy" />
                     ) : IconComp ? (
-                      <IconComp size={22} color="#0B1F3A" />
+                      <IconComp size={22} color="#111113" />
                     ) : null}
                   </div>
                   <h3 className="service-card-title">{s.title}</h3>
@@ -328,12 +354,12 @@ const fallbackVehicles = [
         </div>
       </section>
 
-      {/* WHY CHOOSE ZI CAB? SECTION */}
+      {/* WHY CHOOSE Kranti Cabs? SECTION */}
       <section className="why-us-section grain-layer">
         <div className="container">
           <div className="why-head">
             <span className="eyebrow"><span className="eyebrow-num">02</span> The Difference</span>
-            <h2 className="section-title light mb-10" data-reveal-mask><span>Why Choose ZI CAB?</span></h2>
+            <h2 className="section-title light mb-10" data-reveal-mask><span>Why Choose Kranti Cabs?</span></h2>
           </div>
 
           <div className="why-us-grid" data-reveal-stagger>
@@ -342,7 +368,7 @@ const fallbackVehicles = [
               return (
                 <div key={idx} className="why-us-card">
                   <div className="why-icon-box">
-                    <IconComponent size={20} color="#00BBA9" />
+                    <IconComponent size={20} color="#F5B400" />
                   </div>
                   <div className="why-content">
                     <h4 className="why-title">{v.title}</h4>
@@ -396,7 +422,7 @@ const fallbackVehicles = [
                       ) : null}
                     </div>
                     <button 
-                      className="btn btn-outline-teal btn-sm"
+                      className="btn btn-outline-brand btn-sm"
                       onClick={openBookingModal}
                     >
                       Book Now
@@ -418,7 +444,7 @@ const fallbackVehicles = [
             <div>
               <span className="eyebrow"><span className="eyebrow-num">04</span> Who Drives You</span>
               <h2 className="section-title light" data-reveal-mask><span>Meet Our Drivers</span></h2>
-              <p className="section-sub">Every ZI CAB captain is background-verified, police-checked and rated by real riders.</p>
+              <p className="section-sub">Every Kranti Cabs captain is background-verified, police-checked and rated by real riders.</p>
             </div>
             <button className="section-link" onClick={() => setActiveTab('driver')}>
               Become a Driver <ChevronRight size={16} />
@@ -452,9 +478,9 @@ const fallbackVehicles = [
                 </div>
 
                 <div className="driver-meta">
-                  <div className="dm-row"><ShieldCheck size={14} color="#00BBA9" /> {d.experience}</div>
-                  <div className="dm-row"><Car size={14} color="#00BBA9" /> {d.vehicle}</div>
-                  <div className="dm-row"><MapPin size={14} color="#00BBA9" /> {d.city}</div>
+                  <div className="dm-row"><ShieldCheck size={14} color="#F5B400" /> {d.experience}</div>
+                  <div className="dm-row"><Car size={14} color="#F5B400" /> {d.vehicle}</div>
+                  <div className="dm-row"><MapPin size={14} color="#F5B400" /> {d.city}</div>
                 </div>
               </div>
             ))}
@@ -479,7 +505,7 @@ const fallbackVehicles = [
           <div className="cities-grid" data-reveal-stagger>
             {launchCities.map((c) => (
               <div key={c.name} className="city-card">
-                <div className="city-icon"><MapPin size={20} color="#00BBA9" /></div>
+                <div className="city-icon"><MapPin size={20} color="#F5B400" /></div>
                 <h3>{c.name}</h3>
                 <span>{c.note}</span>
               </div>
@@ -493,13 +519,13 @@ const fallbackVehicles = [
         <div className="container advertise-teaser-inner" data-reveal>
           <div>
             <span className="at-tag"><Megaphone size={14} /> For Businesses</span>
-            <h2 className="at-title">Advertise with ZI CAB</h2>
+            <h2 className="at-title">Advertise with Kranti Cabs</h2>
             <p className="at-desc">
               Put your brand in front of thousands of daily riders — across our mobile app, website,
               driver app, home banners, booking screens and push notifications.
             </p>
           </div>
-          <button className="btn btn-teal at-btn" onClick={() => setActiveTab('advertise')}>
+          <button className="btn btn-brand at-btn" onClick={() => setActiveTab('advertise')}>
             Explore Ad Options <ArrowRight size={18} />
           </button>
         </div>
@@ -530,7 +556,7 @@ const fallbackVehicles = [
           {/* App Download Banner */}
           <div className="app-download-banner" data-reveal>
             <div className="app-banner-left">
-              <h2 className="app-banner-title">Download ZI CAB App</h2>
+              <h2 className="app-banner-title">Download Kranti Cabs App</h2>
               <p className="app-banner-desc">Book rides on the go, anytime, anywhere.</p>
 
               <div className="app-store-btns flex gap-4 mt-6">
@@ -543,7 +569,7 @@ const fallbackVehicles = [
                       style={{ width: 64, height: 64, objectFit: 'contain' }}
                     />
                   ) : (
-                    <QrCode size={40} color="#0B1F3A" />
+                    <QrCode size={40} color="#111113" />
                   )}
                 </div>
                 <div className="store-btns-column">
@@ -568,10 +594,10 @@ const fallbackVehicles = [
               <div className="mockup-phone" data-parallax="-70">
                 <div className="mockup-screen">
                   <div className="m-header">
-                    <span className="m-logo">ZI CAB</span>
+                    <span className="m-logo">Kranti Cabs</span>
                   </div>
                   <div className="m-body">
-                    <p className="m-tag">Your Ride. Our Priority.</p>
+                    <p className="m-tag">Ride the Revolution.</p>
                     <div className="m-btn">Book a Ride</div>
                   </div>
                 </div>
@@ -582,10 +608,16 @@ const fallbackVehicles = [
       </section>
 
       <style>{`
-        .zicab-landing {
+        .kranti-landing {
           /* HERO STYLES */
           .hero-section {
-            background: #07152B url('/carbackground.png') no-repeat 88% center;
+            /* The night photo is blue; a saturation blend turns it black and
+               white to match the logo, and the amber comes from the glow. */
+            background-color: #0A0A0B;
+            background-image: linear-gradient(#000, #000), url('/hero_car.png');
+            background-blend-mode: saturation, normal;
+            background-repeat: no-repeat;
+            background-position: center, right center;
             background-size: cover;
             position: relative;
             padding: 60px 0 80px;
@@ -599,7 +631,7 @@ const fallbackVehicles = [
             left: 30%;
             width: min(500px, 70vw);
             height: min(500px, 70vw);
-            background: radial-gradient(circle, rgba(0, 187, 169, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
+            background: radial-gradient(circle, rgba(245, 180, 0, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
             pointer-events: none;
             z-index: 1;
           }
@@ -634,13 +666,13 @@ const fallbackVehicles = [
             will-change: transform;
           }
 
-          .teal-text {
-            color: #00BBA9;
+          .brand-text {
+            color: #F5B400;
           }
 
           .hero-subtitle {
             font-size: 16.5px;
-            color: #CBD5E1;
+            color: #D6D6D3;
             line-height: 1.6;
             max-width: 500px;
             margin-bottom: 30px;
@@ -676,7 +708,7 @@ const fallbackVehicles = [
             align-items: center;
             gap: 8px;
             font-size: 13.5px;
-            color: #E2E8F0;
+            color: #E9E9E6;
             font-weight: 500;
           }
 
@@ -689,14 +721,14 @@ const fallbackVehicles = [
           /* Frosted glass over the hero photo rather than an opaque navy block --
              the backdrop blur is what makes it read as a floating panel. */
           .booking-card {
-            background: linear-gradient(165deg, rgba(18, 38, 66, 0.82), rgba(8, 20, 38, 0.9));
+            background: linear-gradient(165deg, rgba(30, 30, 33, 0.82), rgba(12, 12, 13, 0.9));
             backdrop-filter: blur(18px) saturate(140%);
             -webkit-backdrop-filter: blur(18px) saturate(140%);
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: var(--radius-lg);
             padding: 20px 22px;
             box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5), var(--hairline-dark),
-              0 0 0 1px rgba(0, 187, 169, 0.12);
+              0 0 0 1px rgba(245, 180, 0, 0.12);
             max-width: 420px;
             width: 100%;
           }
@@ -714,7 +746,7 @@ const fallbackVehicles = [
             flex: 1;
             background: none;
             border: none;
-            color: #94A3B8;
+            color: #A6A6A3;
             padding: 7px 4px;
             font-size: 12.5px;
             font-weight: 500;
@@ -724,7 +756,7 @@ const fallbackVehicles = [
           }
 
           .b-tab.active {
-            background-color: #00BBA9;
+            background-color: #F5B400;
             color: #FFFFFF;
             font-weight: 600;
           }
@@ -743,7 +775,7 @@ const fallbackVehicles = [
 
           .field-group label {
             font-size: 11.5px;
-            color: #94A3B8;
+            color: #A6A6A3;
             font-weight: 500;
           }
 
@@ -765,7 +797,7 @@ const fallbackVehicles = [
           }
 
           .field-input-wrap input:focus, .field-input-wrap select:focus {
-            border-color: #00BBA9;
+            border-color: #F5B400;
           }
 
           .field-icon {
@@ -807,7 +839,7 @@ const fallbackVehicles = [
             margin-top: 4px;
             font-size: 12px;
             line-height: 1.4;
-            color: #64748B;
+            color: #78787A;
             text-align: center;
           }
 
@@ -827,13 +859,13 @@ const fallbackVehicles = [
           }
 
           .service-card:hover {
-            border-color: rgba(0, 187, 169, 0.5);
+            border-color: rgba(245, 180, 0, 0.5);
             transform: translateY(-4px);
-            box-shadow: var(--shadow-md), 0 10px 26px rgba(0, 187, 169, 0.16), var(--hairline);
+            box-shadow: var(--shadow-md), 0 10px 26px rgba(245, 180, 0, 0.16), var(--hairline);
           }
 
           .service-card:hover .service-icon-wrapper {
-            background: linear-gradient(160deg, #14CDBA, #009C8D);
+            background: linear-gradient(160deg, #FFC72C, #D99A00);
             transform: scale(1.06);
           }
 
@@ -844,8 +876,8 @@ const fallbackVehicles = [
           .service-icon-wrapper {
             width: 46px;
             height: 46px;
-            background: linear-gradient(160deg, #E9FAF8, #D3F2EE);
-            box-shadow: inset 0 0 0 1px rgba(0, 187, 169, 0.16);
+            background: linear-gradient(160deg, #FFF6D6, #FFF6D6);
+            box-shadow: inset 0 0 0 1px rgba(245, 180, 0, 0.16);
             transition: var(--transition);
             border-radius: 50%;
             display: flex;
@@ -857,7 +889,7 @@ const fallbackVehicles = [
           .service-card-title {
             font-size: 13px;
             font-weight: 600;
-            color: #0F172A;
+            color: #1D1D1F;
             line-height: 1.25;
           }
 
@@ -865,11 +897,11 @@ const fallbackVehicles = [
           .why-us-section {
             color: #FFFFFF;
             padding: clamp(44px, 5vw, 68px) 0 clamp(52px, 6vw, 74px);
-            background-color: var(--navy-deep);
+            background-color: var(--ink-deep);
             background-image:
-              radial-gradient(70% 120% at 0% 0%, rgba(0, 187, 169, 0.18), transparent 55%),
-              radial-gradient(60% 100% at 100% 100%, rgba(43, 92, 168, 0.22), transparent 55%),
-              linear-gradient(150deg, #0A1D36, #071228);
+              radial-gradient(70% 120% at 0% 0%, rgba(245, 180, 0, 0.18), transparent 55%),
+              radial-gradient(60% 100% at 100% 100%, rgba(245, 180, 0, 0.22), transparent 55%),
+              linear-gradient(150deg, #202022, #18181A);
           }
 
           .mb-10 {
@@ -893,8 +925,8 @@ const fallbackVehicles = [
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            background: rgba(0, 187, 169, 0.12);
-            border: 1px solid rgba(0, 187, 169, 0.3);
+            background: rgba(245, 180, 0, 0.12);
+            border: 1px solid rgba(245, 180, 0, 0.3);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -911,14 +943,14 @@ const fallbackVehicles = [
 
           .why-desc {
             font-size: 12px;
-            color: #94A3B8;
+            color: #A6A6A3;
             line-height: 1.45;
           }
 
           /* VEHICLES GRID */
           .vehicles-section {
             background:
-              radial-gradient(80% 60% at 100% 0%, rgba(0, 187, 169, 0.07), transparent 60%),
+              radial-gradient(80% 60% at 100% 0%, rgba(245, 180, 0, 0.07), transparent 60%),
               var(--bg-light);
           }
 
@@ -939,7 +971,7 @@ const fallbackVehicles = [
             display: flex;
             gap: var(--marquee-gap);
             flex-shrink: 0;
-            animation: zc-marqueeScroll 42s linear infinite;
+            animation: kc-marqueeScroll 42s linear infinite;
           }
 
           .vehicles-marquee:hover .vehicles-track {
@@ -1010,7 +1042,7 @@ const fallbackVehicles = [
           .vehicle-card:hover {
             transform: translateY(-6px);
             box-shadow: var(--shadow-lg), var(--hairline);
-            border-color: rgba(0, 187, 169, 0.45);
+            border-color: rgba(245, 180, 0, 0.45);
           }
 
           .vehicle-img-container {
@@ -1032,7 +1064,7 @@ const fallbackVehicles = [
           .vehicle-name {
             font-size: 18px;
             font-weight: 700;
-            color: #0F172A;
+            color: #1D1D1F;
             margin-bottom: 8px;
           }
 
@@ -1040,7 +1072,7 @@ const fallbackVehicles = [
             display: flex;
             gap: 16px;
             font-size: 12.5px;
-            color: #64748B;
+            color: #78787A;
             margin-bottom: 16px;
           }
 
@@ -1061,18 +1093,18 @@ const fallbackVehicles = [
           .price-num {
             font-size: 20px;
             font-weight: 800;
-            color: #0F172A;
+            color: #1D1D1F;
           }
 
           .price-unit {
             font-size: 12px;
-            color: #64748B;
+            color: #78787A;
           }
 
-          .btn-outline-teal {
-            background: linear-gradient(180deg, #EEFBF9, #DFF6F3);
-            color: var(--teal-ink);
-            border: 1px solid rgba(0, 187, 169, 0.45);
+          .btn-outline-brand {
+            background: linear-gradient(180deg, #F5F5F2, #FFF6D6);
+            color: var(--brand-ink);
+            border: 1px solid rgba(245, 180, 0, 0.45);
             box-shadow: var(--hairline);
             border-radius: var(--radius-full);
             font-size: 13px;
@@ -1082,8 +1114,8 @@ const fallbackVehicles = [
             transition: all 0.2s;
           }
 
-          .btn-outline-teal:hover {
-            background: #00BBA9;
+          .btn-outline-brand:hover {
+            background: #F5B400;
             color: #FFFFFF;
           }
 
@@ -1095,33 +1127,33 @@ const fallbackVehicles = [
             position: absolute;
             top: 12px;
             left: 12px;
-            background: rgba(7, 21, 43, 0.85);
-            color: #00BBA9;
+            background: rgba(10, 10, 11, 0.85);
+            color: #F5B400;
             font-size: 11px;
             font-weight: 600;
             padding: 4px 10px;
             border-radius: 20px;
-            border: 1px solid rgba(0, 187, 169, 0.4);
+            border: 1px solid rgba(245, 180, 0, 0.4);
           }
 
           /* DRIVER PROFILES */
           .drivers-section {
-            background-color: var(--navy-deep);
+            background-color: var(--ink-deep);
             background-image:
-              radial-gradient(60% 90% at 85% 0%, rgba(0, 187, 169, 0.16), transparent 58%),
-              linear-gradient(150deg, #071528 0%, #0B1F3A 100%);
+              radial-gradient(60% 90% at 85% 0%, rgba(245, 180, 0, 0.16), transparent 58%),
+              linear-gradient(150deg, #18181A 0%, #111113 100%);
           }
 
           .section-sub {
             font-size: 14px;
-            color: #94A3B8;
+            color: #A6A6A3;
             margin-top: 6px;
             max-width: 560px;
           }
 
           .section-sub-dark {
             font-size: 14px;
-            color: #64748B;
+            color: #78787A;
             margin-top: 6px;
           }
 
@@ -1145,7 +1177,7 @@ const fallbackVehicles = [
           }
 
           .driver-card:hover {
-            border-color: #00BBA9;
+            border-color: #F5B400;
             transform: translateY(-5px);
             box-shadow: 0 16px 32px rgba(0, 0, 0, 0.35);
           }
@@ -1161,7 +1193,7 @@ const fallbackVehicles = [
             width: 68px;
             height: 68px;
             border-radius: 50%;
-            border: 2px solid #00BBA9;
+            border: 2px solid #F5B400;
             font-size: 22px;
           }
 
@@ -1174,14 +1206,14 @@ const fallbackVehicles = [
             padding: 4px 9px;
             border-radius: 20px;
             background: rgba(255, 255, 255, 0.1);
-            color: #CBD5E1;
+            color: #D6D6D3;
             border: 1px solid rgba(255, 255, 255, 0.18);
           }
 
           .driver-badge.top {
-            background: rgba(0, 187, 169, 0.15);
-            color: #00BBA9;
-            border-color: rgba(0, 187, 169, 0.45);
+            background: rgba(245, 180, 0, 0.15);
+            color: #F5B400;
+            border-color: rgba(245, 180, 0, 0.45);
           }
 
           .driver-name {
@@ -1195,7 +1227,7 @@ const fallbackVehicles = [
             align-items: center;
             gap: 5px;
             font-size: 13px;
-            color: #94A3B8;
+            color: #A6A6A3;
             margin-bottom: 14px;
           }
 
@@ -1216,7 +1248,7 @@ const fallbackVehicles = [
             align-items: center;
             gap: 8px;
             font-size: 12px;
-            color: #CBD5E1;
+            color: #D6D6D3;
             line-height: 1.4;
           }
 
@@ -1241,15 +1273,15 @@ const fallbackVehicles = [
           }
 
           .city-card:hover {
-            border-color: rgba(0, 187, 169, 0.45);
+            border-color: rgba(245, 180, 0, 0.45);
             transform: translateY(-4px);
-            box-shadow: var(--shadow-md), 0 12px 28px rgba(0, 187, 169, 0.14), var(--hairline);
+            box-shadow: var(--shadow-md), 0 12px 28px rgba(245, 180, 0, 0.14), var(--hairline);
           }
 
           .city-icon {
             width: 44px;
             height: 44px;
-            background: #E6F8F6;
+            background: #FFF6D6;
             border-radius: 12px;
             display: flex;
             align-items: center;
@@ -1260,18 +1292,18 @@ const fallbackVehicles = [
           .city-card h3 {
             font-size: 19px;
             font-weight: 700;
-            color: #0F172A;
+            color: #1D1D1F;
             margin-bottom: 4px;
           }
 
           .city-card span {
             font-size: 13px;
-            color: #64748B;
+            color: #78787A;
           }
 
           /* ADVERTISE TEASER */
           .advertise-teaser {
-            background: #0B1F3A;
+            background: #111113;
             padding: 44px 0;
             border-top: 1px solid rgba(255, 255, 255, 0.08);
           }
@@ -1292,8 +1324,8 @@ const fallbackVehicles = [
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 1px;
-            color: #00BBA9;
-            background: rgba(0, 187, 169, 0.12);
+            color: #F5B400;
+            background: rgba(245, 180, 0, 0.12);
             padding: 4px 12px;
             border-radius: 20px;
             margin-bottom: 10px;
@@ -1307,7 +1339,7 @@ const fallbackVehicles = [
 
           .at-desc {
             font-size: 14.5px;
-            color: #94A3B8;
+            color: #A6A6A3;
             line-height: 1.6;
             max-width: 640px;
           }
@@ -1331,7 +1363,7 @@ const fallbackVehicles = [
           .trusted-heading {
             font-size: 20px;
             font-weight: 700;
-            color: #0F172A;
+            color: #1D1D1F;
             margin-bottom: 24px;
           }
 
@@ -1352,7 +1384,7 @@ const fallbackVehicles = [
             display: flex;
             gap: var(--marquee-gap);
             flex-shrink: 0;
-            animation: zc-marqueeScroll 32s linear infinite;
+            animation: kc-marqueeScroll 32s linear infinite;
           }
 
           .partners-marquee:hover .partners-track {
@@ -1389,25 +1421,25 @@ const fallbackVehicles = [
           .partner-logo-item .p-title {
             font-size: 15px;
             font-weight: 800;
-            color: #0B1F3A;
+            color: #111113;
             letter-spacing: 0.5px;
           }
 
           .partner-logo-item .p-sub {
             font-size: 8.5px;
-            color: #64748B;
+            color: #78787A;
             letter-spacing: 0.8px;
           }
 
           .app-download-banner {
-            background: linear-gradient(135deg, #00BBA9 0%, #009688 100%);
+            background: linear-gradient(135deg, #F5B400 0%, #F5B400 100%);
             border-radius: 20px;
             padding: 40px 50px;
             display: grid;
             grid-template-columns: 1.2fr 0.8fr;
             align-items: center;
             color: #FFFFFF;
-            box-shadow: 0 16px 36px rgba(0, 187, 169, 0.25);
+            box-shadow: 0 16px 36px rgba(245, 180, 0, 0.25);
           }
 
           .app-banner-title {
@@ -1433,7 +1465,7 @@ const fallbackVehicles = [
           }
 
           .store-btn {
-            background: #0B1F3A;
+            background: #111113;
             padding: 8px 16px;
             border-radius: 8px;
             display: flex;
@@ -1454,7 +1486,7 @@ const fallbackVehicles = [
           .mockup-phone {
             width: 220px;
             height: 320px;
-            background: #0B1F3A;
+            background: #111113;
             border: 6px solid #FFFFFF;
             border-radius: 30px;
             margin: 0 auto;
@@ -1463,7 +1495,7 @@ const fallbackVehicles = [
           }
 
           .mockup-screen {
-            background: #07152B;
+            background: #0A0A0B;
             height: 100%;
             border-radius: 20px;
             padding: 20px;
@@ -1477,7 +1509,7 @@ const fallbackVehicles = [
           .m-logo {
             font-weight: 800;
             font-size: 20px;
-            color: #00BBA9;
+            color: #F5B400;
           }
 
           .m-tag {
@@ -1487,7 +1519,7 @@ const fallbackVehicles = [
           }
 
           .m-btn {
-            background: #00BBA9;
+            background: #F5B400;
             color: #FFFFFF;
             font-size: 12px;
             font-weight: 600;
@@ -1692,7 +1724,7 @@ const fallbackVehicles = [
            where the first began. There were previously two blocks with the same
            name and different offsets, and the partner strip referenced a third
            name that did not exist — so it never moved at all. */
-        @keyframes zc-marqueeScroll {
+        @keyframes kc-marqueeScroll {
         to { transform: translateX(calc(-100% - var(--marquee-gap))); }
         }
       `}</style>

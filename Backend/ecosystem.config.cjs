@@ -20,7 +20,7 @@ const PORTS = [5000, 5001, 5002, 5003];
 
 module.exports = {
   apps: PORTS.map((port) => ({
-    name: `zicab-api-${port}`,
+    name: `kranti-api-${port}`,
     script: 'server.js',
     exec_mode: 'fork',
     env: {

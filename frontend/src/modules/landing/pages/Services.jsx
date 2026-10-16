@@ -79,7 +79,7 @@ const Services = ({ openBookingModal }) => {
                   <div className="s-card-content">
                     <div className="s-title-row">
                       <div className="s-icon-bg">
-                        <IconComp size={22} color="#00BBA9" />
+                        <IconComp size={22} color="#F5B400" />
                       </div>
                       <h3 className="s-title">{s.title}</h3>
                     </div>
@@ -92,14 +92,14 @@ const Services = ({ openBookingModal }) => {
                       <div className="s-features-list">
                         {s.features.map((feat, i) => (
                           <div key={i} className="sf-item">
-                            <CheckCircle size={15} color="#00BBA9" />
+                            <CheckCircle size={15} color="#F5B400" />
                             <span>{feat}</span>
                           </div>
                         ))}
                       </div>
                     )}
 
-                    <button className="btn btn-teal w-full mt-4" onClick={openBookingModal}>
+                    <button className="btn btn-brand w-full mt-4" onClick={openBookingModal}>
                       {servicesPage.ctaLabel} <ArrowRight size={16} />
                     </button>
                   </div>
@@ -111,7 +111,7 @@ const Services = ({ openBookingModal }) => {
       </section>
 
       <style>{`
-        .zicab-landing {
+        .kranti-landing {
           .services-list-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -120,7 +120,7 @@ const Services = ({ openBookingModal }) => {
 
           .service-detail-card {
             background: #FFFFFF;
-            border: 1px solid #E2E8F0;
+            border: 1px solid #E9E9E6;
             border-radius: 16px;
             overflow: hidden;
             box-shadow: var(--shadow-sm);
@@ -132,7 +132,7 @@ const Services = ({ openBookingModal }) => {
           .service-detail-card:hover {
             transform: translateY(-5px);
             box-shadow: var(--shadow-lg);
-            border-color: #00BBA9;
+            border-color: #F5B400;
           }
 
           .s-card-img-box {
@@ -151,14 +151,14 @@ const Services = ({ openBookingModal }) => {
             position: absolute;
             top: 14px;
             right: 14px;
-            background: rgba(7, 21, 43, 0.85);
+            background: rgba(10, 10, 11, 0.85);
             backdrop-filter: blur(6px);
-            color: #00BBA9;
+            color: #F5B400;
             font-size: 11.5px;
             font-weight: 600;
             padding: 4px 12px;
             border-radius: 20px;
-            border: 1px solid rgba(0, 187, 169, 0.4);
+            border: 1px solid rgba(245, 180, 0, 0.4);
           }
 
           .s-card-content {
@@ -178,7 +178,7 @@ const Services = ({ openBookingModal }) => {
           .s-icon-bg {
             width: 40px;
             height: 40px;
-            background: rgba(0, 187, 169, 0.1);
+            background: rgba(245, 180, 0, 0.1);
             border-radius: 10px;
             display: flex;
             align-items: center;
@@ -188,12 +188,12 @@ const Services = ({ openBookingModal }) => {
           .s-title {
             font-size: 19px;
             font-weight: 700;
-            color: #0F172A;
+            color: #1D1D1F;
           }
 
           .s-desc {
             font-size: 14px;
-            color: #64748B;
+            color: #78787A;
             line-height: 1.6;
             margin-bottom: 16px;
           }
@@ -213,7 +213,7 @@ const Services = ({ openBookingModal }) => {
             align-items: center;
             gap: 8px;
             font-size: 12.5px;
-            color: #334155;
+            color: #444446;
             font-weight: 500;
           }
 

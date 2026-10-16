@@ -60,7 +60,7 @@ const Navbar = ({ activeTab, setActiveTab, openBookingModal }) => {
         {/* Action Button */}
         <div className="navbar-actions">
           <button 
-            className="btn btn-teal nav-book-btn"
+            className="btn btn-brand nav-book-btn"
             onClick={openBookingModal}
           >
             Book a Ride
@@ -93,7 +93,7 @@ const Navbar = ({ activeTab, setActiveTab, openBookingModal }) => {
             ))}
             <div className="mobile-drawer-cta">
               <button 
-                className="btn btn-teal w-full"
+                className="btn btn-brand w-full"
                 onClick={() => {
                   setMobileMenuOpen(false);
                   openBookingModal();
@@ -107,14 +107,14 @@ const Navbar = ({ activeTab, setActiveTab, openBookingModal }) => {
       )}
 
       <style>{`
-        .zicab-landing {
+        .kranti-landing {
           .navbar-header {
-            background-color: #0B1F3A;
+            background-color: #111113;
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
             position: sticky;
             top: 0;
             z-index: 1000;
-            box-shadow: 0 4px 20px rgba(7, 21, 43, 0.5);
+            box-shadow: 0 4px 20px rgba(10, 10, 11, 0.5);
           }
 
           .navbar-container {
@@ -160,7 +160,7 @@ const Navbar = ({ activeTab, setActiveTab, openBookingModal }) => {
           .logo-cab {
             font-size: 26px;
             font-weight: 800;
-            color: #00BBA9;
+            color: #F5B400;
             margin-left: 4px;
             letter-spacing: 1px;
           }
@@ -192,7 +192,7 @@ const Navbar = ({ activeTab, setActiveTab, openBookingModal }) => {
           }
 
           .nav-link-btn:hover {
-            color: #00BBA9;
+            color: #F5B400;
           }
 
           .nav-link-btn.active {
@@ -207,7 +207,7 @@ const Navbar = ({ activeTab, setActiveTab, openBookingModal }) => {
             transform: translateX(-50%);
             width: 18px;
             height: 3px;
-            background-color: #00BBA9;
+            background-color: #F5B400;
             border-radius: 2px;
           }
 
@@ -232,7 +232,7 @@ const Navbar = ({ activeTab, setActiveTab, openBookingModal }) => {
 
           .mobile-drawer {
             display: none;
-            background-color: #07152B;
+            background-color: #0A0A0B;
             border-top: 1px solid rgba(255, 255, 255, 0.1);
             padding: 16px 20px 24px;
           }
@@ -259,9 +259,9 @@ const Navbar = ({ activeTab, setActiveTab, openBookingModal }) => {
           }
 
           .mobile-nav-item.active {
-            background: rgba(0, 187, 169, 0.15);
-            border-color: #00BBA9;
-            color: #00BBA9;
+            background: rgba(245, 180, 0, 0.15);
+            border-color: #F5B400;
+            color: #F5B400;
           }
 
           .mobile-drawer-cta {

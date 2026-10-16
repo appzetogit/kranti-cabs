@@ -9,7 +9,7 @@ import { renderInvoicePdf } from '../src/modules/taxi/services/invoiceService.js
 const model = {
   invoiceDate: '24 August 2026',
   company: {
-    name: 'ZI CAB',
+    name: 'Kranti Cabs',
     tagline: 'Reliable rides, simple journeys',
     address: 'Shop No. 13, 2nd Floor, Grand Majestic Mall, Gandhi Nagar, Bengaluru – 560009',
     phone: '8971421486',

@@ -30,13 +30,13 @@ const Footer = ({ setActiveTab }) => {
 
             <div className="footer-contacts">
               <div className="contact-item">
-                <Phone size={16} color="#00BBA9" />
+                <Phone size={16} color="#F5B400" />
                 <span>
                   Call us: <strong>{CONTACT.tollFree}</strong>
                 </span>
               </div>
               <div className="contact-item">
-                <MessageCircle size={16} color="#00BBA9" />
+                <MessageCircle size={16} color="#F5B400" />
                 <span>
                   WhatsApp:{' '}
                   <a href={waLink()} target="_blank" rel="noreferrer" className="footer-inline-link">
@@ -45,7 +45,7 @@ const Footer = ({ setActiveTab }) => {
                 </span>
               </div>
               <div className="contact-item">
-                <Mail size={16} color="#00BBA9" />
+                <Mail size={16} color="#F5B400" />
                 <span>
                   Email:{' '}
                   <a href={`mailto:${CONTACT.email}`} className="footer-inline-link">
@@ -54,7 +54,7 @@ const Footer = ({ setActiveTab }) => {
                 </span>
               </div>
               <div className="contact-item">
-                <MapPin size={16} color="#00BBA9" />
+                <MapPin size={16} color="#F5B400" />
                 <span>Office: {CONTACT.address}</span>
               </div>
             </div>
@@ -70,7 +70,7 @@ const Footer = ({ setActiveTab }) => {
               <li><button onClick={() => handleNavClick('corporate')}>Corporate Travel</button></li>
               <li><button onClick={() => handleNavClick('partner')}>Partner With Us</button></li>
               <li><button onClick={() => handleNavClick('driver')}>Attach Driver/Cab</button></li>
-              <li><button onClick={() => handleNavClick('advertise')}>Advertise with ZI CAB</button></li>
+              <li><button onClick={() => handleNavClick('advertise')}>Advertise with Kranti Cabs</button></li>
               <li><button onClick={() => handleNavClick('contact')}>Contact Us</button></li>
             </ul>
           </div>
@@ -114,7 +114,7 @@ const Footer = ({ setActiveTab }) => {
                 const PillIcon = index === 0 ? ShieldCheck : Clock;
                 return (
                   <div className="trust-pill" key={index}>
-                    <PillIcon size={14} color="#00BBA9" />
+                    <PillIcon size={14} color="#F5B400" />
                     <span>{pill.label}</span>
                   </div>
                 );
@@ -127,7 +127,7 @@ const Footer = ({ setActiveTab }) => {
           <span className="footer-cities-label">Now Live In:</span>
           {LAUNCH_CITIES.map((c) => (
             <span key={c.name} className="footer-city-pill">
-              <MapPin size={12} color="#00BBA9" /> {c.name}
+              <MapPin size={12} color="#F5B400" /> {c.name}
             </span>
           ))}
         </div>
@@ -144,17 +144,17 @@ const Footer = ({ setActiveTab }) => {
             <a href="/refund">Refund & Cancellation</a>
             <span>•</span>
             {/* Required credit for the Creative Commons vehicle photos.
-                Safe to delete once they are replaced with ZI CAB's own fleet photos. */}
+                Safe to delete once they are replaced with Kranti Cabs' own fleet photos. */}
             <a href="/vehicles/ATTRIBUTION.md" target="_blank" rel="noreferrer">Photo Credits</a>
           </div>
         </div>
       </div>
 
       <style>{`
-        .zicab-landing {
+        .kranti-landing {
           .footer-container {
-            background-color: #07152B;
-            color: #94A3B8;
+            background-color: #0A0A0B;
+            color: #A6A6A3;
             padding-top: 60px;
             padding-bottom: 24px;
             border-top: 1px solid rgba(255, 255, 255, 0.08);
@@ -188,7 +188,7 @@ const Footer = ({ setActiveTab }) => {
           }
 
           .footer-inline-link:hover {
-            color: #00BBA9;
+            color: #F5B400;
           }
 
           .footer-cities {
@@ -209,9 +209,9 @@ const Footer = ({ setActiveTab }) => {
             display: inline-flex;
             align-items: center;
             gap: 5px;
-            background: rgba(0, 187, 169, 0.1);
-            border: 1px solid rgba(0, 187, 169, 0.3);
-            color: #CBD5E1;
+            background: rgba(245, 180, 0, 0.1);
+            border: 1px solid rgba(245, 180, 0, 0.3);
+            color: #D6D6D3;
             font-size: 12.5px;
             font-weight: 500;
             padding: 5px 12px;
@@ -228,12 +228,12 @@ const Footer = ({ setActiveTab }) => {
           .footer-logo .logo-cab {
             font-size: 24px;
             font-weight: 800;
-            color: #00BBA9;
+            color: #F5B400;
             margin-left: 4px;
           }
 
           .footer-tagline {
-            color: #00BBA9;
+            color: #F5B400;
             font-size: 12.5px;
             font-weight: 500;
           }
@@ -241,7 +241,7 @@ const Footer = ({ setActiveTab }) => {
           .footer-desc {
             font-size: 13.5px;
             line-height: 1.6;
-            color: #94A3B8;
+            color: #A6A6A3;
             margin-bottom: 20px;
           }
 
@@ -256,7 +256,7 @@ const Footer = ({ setActiveTab }) => {
             align-items: center;
             gap: 10px;
             font-size: 13px;
-            color: #CBD5E1;
+            color: #D6D6D3;
           }
 
           .contact-item strong {
@@ -278,7 +278,7 @@ const Footer = ({ setActiveTab }) => {
             bottom: -6px;
             width: 24px;
             height: 2px;
-            background-color: #00BBA9;
+            background-color: #F5B400;
             border-radius: 2px;
           }
 
@@ -293,7 +293,7 @@ const Footer = ({ setActiveTab }) => {
           .footer-links button {
             background: none;
             border: none;
-            color: #94A3B8;
+            color: #A6A6A3;
             font-size: 14px;
             cursor: pointer;
             padding: 0;
@@ -302,7 +302,7 @@ const Footer = ({ setActiveTab }) => {
           }
 
           .footer-links button:hover {
-            color: #00BBA9;
+            color: #F5B400;
             padding-left: 4px;
           }
 
@@ -328,14 +328,14 @@ const Footer = ({ setActiveTab }) => {
           }
 
           .app-badge:hover {
-            background: rgba(0, 187, 169, 0.15);
-            border-color: #00BBA9;
+            background: rgba(245, 180, 0, 0.15);
+            border-color: #F5B400;
           }
 
           .app-badge-title {
             display: block;
             font-size: 9px;
-            color: #94A3B8;
+            color: #A6A6A3;
             text-transform: uppercase;
             letter-spacing: 0.5px;
           }
@@ -356,11 +356,11 @@ const Footer = ({ setActiveTab }) => {
             display: flex;
             align-items: center;
             gap: 6px;
-            background: rgba(11, 31, 58, 0.8);
+            background: rgba(17, 17, 19, 0.8);
             padding: 6px 12px;
             border-radius: 20px;
             font-size: 11.5px;
-            color: #CBD5E1;
+            color: #D6D6D3;
           }
 
           .footer-bottom {
@@ -379,12 +379,12 @@ const Footer = ({ setActiveTab }) => {
           }
 
           .footer-bottom-links a {
-            color: #94A3B8;
+            color: #A6A6A3;
             transition: color 0.2s;
           }
 
           .footer-bottom-links a:hover {
-            color: #00BBA9;
+            color: #F5B400;
           }
 
           @media (max-width: 992px) {

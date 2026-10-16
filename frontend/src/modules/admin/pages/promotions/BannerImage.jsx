@@ -67,7 +67,7 @@ const BannerImage = () => {
 
       const nextPromos = bannersList.map((b, idx) => ({
         id: b._id || b.id || String(idx + 1),
-        title: b.title || 'Experience A New Standard With Appzeto',
+        title: b.title || 'Experience A New Standard With Kranti Cabs',
         subtitle: b.subtitle || 'A premier private hire service where luxury and reliability converge.',
         imageUrl: b.image || '',
         image: b.image || '',
