@@ -1,0 +1,26 @@
+node_modules/
+.env
+# Timestamped copies made before migrations carry the same secrets as .env
+# itself, and were sitting untracked in the working tree.
+.env.*
+!.env.example
+uploads/
+dist/
+coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# local run artifacts
+server.log
+server.pid
+
+# Firebase service account private key - must never be committed
+firebase-service-account.json
+
+# One-off migration backups written next to the app
+pricing-backup-*.json
+parcel-pricing-backup-*.json
+
+# Local dev server output, never source.
+*.log

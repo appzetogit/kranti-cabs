@@ -1,0 +1,12 @@
+node_modules/
+**/node_modules/
+dist/
+build/
+.DS_Store
+Thumbs.db
+Appzeto 24_flutter_shell/
+Appzeto 24_driver_webview/
+scratch/
+
+# Private server access notes - never commit
+SERVER_NOTES.md

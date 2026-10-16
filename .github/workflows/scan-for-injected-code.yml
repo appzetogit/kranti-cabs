@@ -1,0 +1,38 @@
+# Runs the injected-code scanner on every push and pull request.
+#
+# The local hooks only protect machines that have enabled them. This runs on
+# GitHub for every push whoever made it - including from a machine that never
+# installed the hooks, or one that is itself compromised. A red cross on a
+# commit here means do not pull it.
+name: Scan for injected code
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history, so the step below can diff against the previous tip.
+          # The default single-commit checkout has nothing to compare to.
+          fetch-depth: 0
+
+      - name: Scan the tree
+        run: sh scripts/scan-for-injected-code.sh
+
+      # The scanner lives in the repo, so a push that edits it could weaken it.
+      # Flag that loudly rather than trusting the edited copy silently.
+      - name: Warn if the scanner itself changed
+        if: github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000'
+        run: |
+          if git diff --quiet "${{ github.event.before }}" "${{ github.sha }}" -- scripts/scan-for-injected-code.sh .github/workflows/ 2>/dev/null; then
+            echo "Scanner unchanged."
+          else
+            echo "::warning::This push modifies the injected-code scanner or its workflow. Review the change before trusting the result above."
+          fi

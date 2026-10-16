@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+# Last check before anything leaves this machine. Scans the whole tree rather
+# than the staged set, so a file slipped in with --no-verify is still caught.
+exec sh "$(git rev-parse --show-toplevel)/scripts/scan-for-injected-code.sh"

@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# Proves the latest backup can actually be restored.
+#
+# Restores it into a separate, throwaway database next to production
+# (zicab_restore_test), compares every collection's document count with the
+# live database, and drops the copy. Production is only read, never written.
+#
+# Counts on a live database move while this runs, so a small difference on a
+# busy collection is expected; an empty or missing collection is not.
+set -euo pipefail
+
+ENV_FILE=/root/zicab/Backend/.env
+BACKUP_DIR=/var/backups/zicab-mongo
+TEST_DB=zicab_restore_test
+
+umask 077
+config=$(mktemp /root/.zicab-mongorestore.XXXXXX.yaml)
+cleanup() { rm -f "$config"; }
+trap cleanup EXIT
+
+uri=$(grep -E '^MONGODB_URI=' "$ENV_FILE" | head -1 | cut -d= -f2- | tr -d '\r' | sed -e 's/^"//' -e 's/"$//')
+db=$(grep -E '^MONGODB_DB_NAME=' "$ENV_FILE" | head -1 | cut -d= -f2- | tr -d '\r' | sed -e 's/^"//' -e 's/"$//')
+printf 'uri: "%s"\n' "$uri" > "$config"
+
+archive=$(ls -1t "$BACKUP_DIR"/zicab-mongo-*.archive.gz 2>/dev/null | head -1)
+[ -n "$archive" ] || { echo "No backup archive found in $BACKUP_DIR"; exit 1; }
+echo "Restoring $(basename "$archive") into $TEST_DB ..."
+
+mongorestore --config="$config" --gzip --archive="$archive" --quiet \
+  --nsInclude="$db.*" --nsFrom="$db.*" --nsTo="$TEST_DB.*" --drop
+
+# Compare counts collection by collection, then drop the copy whatever happens.
+node --input-type=module - "$uri" "$db" "$TEST_DB" <<'NODE'
+import { createRequire } from 'node:module';
+const require = createRequire('/root/zicab/Backend/package.json');
+const mongoose = require('mongoose');
+
+const [uri, liveName, testName] = process.argv.slice(2);
+const conn = await mongoose.createConnection(uri).asPromise();
+const live = conn.useDb(liveName).db;
+const test = conn.useDb(testName).db;
+
+let problems = 0;
+let totalLive = 0;
+let totalRestored = 0;
+try {
+  const names = (await live.listCollections().toArray()).map((c) => c.name).sort();
+  for (const name of names) {
+    const a = await live.collection(name).estimatedDocumentCount();
+    const b = await test.collection(name).estimatedDocumentCount();
+    totalLive += a;
+    totalRestored += b;
+    const missing = a > 0 && b === 0;
+    const drift = Math.abs(a - b) > Math.max(5, a * 0.02);
+    if (missing || drift) {
+      problems += 1;
+      console.log(`  CHECK ${name}: live ${a}, restored ${b}`);
+    }
+  }
+  console.log(`Collections: ${names.length} | documents live ${totalLive}, restored ${totalRestored}`);
+} finally {
+  await test.dropDatabase();
+  console.log(`Dropped ${testName}.`);
+  await conn.close();
+}
+console.log(problems === 0 ? 'RESTORE TEST PASSED' : `RESTORE TEST: ${problems} collection(s) to look at`);
+process.exit(problems === 0 ? 0 : 1);
+NODE

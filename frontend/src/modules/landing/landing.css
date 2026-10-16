@@ -1,0 +1,903 @@
+/* ZI CAB landing styles.
+
+   Everything below is nested under `.zicab-landing` so it cannot reach the taxi
+   app: both sides use generic class names (`container`, `btn`, `section-title`)
+   and the taxi side is Tailwind 4, which an unscoped `*` or `h1` rule would
+   restyle wholesale.
+
+   The custom properties stay at :root — they are namespaced by name and are read
+   by the booking modal, which renders outside the landing subtree. */
+
+:root {
+  --primary-navy: #0B1F3A;
+  --navy-dark: #07152B;
+  --navy-card: #0C1B30;
+  /* one step deeper than navy-dark, for the recessed bands */
+  --navy-deep: #050F20;
+
+  --primary-teal: #00BBA9;
+  --teal-hover: #00a394;
+  --teal-light: rgba(0, 187, 169, 0.12);
+  --teal-bright: #46E3D2;
+  --teal-ink: #04645C;
+
+  /* Warm off-white instead of #FFF for large fields — pure white next to a
+     saturated teal reads cheap and glares on an OLED phone. */
+  --bg-light: #F1F3F7;
+  --bg-white: #FBFBFC;
+  --bg-raised: #FFFFFF;
+
+  --text-dark: #0B1220;
+  --text-body: #334155;
+  --text-muted: #64748B;
+  --text-light: #94A3B8;
+  --text-white: #FFFFFF;
+
+  --border-light: #E4E8EF;
+  --border-dark: #1E293B;
+
+  --font-main: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Sora', 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* Layered shadows with a hairline top highlight, so surfaces read as material
+     rather than as a rectangle with a grey outline. */
+  --shadow-sm: 0 1px 2px rgba(11, 18, 32, 0.04), 0 4px 12px rgba(11, 18, 32, 0.045);
+  --shadow-md: 0 2px 4px rgba(11, 18, 32, 0.045), 0 12px 28px rgba(11, 18, 32, 0.07);
+  --shadow-lg: 0 4px 8px rgba(11, 18, 32, 0.05), 0 24px 54px rgba(11, 18, 32, 0.1);
+  --shadow-teal: 0 6px 14px rgba(0, 187, 169, 0.28), 0 18px 40px rgba(0, 187, 169, 0.18);
+  --hairline: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  --hairline-dark: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-full: 9999px;
+
+  --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0.16, 0.84, 0.28, 1);
+
+  /* Film grain. An inline SVG turbulence, so it costs no request and no image
+     decode — it is what stops the flat fields reading as a template. */
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+}
+
+/* The taxi app enforces its font with `* { font-family: ... !important }`, so the
+   landing has to answer in kind. Higher specificity wins between two important
+   declarations, which is why the heading rules below still take precedence. All
+   of it stays inside .zicab-landing. */
+.zicab-landing,
+.zicab-landing * {
+  font-family: var(--font-main) !important;
+}
+
+.zicab-landing {
+  box-sizing: border-box;
+  background-color: var(--bg-light);
+  color: var(--text-body);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.zicab-landing *,
+.zicab-landing *::before,
+.zicab-landing *::after {
+  box-sizing: border-box;
+}
+
+.zicab-landing {
+  /* ZI CAB Custom CSS Design System */
+
+
+  /* Display type: tighter tracking and optical sizing at large sizes. Default
+     letter-spacing on a geometric sans at 48px+ is what makes headlines look
+     unset. */
+  h1, h2, h3, .hero-title, .page-title, .section-title {
+    font-family: var(--font-display) !important;
+    letter-spacing: -0.03em;
+    line-height: 1.06;
+    text-wrap: balance;
+  }
+
+  h4, h5, h6 {
+    font-family: var(--font-display) !important;
+    letter-spacing: -0.015em;
+  }
+
+  /* Grain overlay for dark bands. Applied on a ::before so it never intercepts
+     clicks and never affects layout. */
+  .grain-layer {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .grain-layer::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image: var(--grain);
+    background-size: 140px 140px;
+    opacity: 0.05;
+    mix-blend-mode: overlay;
+  }
+
+  .grain-layer > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  button, input, select, textarea {
+    font-family: inherit;
+  }
+
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #0B1F3A;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #00BBA9;
+    border-radius: 4px;
+  }
+
+  /* Common Layout Containers */
+  .container {
+    max-width: 1340px;
+    margin: 0 auto;
+    padding: 0 24px;
+    width: 100%;
+  }
+
+  .section-padding {
+    padding: 70px 0;
+  }
+
+  img,
+  svg {
+    max-width: 100%;
+  }
+
+  @media (max-width: 768px) {
+    .section-padding {
+      padding: 45px 0;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .container {
+      padding: 0 16px;
+    }
+    /* Nine sections at 45px top+bottom was ~800px of pure whitespace on a phone. */
+    .section-padding {
+      padding: 34px 0;
+    }
+  }
+
+  /* Headings & Texts */
+  .section-title-group {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 36px;
+  }
+
+  /* Fluid so it never needs a breakpoint per size, and lands at a real display
+     scale on a large screen instead of stopping at 32px. */
+  .section-title {
+    font-size: clamp(1.55rem, 1.05rem + 1.9vw, 2.6rem);
+    font-weight: 700;
+    color: var(--text-dark);
+  }
+
+  /* Kicker above a section title: index number, rule, label. Gives every section
+     a hierarchy instead of a bare heading. */
+  .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+    font-family: var(--font-display) !important;
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--primary-teal);
+  }
+
+  .eyebrow::after {
+    content: '';
+    flex: 1 1 auto;
+    max-width: 88px;
+    height: 1px;
+    background: linear-gradient(90deg, var(--primary-teal), transparent);
+  }
+
+  .eyebrow-num {
+    font-variant-numeric: tabular-nums;
+    color: var(--text-light);
+  }
+
+  .section-title-group.light .eyebrow-num {
+    color: rgba(255, 255, 255, 0.45);
+  }
+
+  .section-title.light {
+    color: var(--text-white);
+  }
+
+  .section-link {
+    background: transparent;
+    border: none;
+    padding: 0;
+    outline: none;
+    cursor: pointer;
+    color: var(--primary-teal);
+    font-weight: 600;
+    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: var(--transition);
+  }
+
+  .section-link:hover {
+    color: var(--teal-hover);
+    transform: translateX(4px);
+  }
+
+  /* Shared page-hero + text utilities.
+     These live here (not in a page's <style> block) so every page renders them —
+     a page style block only applies while that page is mounted. */
+  /* Gradient mesh + grain + a hairline bottom edge, instead of a flat two-stop
+     gradient. The radial stops sit off-centre so the field is never uniform. */
+  .page-hero {
+    position: relative;
+    isolation: isolate;
+    padding: clamp(46px, 5vw, 76px) 0 clamp(56px, 6vw, 92px);
+    color: var(--text-white);
+    text-align: center;
+    overflow: hidden;
+    background-color: var(--navy-deep);
+    background-image:
+      radial-gradient(110% 130% at 12% -10%, rgba(0, 187, 169, 0.22) 0%, transparent 52%),
+      radial-gradient(90% 120% at 88% 0%, rgba(43, 92, 168, 0.28) 0%, transparent 55%),
+      linear-gradient(160deg, #08182F 0%, #0B1F3A 55%, #071328 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  }
+
+  .page-hero::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image: var(--grain);
+    background-size: 140px 140px;
+    opacity: 0.055;
+  }
+
+  .page-hero .page-tag {
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(0, 187, 169, 0.3);
+  }
+
+  .page-tag {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--primary-teal);
+    background: var(--teal-light);
+    padding: 4px 12px;
+    border-radius: var(--radius-full);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: inline-block;
+    margin-bottom: 12px;
+  }
+
+  .page-title {
+    font-size: clamp(1.85rem, 1.15rem + 2.9vw, 3.35rem);
+    font-weight: 800;
+    margin-bottom: 14px;
+    color: var(--text-white);
+  }
+
+  /* Faint gradient for depth against the navy. Behind @supports because the
+     technique needs `color: transparent` — without background-clip support that
+     would render the headline invisible. */
+  @supports (background-clip: text) or (-webkit-background-clip: text) {
+    .page-title {
+      background-image: linear-gradient(180deg, #FFFFFF 30%, #C6D3E4 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+  }
+
+  .page-subtitle {
+    font-size: clamp(0.9rem, 0.84rem + 0.25vw, 1.05rem);
+    color: #A9B6C9;
+    max-width: 660px;
+    margin: 0 auto;
+    line-height: 1.65;
+  }
+
+  .body-text {
+    font-size: 15px;
+    color: #475569;
+    line-height: 1.7;
+    margin-bottom: 16px;
+  }
+
+  .text-center { text-align: center; }
+  .w-full { width: 100%; }
+  .mb-6 { margin-bottom: 24px; }
+  .mb-12 { margin-bottom: 40px; }
+  .mt-6 { margin-top: 24px; }
+  .mt-8 { margin-top: 32px; }
+  .mt-12 { margin-top: 48px; }
+
+  /* Mobile scale-down for the shared type + layout primitives. Page-level grids
+     have their own breakpoints; these cover everything defined above. */
+  @media (max-width: 768px) {
+    .section-title-group {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .section-title { font-size: 25px; }
+    .page-hero { padding: 40px 0 52px; }
+  }
+
+  @media (max-width: 640px) {
+    /* No font-size overrides here: .page-title / .section-title use clamp(), and a
+       fixed value would pin them at the small end and defeat the fluid scale. */
+    .btn { padding: 12px 22px; font-size: 14px; }
+    .section-link { padding: 6px 0; }
+  }
+
+  /* Base Buttons */
+  .btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-family: var(--font-display) !important;
+    font-weight: 600;
+    font-size: 15px;
+    letter-spacing: -0.01em;
+    padding: 13px 26px;
+    border-radius: var(--radius-full);
+    border: none;
+    cursor: pointer;
+    overflow: hidden;
+    isolation: isolate;
+    transition: transform 0.25s var(--ease-out), box-shadow 0.25s var(--ease-out),
+      background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+    white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Light sweep that crosses on hover. Sits on a pseudo-element under the label,
+     so it never affects the text colour. */
+  .btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    transform: translateX(-120%) skewX(-18deg);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.32), transparent);
+    transition: transform 0.65s var(--ease-out);
+  }
+
+  .btn:hover::before {
+    transform: translateX(120%) skewX(-18deg);
+  }
+
+  .btn:active {
+    transform: translateY(0) scale(0.985);
+  }
+
+  .btn-teal {
+    background-image: linear-gradient(180deg, #14CDBA 0%, var(--primary-teal) 48%, #009C8D 100%);
+    color: var(--text-white);
+    box-shadow: var(--shadow-teal), inset 0 1px 0 rgba(255, 255, 255, 0.34),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.12);
+  }
+
+  .btn-teal:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(0, 187, 169, 0.34), 0 26px 52px rgba(0, 187, 169, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  }
+
+  .btn-outline-light {
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    color: var(--text-white);
+    backdrop-filter: blur(10px);
+    box-shadow: var(--hairline-dark);
+  }
+
+  .btn-outline-light:hover {
+    background: rgba(255, 255, 255, 0.13);
+    border-color: rgba(0, 187, 169, 0.65);
+    color: #FFFFFF;
+    transform: translateY(-2px);
+  }
+
+  /* Arrow nudges forward on hover — cheap affordance, reads considered. */
+  .btn svg {
+    transition: transform 0.3s var(--ease-out);
+  }
+
+  .btn:hover svg:last-child {
+    transform: translateX(3px);
+  }
+
+  :where(button, a, input, select, textarea):focus-visible {
+    outline: 2px solid var(--teal-bright);
+    outline-offset: 2px;
+  }
+
+  .btn-navy {
+    background-color: var(--primary-navy);
+    color: var(--text-white);
+  }
+  .btn-navy:hover {
+    background-color: var(--navy-dark);
+    transform: translateY(-2px);
+  }
+
+  /* Dark-card form fields (booking modal, driver/partner/corporate/advertise forms).
+     Global for the same reason as .page-hero above. */
+  .input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .input-group label {
+    font-size: 13px;
+    color: #CBD5E1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 500;
+  }
+
+  .input-group input,
+  .input-group select {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    color: var(--text-white);
+    font-size: 14px;
+    outline: none;
+  }
+
+  .input-group input:focus,
+  .input-group select:focus {
+    border-color: var(--primary-teal);
+    box-shadow: 0 0 0 2px rgba(0, 187, 169, 0.2);
+  }
+
+  .input-group select option {
+    background: var(--navy-card);
+  }
+
+  /* ---- Intro curtain ---- */
+  .preloader {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+
+  .pl-panel {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 50.5%;
+    background: var(--navy-dark);
+  }
+
+  .pl-panel-top {
+    top: 0;
+  }
+
+  .pl-panel-bottom {
+    bottom: 0;
+  }
+
+  .pl-center {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 22px;
+  }
+
+  .pl-brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  .pl-logo {
+    width: 54px;
+    height: 54px;
+    border-radius: 13px;
+    object-fit: cover;
+  }
+
+  .pl-wordmark {
+    display: flex;
+    align-items: baseline;
+    font-size: 34px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+
+  .pl-zi {
+    color: var(--text-white);
+    font-style: italic;
+  }
+
+  .pl-cab {
+    color: var(--primary-teal);
+    margin-left: 4px;
+    letter-spacing: 1px;
+  }
+
+  .pl-meta {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .pl-bar {
+    width: 150px;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.15);
+    overflow: hidden;
+  }
+
+  .pl-bar-fill {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: var(--primary-teal);
+    transform: scaleX(0);
+    transform-origin: 0 50%;
+  }
+
+  .pl-count {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    color: var(--text-light);
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (max-width: 640px) {
+    .pl-wordmark { font-size: 27px; }
+    .pl-logo { width: 44px; height: 44px; }
+    .pl-bar { width: 108px; }
+  }
+
+  /* 3D tilt cards (useTilt). perspective has to live on the card itself since each
+     one tilts independently of its neighbours in the grid. */
+  [data-tilt] {
+    position: relative;
+    transform-style: preserve-3d;
+    perspective: 900px;
+    will-change: transform;
+  }
+
+  .tilt-gloss {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    opacity: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    /* radial highlight parked at the cursor, coordinates fed in by the hook */
+    background: radial-gradient(
+      260px circle at var(--gx, 50%) var(--gy, 50%),
+      rgba(255, 255, 255, 0.22),
+      transparent 62%
+    );
+    transition: opacity 0.3s ease;
+  }
+
+  /* Per-character spans from splitChars, staggered by the hero timeline. */
+  .split-char {
+    display: inline-block;
+    white-space: pre;
+    will-change: transform;
+  }
+
+  /* Once useScrollFx takes over the marquee, its CSS keyframes must stand down or
+     the two animations fight over the same transform. */
+  .partners-marquee.is-js-driven .partners-track {
+    animation: none !important;
+  }
+
+  /* Scroll reveals, driven by useReveal (IntersectionObserver).
+     The hidden state is gated on `data-reveal-root`, which the hook sets on the
+     page element it scopes to — so content is visible whenever the script hasn't
+     run and can never be stranded invisible. Only the shown state carries a
+     transition, so elements animate in and never animate back out. */
+  [data-reveal-root] [data-reveal],
+  [data-reveal-root] [data-reveal-stagger] > * {
+    opacity: 0;
+    /* cards settle up and forward rather than just fading */
+    transform: translateY(30px) scale(0.965);
+  }
+
+  [data-reveal-root] [data-reveal].is-visible,
+  [data-reveal-root] [data-reveal-stagger] > .is-visible {
+    opacity: 1;
+    transform: none;
+    /* slight overshoot on the transform reads as weight, not a slide */
+    transition: opacity 0.5s ease-out,
+      transform 0.7s cubic-bezier(0.16, 0.84, 0.28, 1);
+  }
+
+  /* Masked line reveal for headings: the text rises out of its own box. Put
+     data-reveal-mask on a wrapper whose only child is the line of text. */
+  [data-reveal-root] [data-reveal-mask] {
+    overflow: hidden;
+    /* the clip would otherwise cut descenders (the p in "Popular Vehicles");
+       pad the box and pull the extra space back out so layout is unchanged */
+    padding-bottom: 0.14em;
+    margin-bottom: -0.14em;
+  }
+
+  [data-reveal-root] [data-reveal-mask] > * {
+    display: block;
+    opacity: 0;
+    transform: translateY(105%);
+  }
+
+  [data-reveal-root] [data-reveal-mask].is-visible > * {
+    opacity: 1;
+    transform: none;
+    transition: opacity 0.4s ease-out,
+      transform 0.75s cubic-bezier(0.16, 0.84, 0.28, 1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-reveal-root] [data-reveal],
+    [data-reveal-root] [data-reveal-stagger] > *,
+    [data-reveal-root] [data-reveal-mask] > * {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+  }
+
+  /* Scroll progress bar. Pure CSS scroll-driven animation — no scroll listener.
+     Gated on @supports so browsers without it get no bar rather than a full one. */
+  .scroll-progress {
+    display: none;
+  }
+
+  @supports (animation-timeline: scroll()) {
+    .scroll-progress {
+      display: block;
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 3px;
+      width: 100%;
+      z-index: 1100;
+      transform-origin: 0 50%;
+      background: linear-gradient(90deg, var(--primary-teal), #6ee7db);
+      animation: zc-scrollProgress linear;
+      animation-timeline: scroll(root block);
+    }
+
+    
+
+    @media (prefers-reduced-motion: reduce) {
+      .scroll-progress {
+        display: none;
+      }
+    }
+  }
+
+  /* Mobile swipe rail. Turns a stacked card grid into a single-row, snap-scrolling
+     carousel so five stacked cards cost one screen instead of five. Pure CSS — no
+     carousel library. Selector is `.container .snap-row` on purpose: it has to
+     out-specify the page-level `.vehicles-grid { display: grid }` rules. */
+  @media (max-width: 768px) {
+    .container .snap-row {
+      display: flex;
+      gap: 14px;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      /* bleed into the container gutter so the next card peeks in and the row
+         reads as swipeable without a hint label */
+      margin: 0 -16px;
+      padding: 4px 16px 14px;
+    }
+
+    .container .snap-row::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* Explicit width + flex-shrink: 0. A `flex: 0 0 76%` basis alone let the cards
+       collapse to min-content (lazy images report zero intrinsic width), which
+       squashed all five into one screen instead of overflowing into a scroll. */
+    .container .snap-row > * {
+      scroll-snap-align: start;
+      flex-grow: 0;
+      flex-shrink: 0;
+      flex-basis: auto;
+      width: 76%;
+      min-width: 235px;
+      max-width: 290px;
+    }
+
+    /* Cards lift and sharpen as they swipe into the middle of the rail and settle
+       back as they leave — the mobile equivalent of the desktop hover tilt.
+       view(inline) drives it off the card's own position in the scroller, so there
+       is no scroll listener and no JS at all. */
+    @supports (animation-timeline: view()) {
+      .container .snap-row > * {
+        animation: zc-railFocus linear both;
+        animation-timeline: view(inline);
+        /* ramp in over the first/last 40% of the pass, flat through the middle */
+        animation-range: entry 0% cover 40%, cover 60% exit 100%;
+      }
+
+      
+    }
+
+    /* Touch press feedback. Without this a tap on a card feels inert, since none
+       of the hover states can fire. */
+    .container .snap-row > *:active,
+    .service-card:active,
+    .city-card:active {
+      transform: scale(0.975);
+      transition: transform 0.12s ease-out;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .container .snap-row > * {
+      animation: none;
+    }
+  }
+
+  /* Avatar with an initials fallback: the <img> sits on top of the initials, so a
+     missing photo (drivers/founders not supplied yet) shows initials, not a blank box.
+     Size and border-radius come from the caller's own class. */
+  .avatar {
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: rgba(0, 187, 169, 0.15);
+    color: var(--primary-teal);
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+
+  .avatar img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* Floating WhatsApp support button */
+  .wa-float {
+    position: fixed;
+    right: 20px;
+    bottom: 22px;
+    z-index: 900;
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    background: #25D366;
+    color: #FFFFFF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 22px rgba(37, 211, 102, 0.45);
+    transition: var(--transition);
+  }
+
+  .wa-float:hover {
+    transform: scale(1.08);
+    box-shadow: 0 12px 28px rgba(37, 211, 102, 0.55);
+  }
+
+  .wa-float::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 2px solid #25D366;
+    animation: zc-waPulse 2.4s ease-out infinite;
+  }
+
+  
+
+  @media (prefers-reduced-motion: reduce) {
+    .wa-float::after {
+      animation: none;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .wa-float {
+      width: 48px;
+      height: 48px;
+      right: 14px;
+      bottom: 16px;
+    }
+  }
+
+  /* Animations */
+  
+
+  .animate-fade-in {
+    animation: zc-fadeIn 0.4s ease-out forwards;
+  }
+}
+
+/* Keyframes live at the top level: they are invalid inside a nested rule,
+   and their names are global regardless, so they carry a zc- prefix. */
+@keyframes zc-scrollProgress {
+from { transform: scaleX(0); }
+to { transform: scaleX(1); }
+}
+
+@keyframes zc-railFocus {
+0% {
+opacity: 0.55;
+transform: scale(0.9) translateY(10px);
+}
+100% {
+opacity: 1;
+transform: scale(1) translateY(0);
+}
+}
+
+@keyframes zc-waPulse {
+0% { transform: scale(1); opacity: 0.7; }
+70% { transform: scale(1.7); opacity: 0; }
+100% { transform: scale(1.7); opacity: 0; }
+}
+
+@keyframes zc-fadeIn {
+from { opacity: 0; transform: translateY(12px); }
+to { opacity: 1; transform: translateY(0); }
+}

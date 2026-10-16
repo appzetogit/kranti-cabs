@@ -1,0 +1,9 @@
+
+# Shell scripts and git hooks must keep LF line endings. Checked out with CRLF
+# on Windows, the shebang becomes "sh\r" and the hook fails to run at all -
+# silently, on exactly the machines the injected-code guard exists to protect.
+*.sh           text eol=lf
+.githooks/*    text eol=lf
+
+# Server scripts run on Linux; Windows line endings break them.
+ops/** text eol=lf

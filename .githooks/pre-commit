@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+# Refuses a commit that carries the code injected into this project before.
+# Enabled per clone with:  git config core.hooksPath .githooks
+exec sh "$(git rev-parse --show-toplevel)/scripts/scan-for-injected-code.sh" --staged
