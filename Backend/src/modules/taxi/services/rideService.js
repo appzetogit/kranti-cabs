@@ -20,7 +20,13 @@ import { UserWallet } from '../user/models/UserWallet.js';
 import { consumeUserSubscriptionRide, resolveApplicableUserSubscription } from '../user/services/subscriptionService.js';
 import { applyPromoToRideInTransaction } from './promoService.js';
 import { ABSOLUTE_MAX_MULTIPLIER, getSurgeAt, getSurgeProfiles, surgeForVehicle } from './surgeService.js';
-import { classifyTrip } from './tripCategoryService.js';
+import { classifyTrip, resolveTripHubs } from './tripCategoryService.js';
+import {
+  applyHubParkingCharge,
+  buildRideHubParking,
+  hubParkingStampsForLocation,
+  serializeRideHubParking,
+} from './hubParkingService.js';
 import { getTipSettings } from './appSettingsService.js';
 import { getBidRideSettings } from './transportSettingsService.js';
 import { resolveBiddingPolicy } from './biddingPolicyService.js';
@@ -1315,6 +1321,18 @@ export const createRideRecord = async ({
     airport_fee: Number(tripClass?.airport?.total_fee || 0),
   };
 
+  // Airport / railway station parking, priced by the server at completion from
+  // how long the driver waited inside the pickup hub. Its terms are locked on
+  // the ride now. A lookup failure books the ride without parking rather than
+  // refusing it.
+  const tripHubs = await resolveTripHubs({ pickup: pickupCoords, drop: dropCoords }).catch(() => null);
+  const hubParking = tripHubs
+    ? buildRideHubParking({
+        ...tripHubs,
+        vehicleClass: primaryVehicle?.category || resolvedVehicleIconType,
+      })
+    : undefined;
+
   const promoCode = typeof promo_code === 'string' ? promo_code.trim() : '';
   const normalizedScheduledAt = normalizeScheduledAt(scheduledAt);
   const applicableSubscription = primaryVehicleTypeId
@@ -1428,6 +1446,7 @@ export const createRideRecord = async ({
       pricingSnapshot,
       surge: rideSurge,
       trip_category: tripCategory,
+      ...(hubParking ? { hub_parking: hubParking } : {}),
       parcel: normalizeParcelPayload(parcel),
       intercity: normalizeIntercityPayload(intercity),
       scheduledAt: normalizedScheduledAt,
@@ -1492,6 +1511,7 @@ export const createRideRecord = async ({
             pricingSnapshot,
             surge: rideSurge,
             trip_category: tripCategory,
+            ...(hubParking ? { hub_parking: hubParking } : {}),
             parcel: normalizeParcelPayload(parcel),
             intercity: normalizeIntercityPayload(intercity),
             scheduledAt: normalizedScheduledAt,
@@ -1675,6 +1695,8 @@ export const serializeRideRealtime = (ride) => ({
   commissionAmount: ride.commissionAmount,
   driverEarnings: ride.driverEarnings,
   promo: ride.promo?.code ? ride.promo : null,
+  // Airport / railway station parking - in the fare once the trip completes.
+  hubParking: serializeRideHubParking(ride.hub_parking),
   pricingSnapshot: ride.pricingSnapshot
     ? {
         setPriceId: ride.pricingSnapshot.setPriceId || null,
@@ -2173,6 +2195,7 @@ export const updateRideLifecycle = async ({ rideId, driverId, nextStatus, paymen
   if (nextStatus === RIDE_LIVE_STATUS.COMPLETED) {
     ride.completedAt = new Date();
     await applyParcelWaitingCharge(ride);
+    applyHubParkingCharge(ride);
   }
 
   await ride.save();
@@ -2307,12 +2330,23 @@ export const updateRideDriverLocation = async ({ rideId, driverId, coordinates, 
       projection: {
         _id: 1,
         lastDriverLocation: 1,
+        liveStatus: 1,
+        'hub_parking.pickup': 1,
       },
     },
   ).lean();
 
   if (!ride) {
     throw new ApiError(404, 'Assigned ride not found');
+  }
+
+  // Times the driver's stay inside an airport / railway station pickup, which
+  // prices its parking. Only the first entry and first exit are written; the
+  // filter keeps a racing fix from overwriting one already set.
+  const parkingStamps = hubParkingStampsForLocation(ride, normalizedCoords, nextDriverLocation.updatedAt);
+  if (parkingStamps) {
+    const [field] = Object.keys(parkingStamps);
+    await Ride.updateOne({ _id: ride._id, [field]: null }, { $set: parkingStamps }).catch(() => null);
   }
 
   return {

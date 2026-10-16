@@ -4741,7 +4741,8 @@ export const submitWebsiteBooking = async (req, res) => {
 
 /// What kind of trip a pickup and drop make - city, airport, outstation or
 /// unserviceable - and so which module's vehicles the rider is offered. Takes
-/// `pickup` and `drop` as "lat,lng".
+/// `pickup` and `drop` as "lat,lng", and an optional `vehicle_class` (bike /
+/// auto / car) to narrow the airport / railway station parking estimate.
 export const getTripCategory = asyncHandler(async (req, res) => {
   const pickup = parseLatLng(req.query.pickup);
   const drop = parseLatLng(req.query.drop);
@@ -4749,5 +4750,6 @@ export const getTripCategory = asyncHandler(async (req, res) => {
     res.status(400).json({ success: false, message: 'pickup and drop are required as "lat,lng"' });
     return;
   }
-  res.status(200).json({ success: true, data: await classifyTrip({ pickup, drop }) });
+  const vehicleClass = String(req.query.vehicle_class || '').trim().toLowerCase();
+  res.status(200).json({ success: true, data: await classifyTrip({ pickup, drop, vehicleClass }) });
 });

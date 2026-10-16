@@ -33,6 +33,30 @@ const rideMessageSchema = new mongoose.Schema(
   { _id: true },
 );
 
+const hubParkingLegSchema = new mongoose.Schema(
+  {
+    hub_id: { type: mongoose.Schema.Types.ObjectId, ref: 'TaxiAirport', default: null },
+    name: { type: String, default: '', trim: true },
+    hub_type: { type: String, default: 'airport', trim: true },
+    geofence: {
+      ring: { type: [[Number]], default: undefined },
+      centre: { type: [Number], default: undefined },
+      radius_km: { type: Number, default: 2 },
+    },
+    slabs: {
+      type: [new mongoose.Schema({ up_to_minutes: Number, fee: Number }, { _id: false })],
+      default: [],
+    },
+    drop_fee: { type: Number, default: 0, min: 0 },
+    max_minutes: { type: Number, default: 120 },
+    entered_at: { type: Date, default: null },
+    exited_at: { type: Date, default: null },
+    minutes: { type: Number, default: 0, min: 0 },
+    fee: { type: Number, default: 0, min: 0 },
+  },
+  { _id: false },
+);
+
 const rideSchema = new mongoose.Schema(
   {
     userId: {
@@ -300,6 +324,22 @@ const rideSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    // Airport / railway station parking: the hub's terms and geofence locked
+    // at booking, the times the driver's live location entered and left the
+    // pickup hub, and what that added to the fare at completion. Paid in full
+    // to the driver. See services/hubParkingService.js.
+    hub_parking: {
+      type: new mongoose.Schema(
+        {
+          pickup: { type: hubParkingLegSchema, default: undefined },
+          drop: { type: hubParkingLegSchema, default: undefined },
+          total_fee: { type: Number, default: 0, min: 0 },
+          applied_at: { type: Date, default: null },
+        },
+        { _id: false },
+      ),
+      default: undefined,
+    },
     baseFare: {
       type: Number,
       default: 0,
@@ -420,7 +460,7 @@ const rideSchema = new mongoose.Schema(
     // settlement treats them identically (cash-like). This field only records
     // the tender type for reporting; it does not change commission handling.
     // 'online' is a rider who paid the fare in the app (Razorpay): the money
-    // reached ZI CAB, which credits the driver's wallet.
+    // reached Kranti Cabs, which credits the driver's wallet.
     collectedVia: {
       type: String,
       enum: ['cash', 'upi', 'online'],

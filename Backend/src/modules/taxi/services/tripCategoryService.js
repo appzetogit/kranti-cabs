@@ -1,6 +1,7 @@
 import { Airport } from '../admin/models/Airport.js';
 import { TaxiAppModule } from '../admin/models/TaxiAppModule.js';
 import { findZoneByPickup } from './matchingService.js';
+import { estimateHubParking, hubAt, hubTypeOf } from './hubParkingService.js';
 
 /**
  * What kind of trip a pickup and drop make, which decides the vehicles a rider
@@ -16,22 +17,31 @@ import { findZoneByPickup } from './matchingService.js';
  * Checked in that order, so a trip to the airport from the city is an airport
  * trip, not a city one. Kept on the server so editing an airport boundary or a
  * zone in the admin panel takes effect without an app release.
+ *
+ * Railway stations live in the same collection as airports (hub_type) but do
+ * not change the category - a station trip is still a city or outstation one.
+ * Either kind of hub can charge parking, returned here as an estimate.
  */
 
-// An airport with a location but no drawn boundary still counts within this.
-const AIRPORT_FALLBACK_RADIUS_KM = 2;
 const CACHE_MS = 60 * 1000;
 
-let airportCache = { rows: null, at: 0 };
+let hubCache = { rows: null, at: 0 };
 let moduleCache = { rows: null, at: 0 };
 
-const activeAirports = async () => {
-  if (airportCache.rows && Date.now() - airportCache.at < CACHE_MS) return airportCache.rows;
+/// Every active hub - airports and railway stations.
+const activeHubs = async () => {
+  if (hubCache.rows && Date.now() - hubCache.at < CACHE_MS) return hubCache.rows;
   const rows = await Airport.find({ active: true, status: 'active' })
-    .select('name code location boundary latitude longitude pickup_availability drop_availability airport_surge support_airport_fee')
+    .select('hub_type parking name code location boundary latitude longitude pickup_availability drop_availability airport_surge support_airport_fee')
     .lean();
-  airportCache = { rows, at: Date.now() };
+  hubCache = { rows, at: Date.now() };
   return rows;
+};
+
+/// The hubs a pickup and drop sit in, whatever their type.
+export const resolveTripHubs = async ({ pickup, drop }) => {
+  const hubs = await activeHubs();
+  return { pickupHub: hubAt(hubs, pickup), dropHub: hubAt(hubs, drop) };
 };
 
 const activeModules = async () => {
@@ -40,35 +50,6 @@ const activeModules = async () => {
   moduleCache = { rows: rows.filter((row) => Number(row.active) === 1 || row.active === true), at: Date.now() };
   return moduleCache.rows;
 };
-
-/// Ray casting over a GeoJSON ring of [lng, lat] points.
-const insideRing = ([lng, lat], ring) => {
-  let inside = false;
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i, i += 1) {
-    const [xi, yi] = ring[i];
-    const [xj, yj] = ring[j];
-    const crosses = yi > lat !== yj > lat && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi;
-    if (crosses) inside = !inside;
-  }
-  return inside;
-};
-
-const distanceKm = ([lng1, lat1], [lng2, lat2]) => {
-  const toRad = (deg) => (deg * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLng = toRad(lng2 - lng1);
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
-  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-};
-
-const airportAt = (airports, point) =>
-  airports.find((airport) => {
-    const ring = airport.boundary?.coordinates?.[0];
-    if (Array.isArray(ring) && ring.length >= 4) return insideRing(point, ring);
-    const centre = airport.location?.coordinates
-      || (Number.isFinite(airport.longitude) && Number.isFinite(airport.latitude) ? [airport.longitude, airport.latitude] : null);
-    return centre ? distanceKm(point, centre) <= AIRPORT_FALLBACK_RADIUS_KM : false;
-  }) || null;
 
 /// The app module whose vehicles a trip category offers.
 const moduleFor = (modules, category) => {
@@ -87,15 +68,31 @@ const serviceLocationOf = (zone) => {
   return id ? String(id) : null;
 };
 
+const hubBrief = (row) => (row ? { id: String(row._id), name: row.name, hub_type: hubTypeOf(row) } : null);
+
+/// Parking estimate for each vehicle class, so a vehicle list can show each.
+const parkingByClass = (pickupHub, dropHub) => {
+  if (!pickupHub?.parking?.enabled && !dropHub?.parking?.enabled) return null;
+  return {
+    by_vehicle_class: Object.fromEntries(
+      ['bike', 'auto', 'car'].map((vehicleClass) => [
+        vehicleClass,
+        estimateHubParking({ pickupHub, dropHub, vehicleClass }),
+      ]),
+    ),
+  };
+};
+
 /**
  * @param pickup [lng, lat]
  * @param drop   [lng, lat]
+ * @param vehicleClass optional bike / auto / car, to narrow the parking estimate
  */
-export const classifyTrip = async ({ pickup, drop }) => {
-  const [pickupZone, dropZone, airports, modules] = await Promise.all([
+export const classifyTrip = async ({ pickup, drop, vehicleClass = '' }) => {
+  const [pickupZone, dropZone, hubs, modules] = await Promise.all([
     findZoneByPickup(pickup).catch(() => null),
     findZoneByPickup(drop).catch(() => null),
-    activeAirports(),
+    activeHubs(),
     activeModules(),
   ]);
 
@@ -106,14 +103,19 @@ export const classifyTrip = async ({ pickup, drop }) => {
       module_id: null,
       module_name: null,
       airport: null,
+      hubs: { pickup: null, drop: null },
+      hub_parking: null,
     };
   }
 
-  const pickupAirport = airportAt(airports, pickup);
-  const dropAirport = airportAt(airports, drop);
+  const airports = hubs.filter((row) => hubTypeOf(row) === 'airport');
+  const pickupAirport = hubAt(airports, pickup);
+  const dropAirport = hubAt(airports, drop);
   const airport =
     (pickupAirport && pickupAirport.pickup_availability !== false ? { row: pickupAirport, end: 'pickup' } : null)
     || (dropAirport && dropAirport.drop_availability !== false ? { row: dropAirport, end: 'drop' } : null);
+  const pickupHub = hubAt(hubs, pickup);
+  const dropHub = hubAt(hubs, drop);
 
   let category = 'city';
   if (airport) {
@@ -145,5 +147,12 @@ export const classifyTrip = async ({ pickup, drop }) => {
           total_fee: airportSurgeFee + airportSupportFee,
         }
       : null,
+    // Any hub at either end - airport or railway station.
+    hubs: { pickup: hubBrief(pickupHub), drop: hubBrief(dropHub) },
+    // Parking the hubs charge, added to the fare by the server when the trip
+    // completes - the pickup part by how long the driver waited inside.
+    hub_parking: vehicleClass
+      ? estimateHubParking({ pickupHub, dropHub, vehicleClass })
+      : parkingByClass(pickupHub, dropHub),
   };
 };

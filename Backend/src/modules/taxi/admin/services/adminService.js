@@ -15,6 +15,7 @@ import { createDefaultBusinessSettings } from '../data/defaultBusinessSettings.j
 import { createDefaultAppSettings } from '../data/defaultAppSettings.js';
 import { createDefaultRideVoiceSettings } from '../data/defaultRideVoiceSettings.js';
 import { Airport } from '../models/Airport.js';
+import { HUB_TYPES, hubTypeOf, normalizeParkingConfig } from '../../services/hubParkingService.js';
 import { Employee } from '../models/Employee.js';
 import { BusService } from '../models/BusService.js';
 import { DriverNeededDocument } from '../models/DriverNeededDocument.js';
@@ -2528,6 +2529,8 @@ const serializeAirport = (item) => ({
     : [],
   airport_surge: Number(item.airport_surge ?? 0),
   support_airport_fee: Number(item.support_airport_fee ?? 0),
+  hub_type: hubTypeOf(item),
+  parking: normalizeParkingConfig(item.parking || {}),
   status: item.status || (item.active === false ? 'inactive' : 'active'),
   active: item.active !== false,
   pickup_availability: item.pickup_availability !== false,
@@ -3751,7 +3754,7 @@ export const forgotPassword = async (email) => {
   // Send real email
   await sendEmail({
     to: email,
-    subject: `Password Reset OTP for ${process.env.APP_NAME || 'Appzeto 24'}`,
+    subject: `Password Reset OTP for ${process.env.APP_NAME || 'Kranti Cabs'}`,
     text: `Your OTP for password reset is: ${otp}. It will expire in 10 minutes.`,
     html: `
       <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px; max-width: 500px;">
@@ -3763,7 +3766,7 @@ export const forgotPassword = async (email) => {
         </div>
         <p>This OTP is valid for 10 minutes. If you did not request this, please ignore this email.</p>
         <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-        <p style="font-size: 12px; color: #666;">Regards,<br>Team ${process.env.APP_NAME || 'Appzeto 24'}</p>
+        <p style="font-size: 12px; color: #666;">Regards,<br>Team ${process.env.APP_NAME || 'Kranti Cabs'}</p>
       </div>
     `,
   });
@@ -9908,6 +9911,8 @@ export const createAirport = async (payload, currentAdmin = null) => {
         : undefined,
     airport_surge: Math.max(0, Number(payload.airport_surge ?? 0) || 0),
     support_airport_fee: Math.max(0, Number(payload.support_airport_fee ?? 0) || 0),
+    hub_type: HUB_TYPES.includes(payload.hub_type) ? payload.hub_type : 'airport',
+    parking: normalizeParkingConfig(payload.parking),
     status,
     active: status === 'active',
     pickup_availability: payload.pickup_availability !== false,
@@ -9981,6 +9986,12 @@ export const updateAirport = async (id, payload, currentAdmin = null) => {
   }
   if (payload.support_airport_fee !== undefined) {
     item.support_airport_fee = Math.max(0, Number(payload.support_airport_fee ?? 0) || 0);
+  }
+  if (payload.hub_type !== undefined && HUB_TYPES.includes(payload.hub_type)) {
+    item.hub_type = payload.hub_type;
+  }
+  if (payload.parking !== undefined) {
+    item.parking = normalizeParkingConfig(payload.parking);
   }
   if (payload.pickup_availability !== undefined) {
     item.pickup_availability = payload.pickup_availability === true || payload.pickup_availability === 'true';
@@ -12613,6 +12624,6 @@ export const getAdminEarningDetails = async (query = {}) => {
     }
     case 'commission':
     default:
-      return rideResult('Total commission', 'Commission ZI CAB earned on each completed trip.', rides, 'Commission', money(summary.adminCommission));
+      return rideResult('Total commission', 'Commission Kranti Cabs earned on each completed trip.', rides, 'Commission', money(summary.adminCommission));
   }
 };

@@ -19,9 +19,12 @@ import {
   Filter,
   Globe,
   Tag,
-  Info
+  Info,
+  TrainFront
 } from 'lucide-react';
 import { adminService } from '../../services/adminService';
+import ParkingRulesEditor from './ParkingRulesEditor';
+import { defaultParking, parkingPayload } from './parkingRules';
 import { DELHI_CENTER, useDrawingGoogleMapsLoader } from '../../utils/googleMaps';
 
 const inputClass = "w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-800 bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-colors";
@@ -33,6 +36,12 @@ const AIRPORT_STATUS_OPTIONS = [
   { value: 'inactive', label: 'Inactive' },
 ];
 const AIRPORT_FORM_STATUS_OPTIONS = AIRPORT_STATUS_OPTIONS.filter((option) => option.value);
+const HUB_TYPE_OPTIONS = [
+  { value: 'airport', label: 'Airport' },
+  { value: 'railway_station', label: 'Railway Station' },
+];
+const hubLabel = (hubType) => (hubType === 'railway_station' ? 'Railway Station' : 'Airport');
+const HubIcon = ({ hubType, size }) => (hubType === 'railway_station' ? <TrainFront size={size} /> : <Plane size={size} />);
 
 const MAP_CONTAINER_STYLE = {
   width: '100%',
@@ -40,6 +49,8 @@ const MAP_CONTAINER_STYLE = {
 };
 
 const defaultFormData = {
+  hub_type: 'airport',
+  parking: defaultParking(),
   name: '',
   service_location_id: '',
   status: 'active',
@@ -69,6 +80,7 @@ const Airport = ({ mode: initialMode = "list" }) => {
   const [filters, setFilters] = useState({
     service_location_id: '',
     status: '',
+    hub_type: '',
   });
   const mapRef = useRef(null);
   const { isLoaded, loadError } = useDrawingGoogleMapsLoader();
@@ -82,7 +94,7 @@ const Airport = ({ mode: initialMode = "list" }) => {
 
   const resetFormState = (serviceLocationId = '', serviceLocation = null) => {
     setSelectedAirportId(null);
-    setFormData({ ...defaultFormData, service_location_id: serviceLocationId });
+    setFormData({ ...defaultFormData, parking: defaultParking(), service_location_id: serviceLocationId });
     setBoundaryCoords([]);
     if (serviceLocation) {
       const lat = Number(serviceLocation.latitude);
@@ -148,8 +160,9 @@ const Airport = ({ mode: initialMode = "list" }) => {
         !filters.service_location_id || airportServiceLocationId === String(filters.service_location_id);
       const matchesStatus =
         !filters.status || String(airport.status || 'active').toLowerCase() === filters.status;
+      const matchesHubType = !filters.hub_type || (airport.hub_type || 'airport') === filters.hub_type;
 
-      return matchesSearch && matchesServiceLocation && matchesStatus;
+      return matchesSearch && matchesServiceLocation && matchesStatus && matchesHubType;
     });
   }, [airports, filters, searchTerm]);
 
@@ -178,7 +191,13 @@ const Airport = ({ mode: initialMode = "list" }) => {
 
   const handleSave = async () => {
     if (!formData.name.trim() || !formData.service_location_id) {
-      alert('Airport name and service location are required.');
+      alert(`${hubLabel(formData.hub_type)} name and service location are required.`);
+      return;
+    }
+    const badSlab = formData.parking?.enabled && formData.parking.rules.some((rule) =>
+      rule.slabs.some((slab) => !(Number(slab.up_to_minutes) > 0) || Number(slab.fee) < 0) || Number(rule.drop_fee) < 0);
+    if (badSlab) {
+      alert('Each parking slab needs minutes above 0 and a fee of 0 or more.');
       return;
     }
     if (formData.airport_surge && Number(formData.airport_surge) < 0) {
@@ -194,6 +213,7 @@ const Airport = ({ mode: initialMode = "list" }) => {
       const payload = {
         ...formData,
         name: formData.name.trim(),
+        parking: parkingPayload(formData.parking),
         boundary_coordinates: boundaryCoords,
       };
       const res = selectedAirportId ? await adminService.updateAirport(selectedAirportId, payload) : await adminService.createAirport(payload);
@@ -214,6 +234,10 @@ const Airport = ({ mode: initialMode = "list" }) => {
   const handleEdit = (airport) => {
     setSelectedAirportId(airport._id || airport.id);
     setFormData({
+      hub_type: airport.hub_type || 'airport',
+      parking: airport.parking
+        ? { ...defaultParking(), ...airport.parking, rules: airport.parking.rules?.length ? airport.parking.rules : defaultParking().rules }
+        : defaultParking(),
       name: airport.name || '',
       service_location_id: airport.service_location_id?._id || airport.service_location_id || '',
       latitude: airport.latitude ?? '',
@@ -269,7 +293,7 @@ const Airport = ({ mode: initialMode = "list" }) => {
   };
 
   const clearBoundary = () => { setBoundaryCoords([]); };
-  const clearFilters = () => setFilters({ service_location_id: '', status: '' });
+  const clearFilters = () => setFilters({ service_location_id: '', status: '', hub_type: '' });
 
   return (
     <div className="min-h-screen bg-gray-50 p-6 lg:p-8 animate-in fade-in duration-500 font-sans">
@@ -283,16 +307,16 @@ const Airport = ({ mode: initialMode = "list" }) => {
               <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-2">
                 <span>Pricing</span>
                 <ChevronRight size={12} />
-                <span className="text-gray-700">Airport Management</span>
+                <span className="text-gray-700">Airports &amp; Railway Stations</span>
               </div>
               <div className="flex items-center justify-between">
-                <h1 className="text-xl text-gray-900 font-bold">Airport Management</h1>
+                <h1 className="text-xl text-gray-900 font-bold">Airports &amp; Railway Stations</h1>
                 <button 
                   type="button"
                   onClick={() => navigate("create")}
                   className="flex items-center gap-2 px-4 py-2 bg-[#FFC400] text-[#0B1220] rounded-lg text-sm font-medium hover:brightness-95 transition-colors shadow-sm"
                 >
-                  <Plus size={16} /> Add Airport
+                  <Plus size={16} /> Add Airport / Station
                 </button>
               </div>
             </div>
@@ -300,15 +324,17 @@ const Airport = ({ mode: initialMode = "list" }) => {
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-                 <p className="text-xs font-semibold text-gray-500 mb-1">Total Airports</p>
-                 <h3 className="text-2xl font-bold text-gray-900">{airports.length}</h3>
+                 <p className="text-xs font-semibold text-gray-500 mb-1">Airports / Stations</p>
+                 <h3 className="text-2xl font-bold text-gray-900">
+                   {airports.filter(a => (a.hub_type || 'airport') === 'airport').length} / {airports.filter(a => a.hub_type === 'railway_station').length}
+                 </h3>
                </div>
                <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-                 <p className="text-xs font-semibold text-gray-500 mb-1">Active Airports</p>
+                 <p className="text-xs font-semibold text-gray-500 mb-1">Active</p>
                  <h3 className="text-2xl font-bold text-gray-900">{airports.filter(a => (a.status || 'active').toLowerCase() === 'active' || a.active).length}</h3>
                </div>
                <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-                 <p className="text-xs font-semibold text-gray-500 mb-1">Inactive Airports</p>
+                 <p className="text-xs font-semibold text-gray-500 mb-1">Inactive</p>
                  <h3 className="text-2xl font-bold text-gray-900">{airports.filter(a => (a.status || '').toLowerCase() === 'inactive' || a.active === false).length}</h3>
                </div>
                <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
@@ -336,7 +362,7 @@ const Airport = ({ mode: initialMode = "list" }) => {
                     <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                     <input 
                       type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                      placeholder="Search airports..." 
+                      placeholder="Search airports & stations..." 
                       className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm outline-none focus:border-indigo-500 transition-all w-64"
                     />
                   </div>
@@ -358,7 +384,21 @@ const Airport = ({ mode: initialMode = "list" }) => {
               </div>
 
               {isFilterOpen ? (
-                <div className="grid grid-cols-1 gap-4 border-b border-gray-100 bg-white px-4 py-4 md:grid-cols-3">
+                <div className="grid grid-cols-1 gap-4 border-b border-gray-100 bg-white px-4 py-4 md:grid-cols-4">
+                  <div>
+                    <label className={labelClass}>Type</label>
+                    <select
+                      value={filters.hub_type}
+                      onChange={(e) => setFilters((current) => ({ ...current, hub_type: e.target.value }))}
+                      className={inputClass}
+                    >
+                      <option value="">All types</option>
+                      {HUB_TYPE_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
                   <div>
                     <label className={labelClass}>Service Location</label>
                     <select
@@ -406,7 +446,8 @@ const Airport = ({ mode: initialMode = "list" }) => {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-200">
-                      <th className="px-6 py-4 text-left font-semibold text-gray-700">Airport Name</th>
+                      <th className="px-6 py-4 text-left font-semibold text-gray-700">Name</th>
+                      <th className="px-6 py-4 text-left font-semibold text-gray-700">Parking</th>
                       <th className="px-6 py-4 text-left font-semibold text-gray-700">Service Location</th>
                       <th className="px-6 py-4 text-center font-semibold text-gray-700">Status</th>
                       <th className="px-6 py-4 text-right font-semibold text-gray-700">Actions</th>
@@ -415,7 +456,7 @@ const Airport = ({ mode: initialMode = "list" }) => {
                   <tbody className="divide-y divide-gray-100">
                     {loading ? (
                       <tr>
-                        <td colSpan="4" className="py-20 text-center text-gray-400">
+                        <td colSpan="5" className="py-20 text-center text-gray-400">
                           <Loader2 className="animate-spin mx-auto mb-2" />
                           <span>Loading data...</span>
                         </td>
@@ -426,13 +467,18 @@ const Airport = ({ mode: initialMode = "list" }) => {
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-3">
                               <div className="w-8 h-8 rounded bg-indigo-50 flex items-center justify-center text-indigo-600">
-                                <Plane size={14} />
+                                <HubIcon hubType={airport.hub_type} size={14} />
                               </div>
                               <span className="font-medium text-gray-900">
                                 {airport.name}
                                 {airport.code && <span className="ml-2 text-[10px] font-bold tracking-wider text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md border border-gray-200 uppercase">{airport.code}</span>}
                               </span>
                             </div>
+                          </td>
+                          <td className="px-6 py-4 text-gray-600">
+                            {airport.parking?.enabled
+                              ? `${airport.parking.rules?.length || 0} vehicle rule${airport.parking.rules?.length === 1 ? '' : 's'}`
+                              : <span className="text-gray-400">Off</span>}
                           </td>
                           <td className="px-6 py-4 text-gray-600">
                             {airport.service_location_id?.name || 'N/A'}
@@ -460,16 +506,16 @@ const Airport = ({ mode: initialMode = "list" }) => {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan="4" className="py-24 text-center">
+                        <td colSpan="5" className="py-24 text-center">
                           <Plane size={48} className="mx-auto mb-4 text-gray-300" />
-                          <h3 className="text-gray-900 mb-1 font-bold">No Airports Available</h3>
-                          <p className="text-sm text-gray-500 mb-6">Create your first airport to enable airport pricing.</p>
+                          <h3 className="text-gray-900 mb-1 font-bold">No Airports or Stations Yet</h3>
+                          <p className="text-sm text-gray-500 mb-6">Add an airport or railway station to enable its fees and parking.</p>
                           <button 
                             type="button"
                             onClick={() => navigate("create")}
                             className="inline-flex items-center gap-2 px-4 py-2 bg-[#FFC400] text-[#0B1220] rounded-lg text-sm font-medium hover:brightness-95 transition-colors shadow-sm"
                           >
-                            <Plus size={16} /> Add Airport
+                            <Plus size={16} /> Add Airport / Station
                           </button>
                         </td>
                       </tr>
@@ -488,12 +534,12 @@ const Airport = ({ mode: initialMode = "list" }) => {
               <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-2">
                 <span>Pricing</span>
                 <ChevronRight size={12} />
-                <span>Airport Management</span>
+                <span>Airports &amp; Railway Stations</span>
                 <ChevronRight size={12} />
                 <span className="text-gray-700">{id ? 'Edit' : 'Create'}</span>
               </div>
               <div className="flex items-center justify-between">
-                <h1 className="text-xl text-gray-900 font-bold">{id ? 'Edit Airport' : 'Add Airport'}</h1>
+                <h1 className="text-xl text-gray-900 font-bold">{id ? 'Edit' : 'Add'} {hubLabel(formData.hub_type)}</h1>
                 <button 
                   type="button"
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate("/admin/pricing/airport"); setView('list'); }}
@@ -509,15 +555,35 @@ const Airport = ({ mode: initialMode = "list" }) => {
                 <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
                    <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
                       <div className="w-9 h-9 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
-                        <Plane size={18} />
+                        <HubIcon hubType={formData.hub_type} size={18} />
                       </div>
                       <div>
-                        <h3 className="text-sm text-gray-900 font-bold">Airport Details</h3>
-                        <p className="text-xs text-gray-400">Configure core airport terminal data</p>
+                        <h3 className="text-sm text-gray-900 font-bold">{hubLabel(formData.hub_type)} Details</h3>
+                        <p className="text-xs text-gray-400">Name, location and fees for this hub</p>
                       </div>
                    </div>
 
                    <div className="space-y-5">
+                      <div>
+                        <label className={labelClass}>Type</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {HUB_TYPE_OPTIONS.map((option) => (
+                            <button
+                              key={option.value}
+                              type="button"
+                              onClick={() => setFormData((p) => ({ ...p, hub_type: option.value }))}
+                              className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-semibold transition-colors ${
+                                formData.hub_type === option.value
+                                  ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                                  : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                              }`}
+                            >
+                              <HubIcon hubType={option.value} size={14} /> {option.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
                       <div>
                         <label className={labelClass}>
                           <MapPin size={12} className="inline mr-1 text-gray-400" />
@@ -545,15 +611,16 @@ const Airport = ({ mode: initialMode = "list" }) => {
                       <div>
                         <label className={labelClass}>
                           <Tag size={12} className="inline mr-1 text-gray-400" />
-                          Airport Name *
+                          {hubLabel(formData.hub_type)} Name *
                         </label>
                         <input 
                           type="text" value={formData.name} onChange={(e) => setFormData(p => ({ ...p, name: e.target.value }))}
-                          placeholder="Enter Airport Name"
+                          placeholder={`Enter ${hubLabel(formData.hub_type).toLowerCase()} name`}
                           className={inputClass}
                         />
                       </div>
 
+                      {formData.hub_type === 'airport' ? (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <label className={labelClass}>
@@ -589,6 +656,7 @@ const Airport = ({ mode: initialMode = "list" }) => {
                           />
                         </div>
                       </div>
+                      ) : null}
 
                       <div>
                         <label className={labelClass}>
@@ -610,6 +678,11 @@ const Airport = ({ mode: initialMode = "list" }) => {
                    </div>
                 </div>
 
+                <ParkingRulesEditor
+                  value={formData.parking}
+                  onChange={(parking) => setFormData((p) => ({ ...p, parking }))}
+                />
+
                 <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-3">
                    <button 
                      type="button"
@@ -617,7 +690,7 @@ const Airport = ({ mode: initialMode = "list" }) => {
                      className="w-full py-3 bg-[#FFC400] text-[#0B1220] rounded-lg text-sm font-medium hover:brightness-95 transition-colors shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
                    >
                      {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                     {id ? 'Update Airport' : 'Save Airport'}
+                     {id ? 'Update' : 'Save'} {hubLabel(formData.hub_type)}
                    </button>
                    <button 
                      type="button"
@@ -715,7 +788,7 @@ const Airport = ({ mode: initialMode = "list" }) => {
                 <div className="mt-6 bg-indigo-50 border border-indigo-100 rounded-xl p-4 flex items-start gap-3">
                    <Info size={18} className="text-indigo-600 shrink-0 mt-0.5" />
                    <p className="text-xs text-indigo-900 leading-relaxed font-medium">
-                     Use the polygon tool at the top of the map to define the precise operational boundary for this airport. This allows for automated geofencing of ride requests.
+                     Use the polygon tool at the top of the map to define the precise boundary of this {hubLabel(formData.hub_type).toLowerCase()}, including its parking and pickup area. Parking is timed from when the driver's live location enters this boundary until they leave it with the rider; without a boundary a 2 km circle round the pin is used.
                    </p>
                 </div>
               </div>

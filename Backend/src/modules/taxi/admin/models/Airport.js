@@ -30,8 +30,42 @@ const polygonSchema = new mongoose.Schema(
   { _id: false },
 );
 
+// Parking a hub charges, per vehicle class. See services/hubParkingService.js.
+const parkingSlabSchema = new mongoose.Schema(
+  {
+    up_to_minutes: { type: Number, required: true, min: 1 },
+    fee: { type: Number, default: 0, min: 0 },
+  },
+  { _id: false },
+);
+
+const parkingRuleSchema = new mongoose.Schema(
+  {
+    vehicle_class: {
+      type: String,
+      enum: ['all', 'bike', 'auto', 'car'],
+      default: 'all',
+    },
+    drop_fee: { type: Number, default: 0, min: 0 },
+    slabs: { type: [parkingSlabSchema], default: [] },
+  },
+  { _id: false },
+);
+
+// Airports and railway stations share this collection: both are a drawn area
+// with a fee. Rows from before hub_type existed are airports.
 const airportSchema = new mongoose.Schema(
   {
+    hub_type: {
+      type: String,
+      enum: ['airport', 'railway_station'],
+      default: 'airport',
+    },
+    parking: {
+      enabled: { type: Boolean, default: false },
+      max_minutes: { type: Number, default: 120, min: 1 },
+      rules: { type: [parkingRuleSchema], default: [] },
+    },
     name: {
       type: String,
       required: true,
@@ -116,6 +150,7 @@ const airportSchema = new mongoose.Schema(
 );
 
 airportSchema.index({ name: 1 });
+airportSchema.index({ hub_type: 1, status: 1 });
 airportSchema.index({ code: 1 });
 airportSchema.index({ service_location_id: 1, status: 1 });
 airportSchema.index({ location: '2dsphere' });

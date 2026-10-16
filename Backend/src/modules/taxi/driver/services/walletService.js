@@ -446,9 +446,13 @@ export const settleCompletedRideWallet = async ({ rideId }) => {
     }
 
     const fare = normalizeAmount(ride.fare || 0, 'fare');
+    // Airport / railway station parking the driver paid at the barrier. It is
+    // in the fare the rider paid but is passed straight back to the driver, so
+    // commission is never taken on it.
+    const parkingFee = Math.min(Math.max(0, Number(ride.hub_parking?.total_fee) || 0), fare);
     const commissionConfig = await resolveCommissionConfigForRide(ride, session);
     const tripCommission = computeCommissionAmount({
-      fare,
+      fare: Math.round((fare - parkingFee) * 100) / 100,
       type: commissionConfig.type,
       value: commissionConfig.value,
     });
@@ -458,7 +462,7 @@ export const settleCompletedRideWallet = async ({ rideId }) => {
     // exactly as before. Read here, before the snapshot is replaced below.
     const platformFee = Math.min(Math.max(0, Number(ride.pricingSnapshot?.rider_platform_fee) || 0), fare);
 
-    // A driver on a daily pass keeps the fare: the pass is what ZI CAB earned
+    // A driver on a daily pass keeps the fare: the pass is what Kranti Cabs earned
     // from them today. The rider's platform fee is still not theirs, so it is
     // the one part that survives the waiver.
     //
@@ -478,7 +482,7 @@ export const settleCompletedRideWallet = async ({ rideId }) => {
 
     const waivedCommission = coveringSubscription ? tripCommission : 0;
     const chargeableCommission = coveringSubscription ? 0 : tripCommission;
-    const commissionAmount = Math.min(Math.round((chargeableCommission + platformFee) * 100) / 100, fare);
+    const commissionAmount = Math.min(Math.round((chargeableCommission + platformFee) * 100) / 100, fare - parkingFee);
     const paymentMethod = normalizePaymentMethod(ride.paymentMethod);
     const driverEarnings = Math.max(Math.round((fare - commissionAmount) * 100) / 100, 0);
     const amount = paymentMethod === 'cash' ? -commissionAmount : driverEarnings;
@@ -529,6 +533,7 @@ export const settleCompletedRideWallet = async ({ rideId }) => {
         commissionValue: Number(commissionConfig.value || 0),
         tripCommission,
         platformFee,
+        parkingFee,
         subscriptionId: coveringSubscription ? String(coveringSubscription._id) : null,
         commissionWaived: waivedCommission,
       },

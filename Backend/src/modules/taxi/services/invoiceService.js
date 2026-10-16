@@ -77,7 +77,7 @@ const loadCompany = async () => {
   return {
     symbol: FONTS.unicode ? rawSymbol : 'Rs. ',
     company: {
-      name: String(general.app_name || 'ZI CAB').trim(),
+      name: String(general.app_name || 'Kranti Cabs').trim(),
       tagline: String(contact.tagline || 'Reliable rides, simple journeys').trim(),
       address: String(contact.address || '').trim(),
       phone: String(contact.whatsappDisplay || general.contact_phone_1 || '').trim(),
@@ -112,11 +112,25 @@ export const buildInvoiceModel = async ({ rideId }) => {
   const currencySymbol = FONTS.unicode ? rawSymbol : 'Rs. ';
 
   const fare = Number(ride.fare || 0);
+  // Airport / railway station parking, shown on its own line so the rider sees
+  // what the barrier charged rather than a bigger trip fare.
+  const parkingLines = [ride.hub_parking?.pickup, ride.hub_parking?.drop]
+    .filter((leg) => leg?.hub_id && Number(leg.fee) > 0)
+    .map((leg) => ({
+      label: leg === ride.hub_parking.pickup
+        ? `Parking - ${leg.name || 'pickup'}${leg.minutes ? ` (${leg.minutes} min)` : ''}`
+        : `Drop-off fee - ${leg.name || 'drop'}`,
+      amount: Number(leg.fee),
+    }));
+  const parkingTotal = Math.min(
+    parkingLines.reduce((sum, line) => sum + line.amount, 0),
+    fare,
+  );
 
   return {
     invoiceDate: formatDate(ride.completedAt || ride.updatedAt),
     company: {
-      name: String(general.app_name || 'ZI CAB').trim(),
+      name: String(general.app_name || 'Kranti Cabs').trim(),
       tagline: String(contact.tagline || 'Reliable rides, simple journeys').trim(),
       address: String(contact.address || '').trim(),
       phone: String(contact.whatsappDisplay || general.contact_phone_1 || '').trim(),
@@ -140,7 +154,8 @@ export const buildInvoiceModel = async ({ rideId }) => {
     invoiceNumber: invoiceNumber('ride', ride._id),
     fare: {
       symbol: currencySymbol,
-      tripFare: fare,
+      tripFare: Math.round((fare - parkingTotal) * 100) / 100,
+      parkingLines,
       total: fare,
     },
   };
@@ -288,6 +303,7 @@ export const renderInvoicePdf = (model) =>
     };
 
     row('Trip Fare', model.fare.tripFare);
+    (model.fare.parkingLines || []).forEach((line) => row(line.label, line.amount));
     doc.moveTo(left, y - 6).lineTo(right, y - 6).lineWidth(0.75).strokeColor(RULE).stroke();
     row('Total Amount', model.fare.total, true);
 
