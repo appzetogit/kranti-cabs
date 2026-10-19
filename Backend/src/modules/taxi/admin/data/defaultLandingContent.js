@@ -281,7 +281,7 @@ export const defaultLandingContent = {
     formTitle: 'Advertising Enquiry',
     placements: [
       { icon: 'Smartphone', title: 'Mobile App', desc: 'In-app placements across the rider journey \u2014 from app open to ride completion.', formats: ['Splash / app-open ad', 'In-feed native card', 'Ride-summary banner'] },
-      { icon: 'Globe', title: 'Website', desc: 'Placements on kranticabs.buytogetherindia.com pages, seen by riders comparing fares and booking online.', formats: ['Leaderboard banner', 'Sidebar tile', 'Sponsored service block'] },
+      { icon: 'Globe', title: 'Website', desc: 'Placements on kranticabs.com pages, seen by riders comparing fares and booking online.', formats: ['Leaderboard banner', 'Sidebar tile', 'Sponsored service block'] },
       { icon: 'Car', title: 'Driver App', desc: 'Reach our driver-partner network \u2014 ideal for fuel, tyres, insurance, EMI and F&B brands.', formats: ['Driver home banner', 'Duty start/end card', 'Partner offer wall'] },
       { icon: 'Image', title: 'Home Screen Banners', desc: 'The highest-visibility slot on the app \u2014 every rider sees it before booking.', formats: ['Hero carousel slide', 'Static top banner', 'City-targeted banner'] },
       { icon: 'CheckCircle2', title: 'Booking Confirmation Screen', desc: 'Shown at peak attention, right after a booking is confirmed and while the rider waits.', formats: ['Confirmation card ad', 'While you wait tile', 'Nearby-brand suggestion'] },

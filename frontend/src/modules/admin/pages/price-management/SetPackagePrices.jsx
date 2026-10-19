@@ -137,7 +137,7 @@ const SetPackagePrices = () => {
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-2 text-sm text-slate-700">
                         <MapPin size={14} className="text-amber-500" />
-                        <span>{item.package_destination || 'No destination'}</span>
+                        <span>{item.package_kind === 'hourly_rental' ? 'Hourly rental (local)' : (item.package_destination || 'No destination')}</span>
                       </div>
                     </td>
                     <td className="px-4 py-3.5 text-sm text-slate-600">{item.service_location_name || item.zone_name || 'All locations'}</td>

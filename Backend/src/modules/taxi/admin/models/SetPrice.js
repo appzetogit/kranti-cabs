@@ -39,6 +39,17 @@ const setPriceSchema = new mongoose.Schema(
       default: '',
       trim: true,
     },
+    // 'intercity' packages are city-to-city trips listed by destination;
+    // 'hourly_rental' packages hire a cab locally for a block of hours and
+    // kilometres (1 hr / 10 km, half day, ...). Both use the per-vehicle rows
+    // below: base_price for the package, free_distance (km) and free_time
+    // (minutes) included, distance_price / time_price for usage beyond them.
+    package_kind: {
+      type: String,
+      enum: ['intercity', 'hourly_rental'],
+      default: 'intercity',
+      trim: true,
+    },
     package_availability: {
       type: String,
       default: 'available',

@@ -72,6 +72,11 @@ export const createDefaultBusinessSettings = () => ({
     maximum_time_for_find_drivers_for_regular_ride: '300',
     trip_accept_reject_duration_for_driver: '15',
     driver_search_radius: '5',
+    // Proximity auto-offer: an online, free driver who moves within this many
+    // km of a ride that is still searching gets its request at once, instead
+    // of waiting for the next dispatch wave to widen far enough to reach them.
+    proximity_auto_offer_enabled: '0',
+    proximity_auto_offer_radius: '2',
     // How far out the rider's map draws the online-driver markers, in km.
     // Separate from driver_search_radius, which is how far dispatch will
     // actually reach for a driver: a marker eight km away is not "who is

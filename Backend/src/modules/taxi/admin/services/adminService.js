@@ -7476,6 +7476,7 @@ export const listSetPrices = async (queryArgs = {}, currentAdmin = null, options
       'service_location_id',
       'package_type_id',
       'package_destination',
+      'package_kind',
       'package_availability',
       'package_vehicle_prices',
       'payment_type',
@@ -7546,6 +7547,7 @@ export const listSetPrices = async (queryArgs = {}, currentAdmin = null, options
       package_type_id: packageType._id ? String(packageType._id) : null,
       package_type_name: packageType.name || '',
       package_destination: item.package_destination || '',
+      package_kind: item.package_kind || 'intercity',
       package_availability: item.package_availability || 'available',
       package_vehicle_prices: Array.isArray(item.package_vehicle_prices)
         ? item.package_vehicle_prices.map((price) => ({
@@ -7885,6 +7887,7 @@ export const createSetPrice = async (payload, currentAdmin = null) => {
     transport_type: resolvedTransportType,
     package_type_id: toObjectId(payload.package_type_id?._id || payload.package_type_id?.id || payload.package_type_id),
     package_destination: String(payload.package_destination || '').trim(),
+    package_kind: payload.package_kind === 'hourly_rental' ? 'hourly_rental' : 'intercity',
     package_availability: payload.package_availability || 'available',
     package_vehicle_prices: Array.isArray(payload.package_vehicle_prices)
       ? payload.package_vehicle_prices.map((item) => normalizePackageVehiclePriceItem(item))
@@ -7953,7 +7956,7 @@ export const updateSetPrice = async (id, payload, currentAdmin = null) => {
 
   const fields = [
     'zone_id', 'vehicle_type', 'service_location_id', 'transport_type',
-    'pricing_scope', 'package_type_id', 'package_destination', 'package_availability',
+    'pricing_scope', 'package_type_id', 'package_destination', 'package_kind', 'package_availability',
     'payment_type', 'active', 'admin_commision_type', 'admin_commision',
     'admin_commission_type_for_owner', 'admin_commission_for_owner',
     'admin_commission_type_from_driver', 'admin_commission_from_driver',

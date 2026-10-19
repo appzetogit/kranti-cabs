@@ -949,13 +949,41 @@ const getBidFareBounds = (vehicle, stepCount) => {
   };
 };
 
+// Parking rules at airports and railway stations are per vehicle class.
+const PARKING_VEHICLE_CLASSES = ['bike', 'auto', 'car'];
+const parkingClassOf = (vehicle) => {
+  const category = String(vehicle?.category || '').trim().toLowerCase();
+  if (PARKING_VEHICLE_CLASSES.includes(category)) return category;
+  const iconType = String(vehicle?.iconType || '').trim().toLowerCase();
+  if (iconType === 'bike') return 'bike';
+  if (iconType === 'auto') return 'auto';
+  return 'car';
+};
+
+// The flat fees a trip to or from an airport carries (its surge and support
+// fee) and the parking either hub charges, from /users/trip-category. The
+// airport fee is added to the fare by the server at booking, so `price` stays
+// the trip fare alone and the fee is only shown here; parking is charged by
+// the server at trip end from how long the driver waited, so it is an estimate.
+const getLocationFees = (tripCategory, vehicle) => {
+  const airportFee = Math.max(0, Number(tripCategory?.airport?.total_fee) || 0);
+  const parking = tripCategory?.hub_parking?.by_vehicle_class?.[parkingClassOf(vehicle)] || null;
+  return {
+    airportFee,
+    airportName: tripCategory?.airport?.name || '',
+    parkingFrom: Math.max(0, Number(parking?.estimated_total) || 0),
+    parkingVaries: Boolean(parking?.pickup?.varies_with_wait),
+  };
+};
+
 const formatVehicleFare = (vehicle, stepCount) => {
+  const airportFee = Math.max(0, Number(vehicle?.airportFee) || 0);
   if (!vehicle?.supportsBidding) {
-    return formatCurrency(vehicle?.price);
+    return formatCurrency((Number(vehicle?.price) || 0) + airportFee);
   }
 
   const { min, max } = getBidFareBounds(vehicle, stepCount);
-  return `${formatCurrency(min)}-${formatCurrency(max)}`;
+  return `${formatCurrency(min + airportFee)}-${formatCurrency(max + airportFee)}`;
 };
 
 const pad = (value) => String(value).padStart(2, '0');
@@ -1100,6 +1128,9 @@ const createHistorySafeVehicle = (vehicle) => {
     supportsBidding: vehicle.supportsBidding,
     bidStepAmount: vehicle.bidStepAmount,
     maxBidSteps: vehicle.maxBidSteps,
+    airportFee: vehicle.airportFee || 0,
+    airportName: vehicle.airportName || '',
+    parkingFrom: vehicle.parkingFrom || 0,
   };
 };
 
@@ -1198,6 +1229,7 @@ const SelectVehicle = () => {
   const [resolvedZoneId, setResolvedZoneId] = useState(routeZoneId);
   const [isResolvingServiceLocation, setIsResolvingServiceLocation] = useState(!hasCompleteRouteZoneContext);
   const [hasLoadedAvailability, setHasLoadedAvailability] = useState(false);
+  const [tripCategory, setTripCategory] = useState(null);
   const serviceLocationId = hasCompleteRouteZoneContext
     ? (resolvedServiceLocationId || routeServiceLocationId || '')
     : resolvedServiceLocationId;
@@ -1287,6 +1319,36 @@ const SelectVehicle = () => {
       active = false;
     };
   }, [hasCompleteRouteZoneContext, pickupCoords]);
+
+  // Airport / railway station fees for this pickup and drop. The server owns
+  // the geofences and the amounts, and adds the airport fee itself at booking,
+  // so a failed lookup only means the rider sees the trip fare alone up front.
+  useEffect(() => {
+    let active = true;
+    const toLatLngParam = (coords) => (
+      Array.isArray(coords) && coords.length === 2 ? `${Number(coords[1])},${Number(coords[0])}` : ''
+    );
+    const pickupParam = toLatLngParam(pickupCoords);
+    const dropParam = toLatLngParam(dropCoords);
+    if (!pickupParam || !dropParam) {
+      setTripCategory(null);
+      return undefined;
+    }
+
+    userService.getTripCategory({ pickup: pickupParam, drop: dropParam })
+      .then((response) => {
+        if (!active) return;
+        const payload = unwrap(response);
+        setTripCategory(payload?.category ? payload : (payload?.data?.category ? payload.data : null));
+      })
+      .catch(() => {
+        if (active) setTripCategory(null);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [dropCoords, pickupCoords]);
 
   const handleScroll = () => {
     if (!scrollRef.current) return;
@@ -1546,9 +1608,10 @@ const SelectVehicle = () => {
           pricingRule,
           price: calculatedPrice,
           maxBidSteps: dynamicMaxBidSteps,
+          ...getLocationFees(tripCategory, vehicle),
         };
       }),
-    [pricingRules, serviceLocationId, tripMetrics.distanceMeters, tripMetrics.durationMinutes, vehicles, zoneId],
+    [pricingRules, serviceLocationId, tripCategory, tripMetrics.distanceMeters, tripMetrics.durationMinutes, vehicles, zoneId],
   );
 
   const isFarePending = isResolvingTripMetrics || isLoadingPricingRules;
@@ -2525,6 +2588,28 @@ const SelectVehicle = () => {
                   </p>
                 </div>
               </div>
+
+              {(previewVehicle.airportFee > 0 || previewVehicle.parkingFrom > 0) && (
+                <div className="mt-4 rounded-[20px] border border-slate-100 bg-slate-50/70 px-4 py-4">
+                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Location charges</p>
+                  {previewVehicle.airportFee > 0 && (
+                    <div className="mt-2 flex items-center justify-between text-[12px] font-bold text-slate-700">
+                      <span>{previewVehicle.airportName ? `${previewVehicle.airportName} fee` : 'Airport fee'}</span>
+                      <span className="text-slate-900">{formatCurrency(previewVehicle.airportFee)}</span>
+                    </div>
+                  )}
+                  {previewVehicle.parkingFrom > 0 && (
+                    <div className="mt-2 flex items-center justify-between text-[12px] font-bold text-slate-700">
+                      <span>Parking{previewVehicle.parkingVaries ? ' (from)' : ''}</span>
+                      <span className="text-slate-900">{formatCurrency(previewVehicle.parkingFrom)}</span>
+                    </div>
+                  )}
+                  <p className="mt-2 text-[11px] font-semibold leading-4 text-slate-500">
+                    {previewVehicle.airportFee > 0 ? 'The airport fee is included in the estimated fare. ' : ''}
+                    {previewVehicle.parkingFrom > 0 ? 'Parking is added at the end of the trip from how long the driver waits at the hub.' : ''}
+                  </p>
+                </div>
+              )}
 
               <div className="mt-4 rounded-[20px] border border-orange-100 bg-orange-50/60 px-4 py-4">
                 <p className="text-[10px] font-black uppercase tracking-[0.14em] text-orange-500">Trip snapshot</p>

@@ -122,10 +122,36 @@ const rideSchema = new mongoose.Schema(
     },
     serviceType: {
       type: String,
-      enum: ['ride', 'parcel', 'intercity'],
+      enum: ['ride', 'parcel', 'intercity', 'hourly_rental'],
       default: 'ride',
       lowercase: true,
       trim: true,
+    },
+    // Hourly rental terms, locked at booking from the package price (see
+    // rentalPackageService), and the usage billed against them at completion.
+    // Null on every other kind of trip.
+    rental: {
+      type: new mongoose.Schema(
+        {
+          packagePriceId: { type: mongoose.Schema.Types.ObjectId, ref: 'TaxiSetPrice', default: null },
+          packageTypeId: { type: mongoose.Schema.Types.ObjectId, ref: 'TaxiRentalPackageType', default: null },
+          packageName: { type: String, default: '', trim: true },
+          packagePrice: { type: Number, default: 0 },
+          includedKm: { type: Number, default: 0 },
+          includedMinutes: { type: Number, default: 0 },
+          extraKmRate: { type: Number, default: 0 },
+          extraMinuteRate: { type: Number, default: 0 },
+          travelledKm: { type: Number, default: 0 },
+          usedMinutes: { type: Number, default: 0 },
+          extraKm: { type: Number, default: 0 },
+          extraMinutes: { type: Number, default: 0 },
+          extraKmCharge: { type: Number, default: 0 },
+          extraTimeCharge: { type: Number, default: 0 },
+          settledAt: { type: Date, default: null },
+        },
+        { _id: false },
+      ),
+      default: null,
     },
     intercity: {
       bookingId: {
@@ -602,7 +628,8 @@ const rideSchema = new mongoose.Schema(
       trim: true,
     },
     // City, airport or outstation, from the pickup and drop at booking. The
-    // airport fee is included in the fare when the app added it.
+    // airport fee is added to the fare by the server at booking, on top of the
+    // trip fare the app quoted.
     trip_category: {
       category: {
         type: String,

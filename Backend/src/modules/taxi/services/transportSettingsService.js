@@ -112,5 +112,30 @@ export const resolveTransportDispatchConfig = async ({ bidding = false } = {}) =
     retryDelayMs: Math.round(retryWindowSeconds * 1000),
     maxSearchSeconds,
     maxAttempts: Math.max(1, Math.ceil(maxSearchSeconds / retryWindowSeconds)),
+    proximity: resolveProximityAutoOfferConfig(settings),
+  };
+};
+
+// Bounds for the admin's auto-offer radius. Below 100 m a driver would
+// almost have to be at the pickup already. Above 20 km the offer stops being
+// "nearby" and a single location update would scan half a city.
+const PROXIMITY_RADIUS_MIN_KM = 0.1;
+const PROXIMITY_RADIUS_MAX_KM = 20;
+
+export const resolveProximityAutoOfferConfig = (settings = {}) => {
+  const radiusKm = Math.min(
+    PROXIMITY_RADIUS_MAX_KM,
+    Math.max(
+      PROXIMITY_RADIUS_MIN_KM,
+      toPositiveNumber(
+        settings.proximity_auto_offer_radius,
+        toPositiveNumber(defaultTransportRideSettings.proximity_auto_offer_radius, 2),
+      ),
+    ),
+  );
+
+  return {
+    enabled: String(settings.proximity_auto_offer_enabled ?? defaultTransportRideSettings.proximity_auto_offer_enabled) === '1',
+    radiusMeters: Math.round(radiusKm * 1000),
   };
 };

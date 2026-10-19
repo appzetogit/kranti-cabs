@@ -22,6 +22,7 @@ import {
   IntercityConfirm,
   IntercityDetails,
   IntercityHome,
+  HourlyRental,
   IntercityVehicle,
   LegalPage,
   Login,
@@ -118,6 +119,7 @@ const userRoutes = (
       <Route path="/taxi/user/rental/kyc" element={<RentalKYC />} />
       <Route path="/taxi/user/rental/deposit" element={<RentalDeposit />} />
       <Route path="/taxi/user/rental/confirmed" element={<RentalConfirmed />} />
+      <Route path="/taxi/user/hourly-rental" element={<HourlyRental />} />
       <Route path="/taxi/user/intercity" element={<IntercityHome />} />
       <Route path="/taxi/user/intercity/vehicle" element={<IntercityVehicle />} />
       <Route path="/taxi/user/intercity/details" element={<IntercityDetails />} />

@@ -29,11 +29,16 @@ const PUBLIC_BOOTSTRAP_CACHE_TTL_MS = 30_000;
 const APP_MODULES_CACHE_PREFIX = 'cache:public:app_modules:';
 const GENERAL_SETTINGS_CACHE_PREFIX = 'cache:public:general_settings:';
 const APP_BOOTSTRAP_CACHE_KEY = 'cache:public:app_bootstrap';
+// The server-side readers (dispatch timers and radii, proximity auto-offer,
+// subscription, tip, wallet) cache under this prefix. Left alone, a dispatch
+// change in the panel would only take effect up to 30s after saving.
+const SERVER_SETTINGS_CACHE_PREFIX = 'cache:settings:';
 
 const invalidatePublicConfigCaches = async () => {
   await Promise.all([
     invalidateCachedPrefix(APP_MODULES_CACHE_PREFIX),
     invalidateCachedPrefix(GENERAL_SETTINGS_CACHE_PREFIX),
+    invalidateCachedPrefix(SERVER_SETTINGS_CACHE_PREFIX),
     invalidateCachedValue(APP_BOOTSTRAP_CACHE_KEY),
   ]);
 };

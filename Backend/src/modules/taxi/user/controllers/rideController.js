@@ -27,6 +27,7 @@ import {
   cancelRideByUser,
   emitToDriver,
   getSocketServer,
+  notifyLateAvailableDriver,
   notifyRideAccepted,
   notifyRideBiddingUpdated,
   restartRideDispatchWithLatestFare,
@@ -298,7 +299,7 @@ const razorpayRequest = async ({ method, path, body, keyId, keySecret }) => {
 };
 
 export const createRide = async (req, res) => {
-  const { pickup, drop, pickupAddress, dropAddress, fare, estimatedDistanceMeters, estimatedDurationMinutes, vehicleTypeId, vehicleTypeIds, vehicleIconType, vehicleIconUrl, paymentMethod, serviceType, intercity, promo_code, zone_id, service_location_id, transport_type, scheduledAt, bookingMode, userMaxBidFare, bidStepAmount, platformFee, surgeMultiplier } =
+  const { pickup, drop, pickupAddress, dropAddress, fare, estimatedDistanceMeters, estimatedDurationMinutes, vehicleTypeId, vehicleTypeIds, vehicleIconType, vehicleIconUrl, paymentMethod, serviceType, intercity, rental, promo_code, zone_id, service_location_id, transport_type, scheduledAt, bookingMode, userMaxBidFare, bidStepAmount, platformFee, surgeMultiplier } =
     req.body;
 
   if (!pickup || !drop) {
@@ -329,6 +330,7 @@ export const createRide = async (req, res) => {
     paymentMethod,
     serviceType,
     intercity,
+    rental,
     promo_code,
     zone_id,
     service_location_id,
@@ -493,6 +495,14 @@ export const updateRideStatus = async (req, res) => {
     }
   } catch (socketError) {
     console.error('Failed to emit status update socket event from controller:', socketError);
+  }
+
+  if (nextStatus === RIDE_LIVE_STATUS.COMPLETED) {
+    // Free again: offer any ride still searching near the drop point now,
+    // rather than after the driver's next location tick.
+    notifyLateAvailableDriver(req.auth.sub).catch((error) => {
+      console.error('Failed to offer pending rides after completion', error);
+    });
   }
 
   res.json({

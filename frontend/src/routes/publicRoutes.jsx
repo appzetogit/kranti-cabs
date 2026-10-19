@@ -23,6 +23,7 @@ import {
   IntercityConfirm,
   IntercityDetails,
   IntercityHome,
+  HourlyRental,
   IntercityVehicle,
   LegalPage,
   LinksPage,
@@ -132,6 +133,7 @@ const publicRoutes = (
       <Route path="/rental/kyc" element={<RentalKYC />} />
       <Route path="/rental/deposit" element={<RentalDeposit />} />
       <Route path="/rental/confirmed" element={<RentalConfirmed />} />
+      <Route path="/hourly-rental" element={<HourlyRental />} />
       <Route path="/intercity" element={<IntercityHome />} />
       <Route path="/intercity/vehicle" element={<IntercityVehicle />} />
       <Route path="/intercity/details" element={<IntercityDetails />} />

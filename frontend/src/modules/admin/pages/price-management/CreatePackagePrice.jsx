@@ -33,6 +33,7 @@ const createVehiclePriceRow = () => ({
 const initialFormState = {
   service_location_id: '',
   package_type_id: '',
+  package_kind: 'intercity',
   package_destination: '',
   package_availability: 'available',
   status: 'active',
@@ -103,6 +104,7 @@ const CreatePackagePrice = ({ mode = 'create' }) => {
           setFormData({
             service_location_id: selected.service_location?._id || selected.service_location?.id || '',
             package_type_id: selected.package_type?._id || selected.package_type?.id || selected.package_type_id || '',
+            package_kind: selected.package_kind === 'hourly_rental' ? 'hourly_rental' : 'intercity',
             package_destination: selected.package_destination || '',
             package_availability: selected.package_availability || 'available',
             status: selected.status || 'active',
@@ -179,7 +181,8 @@ const CreatePackagePrice = ({ mode = 'create' }) => {
     event.preventDefault();
 
     if (!formData.package_type_id) return toast.error('Choose a package type');
-    if (!formData.package_destination.trim()) return toast.error('Add a destination');
+    const isHourlyRental = formData.package_kind === 'hourly_rental';
+    if (!isHourlyRental && !formData.package_destination.trim()) return toast.error('Add a destination');
     if (!formData.package_vehicle_prices.every((row) => row.vehicle_type && row.base_price !== '')) {
       return toast.error('Each vehicle row needs a vehicle and base price');
     }
@@ -189,7 +192,8 @@ const CreatePackagePrice = ({ mode = 'create' }) => {
       transport_type: 'rental',
       service_location_id: formData.service_location_id || null,
       package_type_id: formData.package_type_id,
-      package_destination: formData.package_destination.trim(),
+      package_kind: formData.package_kind,
+      package_destination: isHourlyRental ? (formData.package_destination.trim() || 'Local') : formData.package_destination.trim(),
       package_availability: formData.package_availability,
       status: formData.status,
       active: Number(formData.active ?? 1),
@@ -254,6 +258,26 @@ const CreatePackagePrice = ({ mode = 'create' }) => {
 
           <div className="grid grid-cols-1 gap-x-4 gap-y-3 border-b border-dashed border-gray-200 pb-4 md:grid-cols-3">
             <div>
+              <label className={labelClass}>Package Kind <span className="text-rose-500">*</span></label>
+              <div className={selectWrapClass}>
+                <select
+                  value={formData.package_kind}
+                  onChange={(event) => updateTopLevel('package_kind', event.target.value)}
+                  className={`${inputClass} appearance-none`}
+                >
+                  <option value="intercity">Intercity (city to city)</option>
+                  <option value="hourly_rental">Hourly Rental (hours + km in the city)</option>
+                </select>
+                <ChevronDown size={14} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
+              </div>
+              {formData.package_kind === 'hourly_rental' ? (
+                <p className="mt-1 text-[11px] text-slate-500">
+                  Base price = package price. Free distance (km) and free time (minutes) are what the package includes; distance and time price are charged per km / per minute beyond them.
+                </p>
+              ) : null}
+            </div>
+
+            <div>
               <label className={labelClass}>Package Type <span className="text-rose-500">*</span></label>
               <div className={selectWrapClass}>
                 <select
@@ -273,6 +297,7 @@ const CreatePackagePrice = ({ mode = 'create' }) => {
               </div>
             </div>
 
+            {formData.package_kind !== 'hourly_rental' ? (
             <div>
               <label className={labelClass}>Destination <span className="text-rose-500">*</span></label>
               {isLoaded && HAS_VALID_GOOGLE_MAPS_KEY ? (
@@ -306,6 +331,7 @@ const CreatePackagePrice = ({ mode = 'create' }) => {
                 />
               )}
             </div>
+            ) : null}
 
             <div>
               <label className={labelClass}>Available In</label>

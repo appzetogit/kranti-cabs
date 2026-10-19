@@ -34,6 +34,7 @@ import {
   deleteUserNotification,
   endMyActiveRentalRide,
   getIntercityPackageCatalog,
+  getHourlyRentalPackages,
   clearAllUserNotifications,
   getMyActiveRentalBooking,
   listPublicServiceLocations,
@@ -89,6 +90,7 @@ userRouter.get('/settings/:category', asyncHandler(getGeneralSettingsCategory));
 // Admin-managed reasons the rider picks from when cancelling a trip.
 userRouter.get('/cancellation-reasons', getPublicCancellationReasons);
 userRouter.get('/intercity-packages', asyncHandler(getIntercityPackageCatalog));
+userRouter.get('/hourly-rental-packages', asyncHandler(getHourlyRentalPackages));
 userRouter.get('/goods-types', asyncHandler(getGoodsTypes));
 userRouter.get('/vehicle-types', asyncHandler(getPublicVehicleTypeCatalog));
 userRouter.get('/landing-content', asyncHandler(getPublicLandingContent));

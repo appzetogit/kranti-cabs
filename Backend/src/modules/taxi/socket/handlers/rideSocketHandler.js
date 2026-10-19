@@ -1,7 +1,7 @@
 import { normalizePoint, toPoint } from '../../../../utils/geo.js';
 import { runRedisCommand } from '../../../../infrastructure/redis/redisClient.js';
 import { RIDE_LIVE_STATUS } from '../../constants/index.js';
-import { getDriverRoom } from '../../services/dispatchService.js';
+import { getDriverRoom, notifyLateAvailableDriver } from '../../services/dispatchService.js';
 import { DriverLocationHistory } from '../../driver/models/DriverLocationHistory.js';
 import {
   appendRideMessage,
@@ -343,6 +343,11 @@ export const registerRideSocketHandlers = ({ io, socket, onAsync }) => {
         }
         clearDriverRoute(socket.auth.sub);
         rideLocationPersistState.delete(`${rideId}:${socket.auth.sub}`);
+        // Free again: offer any ride still searching near the drop point now,
+        // rather than after the driver's next location tick.
+        notifyLateAvailableDriver(socket.auth.sub).catch((error) => {
+          console.error('Failed to offer pending rides after completion', error);
+        });
       }
     }),
   );

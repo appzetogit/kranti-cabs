@@ -47,6 +47,14 @@ const TransportRideSettings = () => {
   }, []);
 
   const handleUpdate = async () => {
+    if (settings.proximity_auto_offer_enabled === '1') {
+      const radiusKm = Number(settings.proximity_auto_offer_radius ?? 2);
+      if (!Number.isFinite(radiusKm) || radiusKm < 0.1 || radiusKm > 20) {
+        toast.error('Auto-offer radius must be between 0.1 and 20 km');
+        return;
+      }
+    }
+
     try {
       setSaving(true);
       await api.patch('/admin/general-settings/transport-ride', { settings });
@@ -162,6 +170,47 @@ const TransportRideSettings = () => {
                          <option value="0">No (Auto-complete ride)</option>
                          <option value="1">Yes (Awaiting confirmation)</option>
                       </select>
+                   </div>
+                </div>
+             </div>
+
+             <div className="mt-10 pt-8 border-t border-gray-100">
+                <h4 className="text-[13px] font-bold text-gray-700 uppercase tracking-tight mb-1">Proximity auto-offer</h4>
+                <p className="text-sm text-gray-500 mb-6">
+                   When on, an online driver who is free and moves within this distance of a
+                   ride that is still searching gets the ride request immediately, without
+                   waiting for the next search round. This works in both dispatch types. In One
+                   By One, the driver's offer runs alongside the current one, and the first
+                   driver to accept gets the ride.
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6">
+                   <div className="space-y-1.5">
+                      <label className="text-sm font-medium text-gray-700 block ml-0.5">Auto-offer Nearby Rides</label>
+                      <select
+                       value={settings.proximity_auto_offer_enabled || '0'}
+                       onChange={(e) => handleChange('proximity_auto_offer_enabled', e.target.value)}
+                       className="w-full bg-white border border-gray-200 rounded-lg py-2.5 px-4 text-sm text-gray-900 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 transition-all outline-none shadow-sm"
+                      >
+                         <option value="0">Off</option>
+                         <option value="1">On</option>
+                      </select>
+                   </div>
+
+                   <div className="space-y-1.5">
+                      <InputField
+                         label="Auto-offer Radius in Kilometer (0.1 to 20)"
+                         name="proximity_auto_offer_radius"
+                         value={settings.proximity_auto_offer_radius}
+                         onChange={handleChange}
+                         type="number"
+                         placeholder="2"
+                      />
+                      <p className="text-xs text-gray-500">
+                         Measured in a straight line from the driver to the pickup. Offers never
+                         cross a zone boundary, and a driver who rejected the ride is not offered
+                         it again.
+                      </p>
                    </div>
                 </div>
              </div>

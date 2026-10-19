@@ -9,8 +9,19 @@ export const userService = {
     const response = await api.get('/users/rental-vehicles');
     return response;
   },
+  // Hourly cab rental packages for a pickup (`lat`, `lng`).
+  getHourlyRentalPackages: async (params) => {
+    const response = await api.get('/users/hourly-rental-packages', { params });
+    return response;
+  },
   getIntercityPackages: async () => {
     const response = await api.get('/users/intercity-packages');
+    return response;
+  },
+  // City / airport / outstation for a pickup and drop, with the airport's flat
+  // fees and any hub parking estimate. `pickup` and `drop` are "lat,lng".
+  getTripCategory: async (params) => {
+    const response = await api.get('/users/trip-category', { params });
     return response;
   },
   createRentalQuoteRequest: async (payload) => {

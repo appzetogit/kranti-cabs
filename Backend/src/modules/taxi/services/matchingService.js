@@ -363,6 +363,7 @@ const findDriversForZone = async ({
   normalizedVehicleTypeIds,
   vehicleTypeKeys,
   strictZoneOnly = false,
+  driverId = null,
 }) => {
   const commonFilters = {
     ...buildDriverMatchFilters({
@@ -376,6 +377,9 @@ const findDriversForZone = async ({
     // work. Off entirely unless an admin has switched it on, and the id list
     // is small: it is one day's paying drivers.
     ...(await buildSubscriptionDriverFilter()),
+    // Asking about one driver: same rules, one candidate. In $and because the
+    // subscription filter above may already own the `_id` key.
+    ...(driverId ? { $and: [{ _id: driverId }] } : {}),
   };
   const selectedFields =
     'name phone socketId vehicleTypeId vehicleTypeIds vehicleType vehicleIconType vehicleNumber vehicleColor vehicleMake vehicleModel rating location zoneId service_location_id isOnline isOnRide routeBooking';
@@ -417,6 +421,9 @@ export const matchDrivers = async (pickupCoords, options = {}) => {
     serviceLocationId = null,
     allowCrossZoneFallback = true,
     strictZoneOnly = false,
+    // Only match this driver. The nearest-`limit` cut would otherwise hide a
+    // qualifying driver whenever `limit` others are closer to the pickup.
+    driverId = null,
   } = options;
   const normalizedVehicleTypeIds = normalizeVehicleTypeIds(vehicleTypeIds, vehicleTypeId);
   const allowedVehicles = normalizedVehicleTypeIds.length
@@ -439,6 +446,7 @@ export const matchDrivers = async (pickupCoords, options = {}) => {
     normalizedVehicleTypeIds,
     vehicleTypeKeys,
     strictZoneOnly,
+    driverId,
   });
   drivers = filterDriversForMatchedZone({
     drivers,
@@ -462,6 +470,7 @@ export const matchDrivers = async (pickupCoords, options = {}) => {
       normalizedVehicleTypeIds,
       vehicleTypeKeys,
       strictZoneOnly,
+      driverId,
     });
     drivers = filterDriversForMatchedZone({
       drivers,

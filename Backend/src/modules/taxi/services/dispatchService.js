@@ -17,6 +17,7 @@ import { Delivery } from '../user/models/Delivery.js';
 import { getRideRoom, resolveSetPriceForRide } from './rideService.js';
 import { SOCKET_EVENTS } from '../socket/events.js';
 import { resolveTransportDispatchConfig } from './transportSettingsService.js';
+import { serializeRideRental } from './rentalPackageService.js';
 import { sendPushNotificationToEntities } from './pushNotificationService.js';
 
 const activeDispatches = new Map();
@@ -257,11 +258,13 @@ const matchDispatchDrivers = async ({
   ride,
   radius,
   dispatchVehicleTypeIds,
+  driverId = null,
 }) => {
   const sharedOptions = {
     maxDistance: radius,
     vehicleTypeId: ride.vehicleTypeId,
     vehicleTypeIds: dispatchVehicleTypeIds,
+    driverId,
   };
 
   let result = await matchDrivers(ride.pickupLocation.coordinates, {
@@ -761,6 +764,7 @@ const emitRideRequestToDrivers = async ({
   dispatchVehicleTypeIds = [],
   dispatchConfig,
   attemptIndex = 0,
+  offerSource = 'dispatch',
 }) => {
   if (!ride || !targetDrivers.length) {
     return;
@@ -819,6 +823,7 @@ const emitRideRequestToDrivers = async ({
       paymentMethod: ride.paymentMethod,
       parcel: ride.parcel || null,
       intercity: ride.intercity || null,
+      rental: serializeRideRental(ride.rental),
       radius: effectiveRadius,
       attempt: attemptIndex + 1,
       maxAttempts: dispatchConfig.maxAttempts,
@@ -826,6 +831,10 @@ const emitRideRequestToDrivers = async ({
       expiresInSeconds: dispatchConfig.retryWindowSeconds,
       requestExpiresAt,
       zoneId: zone?._id ? String(zone._id) : null,
+      // 'dispatch' for a wave, 'late' when the driver came online or free
+      // mid-search, 'proximity' when they drove into the admin's auto-offer
+      // radius.
+      offerSource,
     });
   }
 
@@ -1009,6 +1018,8 @@ export const cancelRideByAdmin = async (rideId) => {
       rideId: String(ride._id),
       reason: 'deleted-by-admin',
     });
+    // Their trip is gone; they may be next to another ride still searching.
+    notifyLateAvailableDriver(ride.driverId).catch(() => null);
   }
 
   emitToRoom(getRideRoom(ride._id), 'rideRequestClosed', {
@@ -1120,6 +1131,8 @@ export const cancelRideByUser = async ({ rideId, userId }) => {
       reason: 'user-cancelled',
       message: 'User cancelled the ride.',
     });
+    // Their trip is gone; they may be next to another ride still searching.
+    notifyLateAvailableDriver(ride.driverId).catch(() => null);
   }
 
   for (const driverId of dispatchState.notifiedDriverIds) {
@@ -1543,26 +1556,26 @@ export const notifyLateAvailableDriver = async (driverId) => {
     lateDriverNotificationTimestamps.set(driverKey, Date.now());
 
     const driver = await Driver.findById(driverId)
-      .select('_id isOnline isOnRide wallet location zoneId vehicleTypeId vehicleType vehicleIconType');
+      .select('_id isOnline isOnRide wallet location routeBooking');
 
-    if (!driver?.isOnline || driver?.isOnRide || driver?.wallet?.isBlocked || !driver?.location?.coordinates?.length) {
+    if (!driver?.isOnline || driver?.isOnRide || driver?.wallet?.isBlocked) {
+      return;
+    }
+
+    // Measured from the same point matching measures from: a driver on a
+    // route booking is matched from their route anchor, not their live GPS.
+    const routeAnchor = driver?.routeBooking?.anchorLocation?.coordinates;
+    const driverCoordinates = driver?.routeBooking?.enabled && Array.isArray(routeAnchor) && routeAnchor.length === 2
+      ? routeAnchor
+      : driver?.location?.coordinates;
+
+    if (!Array.isArray(driverCoordinates) || driverCoordinates.length < 2) {
       return;
     }
 
     const activeRideIds = Array.from(activeDispatches.keys());
 
     for (const rideId of activeRideIds) {
-      const ride = await Ride.findById(rideId).populate('userId', 'name phone countryCode profileImage');
-
-      if (!ride || ride.status !== RIDE_STATUS.SEARCHING) {
-        continue;
-      }
-
-      // Per ride, not once for the loop: a ride being bid on runs on the
-      // admin's bidding timers rather than the regular ride's.
-      const dispatchConfig = await resolveTransportDispatchConfig({
-        bidding: ride.pricingNegotiationMode === 'driver_bid',
-      });
       const dispatchState = getDispatchState(rideId);
 
       if (
@@ -1572,16 +1585,57 @@ export const notifyLateAvailableDriver = async (driverId) => {
         continue;
       }
 
+      // Cheap read first. This runs on every driver location update, so a
+      // ride the driver is nowhere near is dropped on a distance check before
+      // any matching queries run.
+      const rideSummary = await Ride.findById(rideId)
+        .select('status pickupLocation pricingNegotiationMode')
+        .lean();
+
+      if (!rideSummary || rideSummary.status !== RIDE_STATUS.SEARCHING) {
+        continue;
+      }
+
+      // Per ride, not once for the loop: a ride being bid on runs on the
+      // admin's bidding timers rather than the regular ride's.
+      const dispatchConfig = await resolveTransportDispatchConfig({
+        bidding: rideSummary.pricingNegotiationMode === 'driver_bid',
+      });
+
       const attemptIndex = Number.isInteger(dispatchState.radiusIndex) ? dispatchState.radiusIndex : 0;
-      const radius = getAttemptRadiusMeters(
+      const waveRadius = getAttemptRadiusMeters(
         dispatchConfig.baseDistanceMeters || dispatchConfig.maxDistanceMeters,
         attemptIndex,
       );
+      // With proximity auto-offer on, a driver inside the admin's radius is
+      // offered the ride even when the current wave has not widened that far
+      // (or has widened less than that). Otherwise the wave is the only reach.
+      const proximityRadius = dispatchConfig.proximity?.enabled ? dispatchConfig.proximity.radiusMeters : 0;
+      const reachRadius = Math.max(waveRadius, proximityRadius);
+      const distanceToPickup = distanceBetweenCoordsMeters(
+        driverCoordinates,
+        rideSummary.pickupLocation?.coordinates,
+      );
+
+      if (distanceToPickup === null || distanceToPickup > reachRadius) {
+        continue;
+      }
+
+      const ride = await Ride.findById(rideId).populate('userId', 'name phone countryCode profileImage');
+
+      if (!ride || ride.status !== RIDE_STATUS.SEARCHING) {
+        continue;
+      }
+
       const dispatchVehicleTypeIds = getDispatchVehicleTypeIds(ride);
+      // Asks about this one driver, so every dispatch rule (zone, vehicle
+      // type, pass, upcoming scheduled ride) still applies, but the nearest-5
+      // cut cannot leave them out because five others are closer.
       const { zone, drivers, searchRadiusMeters } = await matchDispatchDrivers({
         ride,
-        radius,
+        radius: reachRadius,
         dispatchVehicleTypeIds,
+        driverId: driver._id,
       });
 
       const matchedDriver = drivers.find((item) => String(item._id) === driverKey);
@@ -1589,20 +1643,40 @@ export const notifyLateAvailableDriver = async (driverId) => {
         continue;
       }
 
+      // The awaits above leave room for a wave (or the ride's acceptance) to
+      // have moved on; re-read before claiming the offer.
+      const latestState = getDispatchState(rideId);
+      if (
+        !activeDispatches.has(String(rideId)) ||
+        latestState.notifiedDriverIds.includes(driverKey) ||
+        latestState.rejectedDriverIds.includes(driverKey)
+      ) {
+        continue;
+      }
+
       const effectiveRadius = Number.isFinite(searchRadiusMeters) && searchRadiusMeters > 0
         ? searchRadiusMeters
-        : radius;
+        : reachRadius;
 
-      const nextNotifiedDriverIds = [...dispatchState.notifiedDriverIds, driverKey];
+      const nextNotifiedDriverIds = [...latestState.notifiedDriverIds, driverKey];
+      // One-by-one keeps its current holder: this offer runs alongside theirs,
+      // and whoever accepts first wins (acceptRideAssignment is race-safe).
       const nextDriverIds = dispatchConfig.dispatchType === 'broadcast'
-        ? [...new Set([...dispatchState.driverIds, driverKey])]
-        : dispatchState.driverIds.length
-          ? dispatchState.driverIds
+        ? [...new Set([...latestState.driverIds, driverKey])]
+        : latestState.driverIds.length
+          ? latestState.driverIds
           : [driverKey];
 
       saveDispatchState(rideId, {
         driverIds: nextDriverIds,
         notifiedDriverIds: nextNotifiedDriverIds,
+      });
+      // Persisted so a restart's recovery sweep does not offer it again.
+      persistDispatchTrackingProgress({
+        rideId,
+        notifiedDriverIds: [driverKey],
+      }).catch((error) => {
+        console.error('Failed to persist late-driver offer', error);
       });
 
       await emitRideRequestToDrivers({
@@ -1613,6 +1687,7 @@ export const notifyLateAvailableDriver = async (driverId) => {
         dispatchVehicleTypeIds,
         dispatchConfig,
         attemptIndex,
+        offerSource: distanceToPickup > waveRadius ? 'proximity' : 'late',
       });
     }
   })()
@@ -1669,6 +1744,7 @@ export const notifyRideAccepted = async (ride) => {
     vehicleIconUrl: populatedRide.vehicleIconUrl || '',
     parcel: populatedRide.parcel || null,
     intercity: populatedRide.intercity || null,
+    rental: serializeRideRental(populatedRide.rental),
     commissionAmount: populatedRide.commissionAmount,
     driverEarnings: populatedRide.driverEarnings,
     pickupLocation: populatedRide.pickupLocation,

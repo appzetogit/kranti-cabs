@@ -68,8 +68,9 @@ const normalizeJobType = (job = {}) => {
     return 'ride';
 };
 
-const getJobTitle = (type) => {
+const getJobTitle = (type, job = {}) => {
     if (type === 'parcel') return 'Delivery';
+    if (job?.rental?.packagePriceId || job?.raw?.rental?.packagePriceId) return 'Hourly Rental';
     if (type === 'intercity') return 'Intercity Ride';
     return 'Taxi Ride';
 };
@@ -202,7 +203,7 @@ const DriverRideRequestListener = () => {
             const requestType = normalizeJobType(data);
             const request = {
                 type: requestType,
-                title: getJobTitle(requestType),
+                title: getJobTitle(requestType, data),
                 fare: `Rs ${data.fare || 0}`,
                 payment: data.paymentMethod || 'Cash',
                 pickup: data.pickupAddress || formatPoint(data.pickupLocation, 'Pickup Location'),

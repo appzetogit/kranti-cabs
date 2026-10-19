@@ -5,7 +5,7 @@ import { adminService } from '../../services/adminService';
 import { uploadService } from '../../../../shared/services/uploadService';
 
 /**
- * Editor for the public marketing site (kranticabs.buytogetherindia.com).
+ * Editor for the public marketing site (kranticabs.com).
  *
  * Mirrors the backend's section whitelist in landingContentService.js — adding a
  * section means updating the model, that whitelist, defaultLandingContent.js and
@@ -92,7 +92,7 @@ const CONTACT_FIELDS = [
   { name: 'tollFree', label: 'Toll-Free Number', placeholder: '1800 200 9999' },
   { name: 'whatsappDisplay', label: 'WhatsApp (displayed)', placeholder: '+91 98765 00000' },
   { name: 'whatsapp', label: 'WhatsApp (dial format)', placeholder: '919876500000', help: 'Country code, digits only — used to build the wa.me link.' },
-  { name: 'email', label: 'Email', placeholder: 'support@kranticabs.buytogetherindia.com' },
+  { name: 'email', label: 'Email', placeholder: 'support@kranticabs.com' },
   { name: 'addressShort', label: 'Short Address', placeholder: 'Grand Majestic Mall, Gandhinagar, Bengaluru', wide: true },
   { name: 'address', label: 'Full Address', placeholder: 'Grand Majestic Mall, Gandhinagar, Bengaluru, Karnataka 560009', wide: true },
   { name: 'mapsUrl', label: 'Google Maps URL', placeholder: 'https://www.google.com/maps/search/?api=1&query=...', wide: true },
@@ -541,7 +541,7 @@ export default function LandingContent() {
         <div>
           <h1 className="text-xl font-bold text-gray-900">Website Content</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Controls the public site at kranticabs.buytogetherindia.com. Changes appear within about a minute.
+            Controls the public site at kranticabs.com. Changes appear within about a minute.
           </p>
         </div>
         <button

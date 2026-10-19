@@ -140,7 +140,7 @@ export const ServiceCard = React.memo(({ icon, label, description, path, loading
       return 'Send anything';
     }
     if (cleanLabel.includes('rental')) {
-      return 'Bikes & cars';
+      return cleanLabel.includes('bike') ? 'Bikes & cars' : 'Cab by the hour';
     }
     if (cleanLabel.includes('bus')) {
       return 'Intercity travel';
@@ -582,7 +582,12 @@ const ServiceGrid = ({
     const moduleName = String(module?.name || '').trim().toLowerCase();
 
     if (transportType === 'delivery') return '/taxi/user/parcel/type';
-    if (serviceType === 'rental') return '/taxi/user/rental';
+    // A cab rental module books a chauffeured cab by the hour; only a bike or
+    // self-drive rental module goes to the vehicle rental flow.
+    if (serviceType === 'hourly_rental') return '/taxi/user/hourly-rental';
+    if (serviceType === 'rental') {
+      return /bike|self[\s-]?drive|scooty/.test(moduleName) ? '/taxi/user/rental' : '/taxi/user/hourly-rental';
+    }
     if (serviceType === 'outstation') return '/taxi/user/intercity';
     if (serviceType === 'pooling' || moduleName.includes('pooling')) {
       return '/taxi/user/pooling';

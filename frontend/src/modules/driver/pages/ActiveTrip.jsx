@@ -136,8 +136,9 @@ const normalizeTripType = (job = {}) => {
     return 'ride';
 };
 
-const getTripTitle = (type) => {
+const getTripTitle = (type, job = {}) => {
     if (type === 'parcel') return 'Delivery';
+    if (job?.rental?.packagePriceId || job?.raw?.rental?.packagePriceId) return 'Hourly Rental';
     if (type === 'intercity') return 'Intercity Ride';
     return 'Taxi Ride';
 };
@@ -444,6 +445,14 @@ const getCurrentCoords = () => new Promise((resolve, reject) => {
     );
 });
 
+const formatRentalMinutes = (minutes) => {
+    const total = Math.max(0, Math.round(Number(minutes) || 0));
+    const hours = Math.floor(total / 60);
+    const rest = total % 60;
+    if (!hours) return `${rest} min`;
+    return rest ? `${hours} hr ${rest} min` : `${hours} hr`;
+};
+
 const parseFareAmount = (value) => {
     const numeric = Number(String(value || '').replace(/[^0-9.]/g, ''));
     return Number.isFinite(numeric) ? numeric : 0;
@@ -746,7 +755,7 @@ const buildPersistedTripState = (job = {}, overrides = {}) => {
         currentDriverCoords: mergedJob.lastDriverLocation?.coordinates || mergedJob.driverLocation?.coordinates || null,
         request: {
             type: currentType,
-            title: getTripTitle(currentType),
+            title: getTripTitle(currentType, mergedJob),
             fare: `Rs ${mergedJob.fare || 0}`,
             payment: mergedJob.paymentMethod || 'Cash',
             pickup: getAreaName(mergedJob.pickupAddress, formatAddressFromPoint(mergedJob.pickupLocation, 'Pickup area')),
@@ -922,6 +931,9 @@ const ActiveTrip = () => {
     const liveRequest = effectiveState?.request || {};
     const liveRaw = liveRequest.raw || {};
     const rideId = getJobRideId(liveRequest) || getJobRideId(effectiveState);
+    // Hourly rental bill (package + overage), pushed by the server once the
+    // driver ends the trip.
+    const [rentalBill, setRentalBill] = useState(null);
     const [resolvedPickupCoords, setResolvedPickupCoords] = useState(null);
     const [resolvedDropCoords, setResolvedDropCoords] = useState(null);
     const vehicleIconUrl = getActiveTripVehicleIcon(
@@ -1144,6 +1156,10 @@ const ActiveTrip = () => {
 
             if (String(payload.rideId || payload._id || '') !== String(currentRideId)) {
                 return;
+            }
+
+            if (payload.rental?.settledAt) {
+                setRentalBill({ fare: Number(payload.fare || 0), rental: payload.rental });
             }
 
             const nextStatus = String(payload.liveStatus || payload.status || '').toLowerCase();
@@ -1406,7 +1422,12 @@ const ActiveTrip = () => {
         payment: liveRequest?.payment || effectiveState?.paymentMethod || 'Online'
     };
 
-    const displayFare = liveRequest?.fare || tripData.fare;
+    const rentalTerms = rentalBill?.rental || liveRaw?.rental || liveRequest?.raw?.rental || effectiveState?.rental || null;
+    const isHourlyRental = Boolean(rentalTerms?.packagePriceId);
+    const settledRental = rentalTerms?.settledAt ? rentalTerms : null;
+    const displayFare = rentalBill
+        ? rentalBill.fare
+        : (settledRental && liveRaw?.fare ? liveRaw.fare : (liveRequest?.fare || tripData.fare));
     const fareAmount = parseFareAmount(displayFare);
     const expectedOtp = String(liveRaw?.otp || liveRequest?.otp || effectiveState?.otp || '');
     const waitingPricing = liveRaw?.pricingSnapshot || liveRequest?.raw?.pricingSnapshot || effectiveState?.pricingSnapshot || {};
@@ -2596,6 +2617,19 @@ const ActiveTrip = () => {
                                 </div>
                                 <button onClick={() => callContact(destinationContact?.phone)} className="shrink-0 w-9 h-9 bg-white rounded-lg border border-slate-100 flex items-center justify-center" style={{ color: routeStrokeColor }} aria-label="Call destination contact"><Phone size={16} strokeWidth={2.5} /></button>
                             </div>
+                            {isHourlyRental && (
+                                <div className="mb-4 rounded-2xl border border-amber-100 bg-amber-50/70 px-4 py-3">
+                                    <p className="text-[9px] font-black uppercase tracking-[0.22em] text-amber-700/70">Hourly Rental</p>
+                                    <p className="mt-1 text-[13px] font-black text-slate-900">{rentalTerms.packageName}</p>
+                                    <p className="mt-1 text-[11px] font-bold text-slate-600">
+                                        Includes {rentalTerms.includedKm} km / {formatRentalMinutes(rentalTerms.includedMinutes)}
+                                        {tripStartedAt ? ` · ${formatRentalMinutes((Date.now() - new Date(tripStartedAt).getTime()) / 60000)} used` : ''}
+                                    </p>
+                                    <p className="mt-1 text-[10px] font-bold text-slate-500">
+                                        Extra: Rs {rentalTerms.extraKmRate}/km · Rs {rentalTerms.extraMinuteRate}/min. End the trip where the rider asks.
+                                    </p>
+                                </div>
+                            )}
                             {isParcel && (
                                 <div className="mb-4 rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3">
                                     <div className="flex items-center justify-between gap-3">
@@ -2745,6 +2779,14 @@ const ActiveTrip = () => {
                                         </div>
                                     </div>
                                 </div>
+                                {settledRental && (
+                                    <div className="border-t border-slate-100 px-5 py-4 text-[12px] font-bold text-slate-700">
+                                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Rental Bill · {settledRental.packageName}</p>
+                                        <div className="mt-2 flex justify-between"><span>Package</span><span>{formatCurrencyAmount(settledRental.packagePrice)}</span></div>
+                                        <div className="mt-1 flex justify-between"><span>Extra {settledRental.extraKm} km ({settledRental.travelledKm} km driven)</span><span>{formatCurrencyAmount(settledRental.extraKmCharge)}</span></div>
+                                        <div className="mt-1 flex justify-between"><span>Extra {formatRentalMinutes(settledRental.extraMinutes)} ({formatRentalMinutes(settledRental.usedMinutes)} used)</span><span>{formatCurrencyAmount(settledRental.extraTimeCharge)}</span></div>
+                                    </div>
+                                )}
                                 <div className="grid grid-cols-3 gap-3 border-t border-slate-100 px-5 py-4">
                                     <div className="rounded-2xl bg-white px-4 py-3 text-center shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
                                         <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Trip Fare</p>
