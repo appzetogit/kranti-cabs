@@ -2846,6 +2846,11 @@ const serializeUser = (user) => ({
 
 const USER_LIST_SELECT = [
   '_id',
+  'kyc.status',
+  'kyc.documentType',
+  'kyc.maskedNumber',
+  'kyc.verifiedName',
+  'kyc.verifiedAt',
   'name',
   'email',
   'gender',
@@ -2867,6 +2872,13 @@ const USER_LIST_SELECT = [
 
 const serializeUserListItem = (user, employee = null) => ({
   _id: user._id,
+  kyc: {
+    status: user.kyc?.status || 'not_started',
+    documentType: user.kyc?.documentType || '',
+    maskedNumber: user.kyc?.maskedNumber || '',
+    verifiedName: user.kyc?.verifiedName || '',
+    verifiedAt: user.kyc?.verifiedAt || null,
+  },
   id: user._id,
   name: user.name || '',
   email: user.email || '',
@@ -3813,6 +3825,7 @@ export const listUsers = async ({
   search = '',
   employeeId = '',
   referralSource = 'all',
+  kycStatus = '',
 }) => {
   const safePage = Math.max(1, Number(page) || 1);
   const safeLimit = Math.min(100, Math.max(1, Number(limit) || 50));
@@ -3837,6 +3850,13 @@ export const listUsers = async ({
 
   if (normalizedEmployeeId) {
     query.acquiredByEmployeeId = normalizedEmployeeId;
+  }
+
+  const normalizedKycStatus = String(kycStatus || '').trim().toLowerCase();
+  if (normalizedKycStatus === 'not_started') {
+    query['kyc.status'] = { $in: [null, 'not_started'] };
+  } else if (['otp_sent', 'verified', 'failed', 'needs_review', 'rejected'].includes(normalizedKycStatus)) {
+    query['kyc.status'] = normalizedKycStatus;
   }
 
   if (normalizedReferralSource === 'employee') {

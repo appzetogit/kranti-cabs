@@ -566,6 +566,29 @@ const RecentLocationsList = ({ routePrefix }) => {
 
 const Home = () => {
   const navigate = useNavigate();
+
+  // Admin set KYC to "right after signup": send an unverified rider to the
+  // verification screen once per app session. Bookings stay blocked by the
+  // server until they verify, so this is a nudge, not the gate.
+  useEffect(() => {
+    if (!getLocalUserToken()) return undefined;
+    let active = true;
+    try {
+      if (sessionStorage.getItem('kranti:kyc-prompted') === '1') return undefined;
+    } catch {
+      // storage unavailable: fall through and prompt
+    }
+    userService.getKycStatus()
+      .then((response) => {
+        const kyc = response?.data ?? response ?? {};
+        if (!active || !kyc.config?.enabled || kyc.config.requiredFor !== 'after_signup') return;
+        if (['verified', 'needs_review'].includes(kyc.status)) return;
+        try { sessionStorage.setItem('kranti:kyc-prompted', '1'); } catch { /* ignore */ }
+        navigate('/taxi/user/profile/kyc');
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [navigate]);
   const location = useLocation();
   const { settings, loading: settingsLoading } = useSettings();
   const { theme } = useUserTheme();

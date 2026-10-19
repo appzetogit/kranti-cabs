@@ -32,6 +32,7 @@ import { getBidRideSettings } from './transportSettingsService.js';
 import { resolveBiddingPolicy } from './biddingPolicyService.js';
 import { resolveRideRoute } from './routeService.js';
 import { applyHourlyRentalCharges, resolveHourlyRentalQuote, serializeRideRental } from './rentalPackageService.js';
+import { assertUserKycForBooking } from './userKycService.js';
 
 const clearUserActiveRideIfPresent = async (user) => {
   if (!user?.currentRideId) {
@@ -1098,6 +1099,10 @@ export const createRideRecord = async ({
   if (!user) {
     throw new ApiError(404, 'User not found');
   }
+
+  // Admin's identity-verification rule (off unless switched on). Throws
+  // 403 KYC_REQUIRED, which both apps answer by opening the KYC screen.
+  await assertUserKycForBooking({ userId, serviceType: normalizeServiceType(serviceType) });
 
   await clearUserActiveRideIfPresent(user);
 

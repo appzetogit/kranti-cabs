@@ -789,6 +789,12 @@ const SearchingDriver = () => {
         }
       } catch (error) {
         console.error('[searching-driver] Ride creation error:', error);
+        if (!disposed && error?.details?.code === 'KYC_REQUIRED') {
+          // The admin requires a verified rider for this booking. Verify, then
+          // come back to the screen the ride was booked from.
+          navigate(`${routePrefix || '/taxi/user'}/profile/kyc`, { replace: true, state: { returnToBooking: true } });
+          return;
+        }
         if (!disposed) {
           const errorMessage = error?.response?.data?.message || error?.message || 'Network error or server down';
           const isNoDrivers = errorMessage.toLowerCase().includes('no driver') || errorMessage.toLowerCase().includes('not available');

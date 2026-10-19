@@ -73,6 +73,7 @@ export const UserPoolingHome = lazy(() => import('../modules/user/pages/pooling/
 export const UserPoolingList = lazy(() => import('../modules/user/pages/pooling/PoolingList'));
 export const UserPoolingSeats = lazy(() => import('../modules/user/pages/pooling/PoolingSeats'));
 export const UserPoolingConfirm = lazy(() => import('../modules/user/pages/pooling/PoolingConfirm'));
+export const VerifyIdentity = lazy(() => import('../modules/user/pages/profile/VerifyIdentity'));
 export const ProfileSettings = lazy(() => import('../modules/user/pages/profile/ProfileSettings'));
 export const PaymentSettings = lazy(() => import('../modules/user/pages/profile/PaymentSettings'));
 export const AddressSettings = lazy(() => import('../modules/user/pages/profile/AddressSettings'));
@@ -253,6 +254,7 @@ export const AdminFirebaseSettings = lazy(() => import('../modules/admin/pages/s
 export const AdminMapSettings = lazy(() => import('../modules/admin/pages/settings/MapSettings'));
 export const AdminMailSettings = lazy(() => import('../modules/admin/pages/settings/MailSettings'));
 export const AdminNotificationChannels = lazy(() => import('../modules/admin/pages/settings/NotificationChannels'));
+export const AdminUserKycSettings = lazy(() => import('../modules/admin/pages/settings/UserKycSettings'));
 export const AdminRechargeApiSettings = lazy(() => import('../modules/admin/pages/settings/RechargeApiSettings'));
 export const AdminDispatcherAddons = lazy(() => import('../modules/admin/pages/settings/DispatcherAddons'));
 export const AdminCountryManagement = lazy(() => import('../modules/admin/pages/masters/CountryManagement'));

@@ -7,6 +7,14 @@ import { getPublicBanners } from '../../admin/promotions/controllers/promotionsC
 import { asyncHandler } from '../../../../utils/asyncHandler.js';
 import { authenticate } from '../../middlewares/authMiddleware.js';
 import {
+  getKycConfig,
+  getMyKycStatus,
+  requestAadhaarOtp,
+  verifyAadhaarOtp,
+  verifyKycDocument,
+} from '../controllers/kycController.js';
+import {
+  createRateLimitMiddleware,
   loginRateLimit,
   routeRateLimit,
   otpSendRateLimit,
@@ -91,6 +99,21 @@ userRouter.get('/settings/:category', asyncHandler(getGeneralSettingsCategory));
 userRouter.get('/cancellation-reasons', getPublicCancellationReasons);
 userRouter.get('/intercity-packages', asyncHandler(getIntercityPackageCatalog));
 userRouter.get('/hourly-rental-packages', asyncHandler(getHourlyRentalPackages));
+
+// Identity verification (QuickeKYC). Each call can cost a paid provider
+// lookup, so it is rate limited per rider on top of the daily attempt cap.
+const kycRateLimit = createRateLimitMiddleware({
+  scope: 'user_kyc',
+  max: 10,
+  windowMs: 10 * 60 * 1000,
+  modes: ['auth_or_ip', 'ip'],
+  message: 'Too many verification requests. Please try again later.',
+});
+userRouter.get('/kyc/config', asyncHandler(getKycConfig));
+userRouter.get('/kyc/status', authenticate(['user']), asyncHandler(getMyKycStatus));
+userRouter.post('/kyc/aadhaar/otp', authenticate(['user']), kycRateLimit, asyncHandler(requestAadhaarOtp));
+userRouter.post('/kyc/aadhaar/verify', authenticate(['user']), kycRateLimit, asyncHandler(verifyAadhaarOtp));
+userRouter.post('/kyc/document', authenticate(['user']), kycRateLimit, asyncHandler(verifyKycDocument));
 userRouter.get('/goods-types', asyncHandler(getGoodsTypes));
 userRouter.get('/vehicle-types', asyncHandler(getPublicVehicleTypeCatalog));
 userRouter.get('/landing-content', asyncHandler(getPublicLandingContent));

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   User, Wallet, Bell, Shield, LogOut, ChevronRight, HelpCircle, FileText,
   MapPin, Star, Package, Wrench, Gift, Trash2, Check, BusFront, 
-  Settings, CreditCard, Heart, Map, MessageSquare, History, Phone, Sun, Moon
+  Settings, CreditCard, Heart, Map, MessageSquare, History, Phone, Sun, Moon, ShieldCheck
 } from 'lucide-react';
 // ... removed BottomNavbar import ...
 
@@ -13,6 +13,7 @@ import { clearCurrentRide } from '../services/currentRideService';
 import { socketService } from '../../../shared/api/socket';
 import api from '../../../shared/api/axiosInstance';
 import { useUserTheme } from '../../../shared/context/UserThemeContext';
+import { userService } from '../services/userService';
 
 const MotionDiv = motion.div;
 const MotionButton = motion.button;
@@ -34,6 +35,7 @@ const menuSections = [
     title: 'Personal',
     items: [
       { icon: User, title: 'Profile Settings', sub: 'Manage your personal info', path: '/taxi/user/profile/settings', bg: 'bg-indigo-50', color: 'text-indigo-600' },
+      { icon: ShieldCheck, title: 'Verify Identity', sub: 'Aadhaar, PAN or other ID', path: '/taxi/user/profile/kyc', bg: 'bg-sky-50', color: 'text-sky-600', kyc: true },
       { icon: MapPin, title: 'Saved Addresses', sub: 'Home, office & others', path: '/taxi/user/profile/addresses', bg: 'bg-emerald-50', color: 'text-emerald-600' },
       { icon: History, title: 'My Rides', sub: 'Rides, parcels & trips', path: '/taxi/user/activity', bg: 'bg-blue-50', color: 'text-blue-600' },
     ]
@@ -69,6 +71,18 @@ const Profile = () => {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useUserTheme();
   const isDark = theme === 'dark';
+  // Identity verification row: shown only while the admin has KYC switched on.
+  const [kycState, setKycState] = useState(null);
+
+  useEffect(() => {
+    if (!getLocalUserToken()) return undefined;
+    let active = true;
+    userService.getKycStatus()
+      .then((response) => { if (active) setKycState(response?.data ?? response ?? null); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
+
   const [profile, setProfile] = useState({
     name: '',
     phone: '',
@@ -381,7 +395,15 @@ const Profile = () => {
                 }}
                 className="rounded-[32px] border shadow-sm overflow-hidden divide-y divide-slate-200/50 dark:divide-zinc-800/60 transition-colors duration-300"
               >
-                {section.items.map((item, iIdx) => (
+                {section.items
+                  .filter((item) => !item.kyc || kycState?.config?.enabled || kycState?.status === 'verified')
+                  .map((item) => (item.kyc && kycState ? {
+                    ...item,
+                    sub: kycState.status === 'verified'
+                      ? `Verified · ${kycState.documentLabel} ${kycState.maskedNumber}`
+                      : kycState.status === 'needs_review' ? 'Under review' : 'Not verified yet',
+                  } : item))
+                  .map((item, iIdx) => (
                   <MotionButton
                     key={iIdx}
                     whileTap={{ backgroundColor: isDark ? '#121824' : '#F8FAFC' }}

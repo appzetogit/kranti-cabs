@@ -24,6 +24,7 @@ import {
   Ticket
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
+import UserKycPanel from './UserKycPanel';
 
 const UserDetails = () => {
   const { id } = useParams();
@@ -330,7 +331,7 @@ const UserDetails = () => {
 
         {/* PILL TABS */}
         <div className="mt-6 flex items-center gap-2 overflow-x-auto whitespace-nowrap hide-scrollbar border-t border-gray-100 pt-5">
-          {['Request List', 'User Payment History', 'Review History', 'Subscriptions'].map(tab => (
+          {['Request List', 'User Payment History', 'Review History', 'Subscriptions', 'KYC'].map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -348,6 +349,8 @@ const UserDetails = () => {
 
       {/* TAB CONTENT */}
       <div className="min-h-[400px]">
+        {activeTab === 'KYC' && <UserKycPanel userId={id} />}
+
         {activeTab === 'Request List' && (
           <div className="space-y-4 animate-in fade-in duration-300">
             {/* STAT CARDS */}

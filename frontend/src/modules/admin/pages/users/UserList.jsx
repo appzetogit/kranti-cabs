@@ -18,6 +18,7 @@ const StatusToggle = ({ status, onToggle }) => (
 
 import UserModal from './UserModal';
 import { adminService } from '../../services/adminService';
+import { KYC_STATUS_META } from '../../constants/kycStatus';
 
 const GENDER_LABELS = {
   male: 'Male',
@@ -29,6 +30,7 @@ const UserList = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [referralSource, setReferralSource] = useState('all');
+  const [kycStatus, setKycStatus] = useState('');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [employeeOptions, setEmployeeOptions] = useState([]);
   const [activeMenu, setActiveMenu] = useState(null);
@@ -52,6 +54,7 @@ const UserList = () => {
     nextSearch = searchTerm,
     nextReferralSource = referralSource,
     nextEmployeeId = selectedEmployeeId,
+    nextKycStatus = kycStatus,
   } = {}) => {
     const requestId = latestRequestId.current + 1;
     latestRequestId.current = requestId;
@@ -64,6 +67,7 @@ const UserList = () => {
       const resData = await adminService.getUsers(nextPage, nextLimit, String(nextSearch || '').trim(), {
         referralSource: nextReferralSource,
         employeeId: nextEmployeeId,
+        kycStatus: nextKycStatus,
       });
       if (requestId !== latestRequestId.current) return;
 
@@ -76,6 +80,7 @@ const UserList = () => {
           phone: u.mobile || 'N/A',
           profileImage: u.profileImage || '',
           governmentIdProof: u.governmentIdProof || null,
+          kyc: u.kyc || { status: 'not_started' },
           acquiredByEmployeeId: u.acquiredByEmployeeId || '',
           acquiredByEmployeeCode: u.acquiredByEmployeeCode || '',
           acquiredByEmployeeName: u.acquiredByEmployeeName || '',
@@ -96,7 +101,7 @@ const UserList = () => {
         setIsRefreshing(false);
       }
     }
-  }, [itemsPerPage, page, referralSource, searchTerm, selectedEmployeeId]);
+  }, [itemsPerPage, kycStatus, page, referralSource, searchTerm, selectedEmployeeId]);
 
   useEffect(() => {
     let mounted = true;
@@ -138,11 +143,12 @@ const UserList = () => {
         nextSearch: trimmedSearch,
         nextReferralSource: referralSource,
         nextEmployeeId: selectedEmployeeId,
+        nextKycStatus: kycStatus,
       });
     }, trimmedSearch ? 350 : 0);
 
     return () => window.clearTimeout(timeoutId);
-  }, [fetchUsers, page, itemsPerPage, referralSource, searchTerm, selectedEmployeeId]);
+  }, [fetchUsers, page, itemsPerPage, kycStatus, referralSource, searchTerm, selectedEmployeeId]);
 
   useEffect(() => {
     const closeMenu = () => setActiveMenu(null);
@@ -314,6 +320,22 @@ const UserList = () => {
         </div>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
           <div className="flex flex-col gap-1">
+            <label className="text-xs font-bold text-gray-500">KYC</label>
+            <select
+              value={kycStatus}
+              onChange={(e) => {
+                setKycStatus(e.target.value);
+                setPage(1);
+              }}
+              className="min-w-[180px] border border-gray-200 rounded-lg px-3 py-2 text-sm font-bold text-gray-800 bg-white focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 outline-none transition-colors"
+            >
+              <option value="">All</option>
+              {Object.entries(KYC_STATUS_META).map(([value, meta]) => (
+                <option key={value} value={value}>{meta.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
             <label className="text-xs font-bold text-gray-500">Referral Source</label>
             <select
               value={referralSource}
@@ -377,6 +399,7 @@ const UserList = () => {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Mobile</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Email</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">ID Proof</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">KYC</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Employee Referral</th>
                 <th className="px-4 py-3 text-center text-xs font-semibold text-gray-900">Status</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-gray-900">Action</th>
@@ -423,6 +446,16 @@ const UserList = () => {
                     ) : (
                       <span className="text-xs font-medium text-rose-500">Missing</span>
                     )}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-700">
+                    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${(KYC_STATUS_META[user.kyc?.status] || KYC_STATUS_META.not_started).className}`}>
+                      {(KYC_STATUS_META[user.kyc?.status] || KYC_STATUS_META.not_started).label}
+                    </span>
+                    {user.kyc?.maskedNumber ? (
+                      <span className="mt-1 block text-[11px] text-gray-500">
+                        {String(user.kyc.documentType || '').replace(/_/g, ' ')} {user.kyc.maskedNumber}
+                      </span>
+                    ) : null}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-700">
                     {user.acquiredByEmployeeName ? (

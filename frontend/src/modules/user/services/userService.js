@@ -9,6 +9,13 @@ export const userService = {
     const response = await api.get('/users/rental-vehicles');
     return response;
   },
+  // Identity verification (QuickeKYC). The admin decides whether it is on,
+  // which documents are accepted and when it is required.
+  getKycConfig: async () => api.get('/users/kyc/config'),
+  getKycStatus: async () => api.get('/users/kyc/status'),
+  requestAadhaarOtp: async (payload) => api.post('/users/kyc/aadhaar/otp', payload),
+  verifyAadhaarOtp: async (payload) => api.post('/users/kyc/aadhaar/verify', payload),
+  verifyKycDocument: async (payload) => api.post('/users/kyc/document', payload),
   // Hourly cab rental packages for a pickup (`lat`, `lng`).
   getHourlyRentalPackages: async (params) => {
     const response = await api.get('/users/hourly-rental-packages', { params });

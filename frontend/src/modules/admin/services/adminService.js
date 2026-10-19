@@ -29,6 +29,9 @@ export const adminService = {
     if (String(filters.referralSource || '').trim()) {
       params.set('referralSource', String(filters.referralSource).trim());
     }
+    if (String(filters.kycStatus || '').trim()) {
+      params.set('kycStatus', String(filters.kycStatus).trim());
+    }
     return api.get(`/admin/users?${params.toString()}`);
   },
   getEmployees: (page = 1, limit = 50, search = '') => {
@@ -372,6 +375,11 @@ export const adminService = {
   updateRechargeApiSettings: (data) => api.patch('/admin/integration-settings/recharge-api', data),
   generateRechargeApiToken: () => api.post('/admin/integration-settings/recharge-api/generate-token'),
   testRechargeApiSettings: () => api.post('/admin/integration-settings/recharge-api/test'),
+  getUserKycSettings: () => api.get('/admin/integration-settings/user-kyc'),
+  updateUserKycSettings: (data) => api.patch('/admin/integration-settings/user-kyc', data),
+  testUserKycSettings: () => api.post('/admin/integration-settings/user-kyc/test'),
+  getUserKyc: (userId) => api.get(`/admin/users/${userId}/kyc`),
+  reviewUserKyc: (userId, data) => api.patch(`/admin/users/${userId}/kyc`, data),
 
   /**
    * Onboarding Screens Management

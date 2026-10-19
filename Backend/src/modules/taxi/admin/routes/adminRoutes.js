@@ -273,6 +273,13 @@ import {
 } from '../controllers/cancellationReasonController.js';
 import { promotionsRouter } from '../promotions/routes/index.js';
 import { listSafetyAlerts, resolveSafetyAlert } from '../../safety/controllers/safetyController.js';
+import {
+  getUserKyc,
+  getUserKycSettings,
+  reviewUserKyc,
+  saveUserKycSettings,
+  testUserKycSettings,
+} from '../controllers/userKycAdminController.js';
 
 export const adminRouter = Router();
 
@@ -306,6 +313,8 @@ adminRouter.delete('/admin/users/deleted/:id', permanentlyDeleteDeletedUser);
 adminRouter.get('/admin/users/delete-requests', getUserDeletionRequests);
 adminRouter.patch('/admin/users/delete-requests/:id/approve', approveUserDeletionRequest);
 adminRouter.patch('/admin/users/delete-requests/:id/reject', rejectUserDeletionRequest);
+adminRouter.get('/admin/users/:id/kyc', getUserKyc);
+adminRouter.patch('/admin/users/:id/kyc', reviewUserKyc);
 adminRouter.get('/admin/users/:id', getUser);
 adminRouter.get('/admin/employees/:id', getEmployee);
 adminRouter.patch('/admin/employees/:id', updateEmployee);
@@ -547,6 +556,9 @@ adminRouter.get('/admin/integration-settings/recharge-api', getRechargeApiSettin
 adminRouter.patch('/admin/integration-settings/recharge-api', updateRechargeApiSettings);
 adminRouter.post('/admin/integration-settings/recharge-api/generate-token', generateRechargeApiToken);
 adminRouter.post('/admin/integration-settings/recharge-api/test', runRechargeApiTest);
+adminRouter.get('/admin/integration-settings/user-kyc', getUserKycSettings);
+adminRouter.patch('/admin/integration-settings/user-kyc', saveUserKycSettings);
+adminRouter.post('/admin/integration-settings/user-kyc/test', testUserKycSettings);
 
 adminRouter.get('/admin/general-settings/:category', getGeneralSettingsCategory);
 adminRouter.patch('/admin/general-settings/:category', updateGeneralSettingsCategory);

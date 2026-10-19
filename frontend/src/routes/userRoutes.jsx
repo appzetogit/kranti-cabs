@@ -33,6 +33,7 @@ import {
   PaymentSettings,
   Profile,
   ProfileSettings,
+  VerifyIdentity,
   PromoCodes,
   RentalConfirmed,
   RentalDeposit,
@@ -144,6 +145,7 @@ const userRoutes = (
       <Route path="/taxi/user/wallet" element={<Wallet />} />
 
       <Route path="/taxi/user/profile/settings" element={<ProfileSettings />} />
+      <Route path="/taxi/user/profile/kyc" element={<VerifyIdentity />} />
       <Route path="/taxi/user/profile/payments" element={<PaymentSettings />} />
       <Route path="/taxi/user/profile/addresses" element={<AddressSettings />} />
       <Route path="/taxi/user/profile/bus-bookings" element={<BusBookings />} />

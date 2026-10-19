@@ -35,6 +35,7 @@ import {
   PaymentSettings,
   Profile,
   ProfileSettings,
+  VerifyIdentity,
   PromoCodes,
   RazorpayLaunchPage,
   RazorpayStatusPage,
@@ -157,6 +158,7 @@ const publicRoutes = (
       <Route path="/wallet" element={<Wallet />} />
 
       <Route path="/profile/settings" element={<ProfileSettings />} />
+      <Route path="/profile/kyc" element={<VerifyIdentity />} />
       <Route path="/profile/payments" element={<PaymentSettings />} />
       <Route path="/profile/addresses" element={<AddressSettings />} />
       <Route path="/profile/notifications" element={<UserNotifications />} />
