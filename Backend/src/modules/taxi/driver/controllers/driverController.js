@@ -36,6 +36,7 @@ import {
 } from "../services/authService.js";
 import { cancelScheduledRideByDriver, emitToDriver } from "../../services/dispatchService.js";
 import { notifyLateAvailableDriver } from "../../services/dispatchService.js";
+import { serializeRideRental } from "../../services/rentalPackageService.js";
 import { findZoneByPickup } from "../services/locationService.js";
 import { listDriverServiceLocations } from "../services/serviceLocationService.js";
 import {
@@ -2730,6 +2731,7 @@ const serializeDriverScheduledRide = (ride = {}, currentDriverId = "") => ({
   scheduledAt: ride.scheduledAt || null,
   parcel: ride.parcel || null,
   intercity: ride.intercity || null,
+  rental: serializeRideRental(ride.rental),
   driverId: ride.driverId ? String(ride.driverId) : null,
   isAssignedToCurrentDriver:
     Boolean(ride.driverId) && String(ride.driverId) === String(currentDriverId || ""),
@@ -3195,6 +3197,7 @@ export const getDriverScheduledRides = async (req, res) => {
         "driverId",
         "parcel",
         "intercity",
+        "rental",
         "vehicleTypeId",
         "dispatchVehicleTypeIds",
         "service_location_id",
