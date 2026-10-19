@@ -19,6 +19,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { adminService } from '../../services/adminService';
+import { KYC_STATUS_META } from '../../constants/kycStatus';
 
 const ACTION_MENU_WIDTH = 220;
 const ACTION_MENU_GAP = 8;
@@ -142,6 +143,7 @@ const PendingDrivers = () => {
           reason: d.rejectionReason || d.rejected_reason || '-',
           rating: d.rating || 0.0,
           registeredAt: d.createdAt || null,
+          kyc: d.kyc || { status: 'not_started' },
         }));
 
       setPendingDrivers(pending);
@@ -314,6 +316,7 @@ const PendingDrivers = () => {
                 <th className="px-3 py-2">Mobile</th>
                 <th className="px-3 py-2">Type</th>
                 <th className="px-3 py-2 text-center">Docs</th>
+                <th className="px-3 py-2 text-center">KYC</th>
                 <th className="px-3 py-2 text-center">Status</th>
                 <th className="px-3 py-2">Registered</th>
                 <th className="px-3 py-2 text-right">Action</th>
@@ -322,11 +325,11 @@ const PendingDrivers = () => {
             <tbody className="divide-y divide-gray-100 text-xs text-gray-700">
               {isLoading ? (
                 <tr>
-                  <td colSpan="9" className="px-3 py-6 text-center text-gray-400">Loading pending drivers...</td>
+                  <td colSpan="10" className="px-3 py-6 text-center text-gray-400">Loading pending drivers...</td>
                 </tr>
               ) : pendingDrivers.length === 0 ? (
                 <tr>
-                  <td colSpan="9" className="px-3 py-6 text-center text-gray-400">No pending drivers found.</td>
+                  <td colSpan="10" className="px-3 py-6 text-center text-gray-400">No pending drivers found.</td>
                 </tr>
               ) : (
                 pendingDrivers.map((driver) => (
@@ -347,6 +350,16 @@ const PendingDrivers = () => {
                         title="View Documents"
                       >
                         <FileText size={12} />
+                      </button>
+                    </td>
+                    <td className="px-3 py-1.5 text-center">
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/admin/drivers/${driver.id}?tab=KYC`, { state: { from: '/admin/drivers/pending' } })}
+                        className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${(KYC_STATUS_META[driver.kyc?.status] || KYC_STATUS_META.not_started).className}`}
+                        title="View KYC"
+                      >
+                        {(KYC_STATUS_META[driver.kyc?.status] || KYC_STATUS_META.not_started).label}
                       </button>
                     </td>
                     <td className="px-3 py-1.5 text-center">

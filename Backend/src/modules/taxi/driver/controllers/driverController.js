@@ -37,6 +37,7 @@ import {
 import { cancelScheduledRideByDriver, emitToDriver } from "../../services/dispatchService.js";
 import { notifyLateAvailableDriver } from "../../services/dispatchService.js";
 import { serializeRideRental } from "../../services/rentalPackageService.js";
+import { assertDriverKycForOnline } from "../../services/userKycService.js";
 import { findZoneByPickup } from "../services/locationService.js";
 import { listDriverServiceLocations } from "../services/serviceLocationService.js";
 import {
@@ -2853,6 +2854,12 @@ export const goOnline = async (req, res) => {
     throw new ApiError(404, "Driver not found");
   }
 
+  // Admin's driver verification rule (off unless switched on). 403
+  // DRIVER_KYC_REQUIRED, which the driver app answers with its KYC screen.
+  // Checked before the selfie so a driver is not asked for one only to be
+  // turned away.
+  await assertDriverKycForOnline({ driverId: existingDriver._id });
+
   const todayKey = new Date().toISOString().slice(0, 10);
   const hasTodaySelfie =
     String(existingDriver.onlineSelfie?.forDate || "") === todayKey &&
@@ -2861,6 +2868,7 @@ export const goOnline = async (req, res) => {
   if (!hasTodaySelfie && !String(selfieImageUrl || "").trim()) {
     throw new ApiError(400, "A selfie is required before going online today");
   }
+
 
   if (!existingDriver.owner_id) {
     await ensureDriverWalletCanAcceptRide(existingDriver);

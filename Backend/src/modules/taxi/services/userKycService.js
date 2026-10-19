@@ -1,15 +1,19 @@
 /**
- * Rider identity verification (KYC) through QuickeKYC.
+ * Identity verification (KYC) through QuickeKYC, for riders and drivers.
  *
- * Everything the admin controls lives in the third-party settings document
- * under `user_kyc`: the on/off switch, which documents a rider may use, when
- * verification is required, and the QuickeKYC credentials. With the switch off
- * nothing here blocks anyone.
+ * Everything the admin controls lives in the third-party settings document:
+ * `user_kyc` holds the rider rules and the QuickeKYC connection (shared by
+ * both), `driver_kyc` holds the driver rules. Each has its own on/off switch,
+ * accepted documents and "when required" rule; with a switch off nothing here
+ * blocks that kind of account.
  *
  * Aadhaar is a two-step OTP check; PAN, driving licence and voter ID are one
- * call. A verified name that does not match the rider's profile, or a
- * document already verified on another account, is parked as 'needs_review'
- * for an admin instead of being trusted.
+ * call. A verified name that does not match the profile, or a document
+ * already verified on another account of the same kind, is parked as
+ * 'needs_review' for an admin instead of being trusted.
+ *
+ * Every exported function takes `subject` ('user' by default, or 'driver');
+ * `userId` is the id of whichever account that is.
  */
 import crypto from 'node:crypto';
 import mongoose from 'mongoose';
@@ -17,6 +21,7 @@ import { env } from '../../../config/env.js';
 import { ApiError } from '../../../utils/ApiError.js';
 import { AdminThirdPartySetting } from '../admin/models/AdminThirdPartySetting.js';
 import { createDefaultThirdPartySettings } from '../admin/data/defaultThirdPartySettings.js';
+import { Driver } from '../driver/models/Driver.js';
 import { User } from '../user/models/User.js';
 import { UserKycAttempt } from '../user/models/UserKycAttempt.js';
 import { createQuickEkycClient, KycProviderError, QUICKEKYC_DEFAULTS } from './quickEkycProvider.js';
@@ -28,7 +33,7 @@ export const KYC_DOCUMENTS = Object.freeze({
   voter_id: { label: 'Voter ID', flow: 'instant', hint: 'EPIC number, e.g. ABC1234567' },
 });
 
-// When the rider must be verified:
+// When a rider must be verified:
 //   optional          never blocks; shows a "Verified" badge once done
 //   after_signup      the apps send the rider to KYC right after login, and
 //                     bookings are blocked until verified
@@ -36,10 +41,43 @@ export const KYC_DOCUMENTS = Object.freeze({
 //   rental_outstation blocks hourly rental and intercity bookings only
 export const KYC_REQUIREMENT_MODES = ['optional', 'after_signup', 'before_booking', 'rental_outstation'];
 
+// When a driver must be verified:
+//   optional             never blocks
+//   before_approval      an admin cannot approve the driver until verified;
+//                        the driver app shows KYC as an onboarding step
+//   before_going_online  the driver cannot go online until verified
+export const DRIVER_KYC_REQUIREMENT_MODES = ['optional', 'before_approval', 'before_going_online'];
+
+const SUBJECTS = {
+  user: {
+    label: 'rider',
+    settingsKey: 'user_kyc',
+    modes: KYC_REQUIREMENT_MODES,
+    defaultMode: 'before_booking',
+    defaultDocuments: ['aadhaar', 'pan', 'driving_license', 'voter_id'],
+    model: () => User,
+  },
+  driver: {
+    label: 'driver',
+    settingsKey: 'driver_kyc',
+    modes: DRIVER_KYC_REQUIREMENT_MODES,
+    defaultMode: 'before_approval',
+    // A driver must hold a licence, so it is the sensible default.
+    defaultDocuments: ['driving_license', 'aadhaar'],
+    model: () => Driver,
+  },
+};
+
+const subjectConfig = (subject = 'user') => {
+  const config = SUBJECTS[subject];
+  if (!config) throw new ApiError(400, 'Unknown verification subject');
+  return config;
+};
+
 export const DEFAULT_USER_KYC_SETTINGS = Object.freeze({
   enabled: false,
   required_for: 'before_booking',
-  allowed_documents: ['aadhaar', 'pan', 'driving_license', 'voter_id'],
+  allowed_documents: SUBJECTS.user.defaultDocuments,
   // 'review' parks a name mismatch for an admin; 'ignore' accepts it.
   name_mismatch: 'review',
   max_attempts_per_day: 5,
@@ -51,34 +89,36 @@ const MASK = '••••••••';
 
 const toBool = (value) => value === true || value === 1 || ['1', 'true', 'yes', 'on'].includes(String(value).toLowerCase());
 
-const normalizeSettings = (raw = {}) => {
-  const providerRaw = raw.provider || {};
+const normalizeProvider = (providerRaw = {}) => ({
+  environment: ['mock', 'sandbox', 'live'].includes(providerRaw.environment) ? providerRaw.environment : QUICKEKYC_DEFAULTS.environment,
+  base_url: String(providerRaw.base_url || QUICKEKYC_DEFAULTS.base_url).trim(),
+  api_key: String(providerRaw.api_key || '').trim(),
+  auth_mode: providerRaw.auth_mode === 'header' ? 'header' : 'body',
+  auth_field: String(providerRaw.auth_field || QUICKEKYC_DEFAULTS.auth_field).trim(),
+  auth_prefix: String(providerRaw.auth_prefix ?? QUICKEKYC_DEFAULTS.auth_prefix).trim(),
+  timeout_ms: Math.min(60000, Math.max(3000, Number(providerRaw.timeout_ms) || QUICKEKYC_DEFAULTS.timeout_ms)),
+  endpoints: Object.fromEntries(
+    Object.entries(QUICKEKYC_DEFAULTS.endpoints).map(([key, fallback]) => [
+      key,
+      String(providerRaw.endpoints?.[key] || fallback).trim(),
+    ]),
+  ),
+});
+
+/// The rules for one kind of account (no provider).
+const normalizeRules = (raw = {}, subject = 'user') => {
+  const { modes, defaultMode, defaultDocuments } = subjectConfig(subject);
   const allowed = Array.isArray(raw.allowed_documents)
     ? raw.allowed_documents.filter((type) => KYC_DOCUMENTS[type])
-    : DEFAULT_USER_KYC_SETTINGS.allowed_documents;
+    : defaultDocuments;
 
   return {
-    enabled: toBool(raw.enabled ?? DEFAULT_USER_KYC_SETTINGS.enabled),
-    required_for: KYC_REQUIREMENT_MODES.includes(raw.required_for) ? raw.required_for : DEFAULT_USER_KYC_SETTINGS.required_for,
+    enabled: toBool(raw.enabled ?? false),
+    required_for: modes.includes(raw.required_for) ? raw.required_for : defaultMode,
     allowed_documents: [...new Set(allowed)],
     name_mismatch: raw.name_mismatch === 'ignore' ? 'ignore' : 'review',
     max_attempts_per_day: Math.min(50, Math.max(1, Number(raw.max_attempts_per_day) || DEFAULT_USER_KYC_SETTINGS.max_attempts_per_day)),
     otp_expiry_minutes: Math.min(30, Math.max(2, Number(raw.otp_expiry_minutes) || DEFAULT_USER_KYC_SETTINGS.otp_expiry_minutes)),
-    provider: {
-      environment: ['mock', 'sandbox', 'live'].includes(providerRaw.environment) ? providerRaw.environment : QUICKEKYC_DEFAULTS.environment,
-      base_url: String(providerRaw.base_url || QUICKEKYC_DEFAULTS.base_url).trim(),
-      api_key: String(providerRaw.api_key || '').trim(),
-      auth_mode: providerRaw.auth_mode === 'header' ? 'header' : 'body',
-      auth_field: String(providerRaw.auth_field || QUICKEKYC_DEFAULTS.auth_field).trim(),
-      auth_prefix: String(providerRaw.auth_prefix ?? QUICKEKYC_DEFAULTS.auth_prefix).trim(),
-      timeout_ms: Math.min(60000, Math.max(3000, Number(providerRaw.timeout_ms) || QUICKEKYC_DEFAULTS.timeout_ms)),
-      endpoints: Object.fromEntries(
-        Object.entries(QUICKEKYC_DEFAULTS.endpoints).map(([key, fallback]) => [
-          key,
-          String(providerRaw.endpoints?.[key] || fallback).trim(),
-        ]),
-      ),
-    },
   };
 };
 
@@ -88,64 +128,79 @@ const loadSettingsDoc = async () => {
   return doc;
 };
 
-export const getUserKycSettings = async () => {
-  const doc = await AdminThirdPartySetting.findOne({ scope: 'default' }).select('user_kyc').lean();
-  return normalizeSettings(doc?.user_kyc || {});
+/// Rules for `subject` plus the shared QuickeKYC connection.
+export const getUserKycSettings = async (subject = 'user') => {
+  const doc = await AdminThirdPartySetting.findOne({ scope: 'default' }).select('user_kyc driver_kyc').lean();
+  const { settingsKey } = subjectConfig(subject);
+  return {
+    ...normalizeRules(doc?.[settingsKey] || {}, subject),
+    provider: normalizeProvider(doc?.user_kyc?.provider || {}),
+  };
 };
 
 const maskKey = (key) => (key ? `${MASK}${key.slice(-4)}` : '');
 
-/// Admin view: the API key is masked, never sent back in full.
+/// Admin view of both rule sets; the API key is masked, never sent in full.
 export const getUserKycSettingsForAdmin = async () => {
-  const settings = await getUserKycSettings();
+  const [riders, drivers] = await Promise.all([getUserKycSettings('user'), getUserKycSettings('driver')]);
+  const { provider, ...driverRules } = drivers;
   return {
-    settings: { ...settings, provider: { ...settings.provider, api_key: maskKey(settings.provider.api_key) } },
+    settings: { ...riders, provider: { ...riders.provider, api_key: maskKey(provider.api_key) } },
+    driver_settings: driverRules,
     metadata: {
       documents: KYC_DOCUMENTS,
       requirement_modes: KYC_REQUIREMENT_MODES,
-      api_key_configured: Boolean(settings.provider.api_key),
+      driver_requirement_modes: DRIVER_KYC_REQUIREMENT_MODES,
+      api_key_configured: Boolean(provider.api_key),
     },
   };
 };
 
-export const updateUserKycSettings = async (payload = {}) => {
-  const doc = await loadSettingsDoc();
-  const current = normalizeSettings(doc.user_kyc || {});
-  const incomingProvider = payload.provider || {};
-  // A masked or blank key in the form means "keep the saved one".
-  const incomingKey = String(incomingProvider.api_key ?? '').trim();
-  const apiKey = !incomingKey || incomingKey.startsWith(MASK) ? current.provider.api_key : incomingKey;
-
-  const next = normalizeSettings({
-    ...current,
-    ...payload,
-    provider: {
-      ...current.provider,
-      ...incomingProvider,
-      api_key: apiKey,
-      endpoints: { ...current.provider.endpoints, ...(incomingProvider.endpoints || {}) },
-    },
-  });
-
-  if (next.enabled && !next.allowed_documents.length) {
-    throw new ApiError(400, 'Choose at least one document riders can verify with');
+const assertRulesUsable = (rules, provider, label) => {
+  if (rules.enabled && !rules.allowed_documents.length) {
+    throw new ApiError(400, `Choose at least one document ${label}s can verify with`);
   }
-  if (next.enabled && next.provider.environment !== 'mock' && !next.provider.api_key) {
+  if (rules.enabled && provider.environment !== 'mock' && !provider.api_key) {
     throw new ApiError(400, 'Add the QuickeKYC API key before switching verification on');
   }
+};
 
-  doc.user_kyc = next;
+/// Rider rules and the connection at the top level (as before); driver rules
+/// under `driver`.
+export const updateUserKycSettings = async (payload = {}) => {
+  const doc = await loadSettingsDoc();
+  const currentRiders = normalizeRules(doc.user_kyc || {}, 'user');
+  const currentDrivers = normalizeRules(doc.driver_kyc || {}, 'driver');
+  const currentProvider = normalizeProvider(doc.user_kyc?.provider || {});
+
+  const { driver: driverPayload, provider: providerPayload, ...riderPayload } = payload || {};
+  // A masked or blank key in the form means "keep the saved one".
+  const incomingKey = String(providerPayload?.api_key ?? '').trim();
+  const provider = normalizeProvider({
+    ...currentProvider,
+    ...(providerPayload || {}),
+    api_key: !incomingKey || incomingKey.startsWith(MASK) ? currentProvider.api_key : incomingKey,
+    endpoints: { ...currentProvider.endpoints, ...(providerPayload?.endpoints || {}) },
+  });
+  const riders = normalizeRules({ ...currentRiders, ...riderPayload }, 'user');
+  const drivers = normalizeRules({ ...currentDrivers, ...(driverPayload || {}) }, 'driver');
+
+  assertRulesUsable(riders, provider, 'rider');
+  assertRulesUsable(drivers, provider, 'driver');
+
+  doc.user_kyc = { ...riders, provider };
+  doc.driver_kyc = drivers;
   doc.markModified('user_kyc');
+  doc.markModified('driver_kyc');
   await doc.save();
   return getUserKycSettingsForAdmin();
 };
 
 /// Checks the saved configuration without spending a paid verification.
 export const testUserKycConnection = async () => {
-  const settings = await getUserKycSettings();
-  const { provider } = settings;
+  const { provider } = await getUserKycSettings('user');
   if (provider.environment === 'mock') {
-    return { ok: true, message: `Mock mode: no calls are made. Aadhaar OTP is 123456.` };
+    return { ok: true, message: 'Mock mode: no calls are made. Aadhaar OTP is 123456.' };
   }
   if (!provider.api_key) return { ok: false, message: 'API key is missing' };
 
@@ -159,8 +214,8 @@ export const testUserKycConnection = async () => {
 };
 
 /// What the apps need to render the KYC screen. No secrets.
-export const getPublicKycConfig = async () => {
-  const settings = await getUserKycSettings();
+export const getPublicKycConfig = async (subject = 'user') => {
+  const settings = await getUserKycSettings(subject);
   return {
     enabled: settings.enabled,
     requiredFor: settings.required_for,
@@ -241,24 +296,30 @@ export const namesMatch = (profileName, documentName) => {
 
 const logAttempt = (entry) => UserKycAttempt.create(entry).catch(() => null);
 
-const loadUserForKyc = async (userId) => {
-  const user = await User.findById(userId);
-  if (!user) throw new ApiError(404, 'User not found');
-  if (!user.kyc) user.kyc = {};
-  return user;
+const loadAccount = async (id, subject) => {
+  const account = await subjectConfig(subject).model().findById(id);
+  if (!account) throw new ApiError(404, subject === 'driver' ? 'Driver not found' : 'User not found');
+  if (!account.kyc) account.kyc = {};
+  return account;
 };
 
-const assertCanAttempt = async ({ settings, user, documentType }) => {
+/// Riders carry an `isVerified` flag the rest of the app reads; drivers don't.
+const setVerifiedFlag = (account, subject, value) => {
+  if (subject === 'user') account.isVerified = value;
+};
+
+const assertCanAttempt = async ({ settings, account, subject, documentType }) => {
   if (!settings.enabled) throw new ApiError(400, 'Identity verification is not enabled');
   if (!settings.allowed_documents.includes(documentType)) {
     throw new ApiError(400, `${KYC_DOCUMENTS[documentType]?.label || 'This document'} is not accepted for verification`);
   }
-  if (user.kyc?.status === 'verified') throw new ApiError(409, 'Your identity is already verified');
-  if (user.kyc?.status === 'needs_review') throw new ApiError(409, 'Your verification is being reviewed');
+  if (account.kyc?.status === 'verified') throw new ApiError(409, 'Your identity is already verified');
+  if (account.kyc?.status === 'needs_review') throw new ApiError(409, 'Your verification is being reviewed');
 
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const recent = await UserKycAttempt.countDocuments({
-    userId: user._id,
+    userId: account._id,
+    subjectType: subject,
     step: { $in: ['otp_request', 'document'] },
     createdAt: { $gte: since },
   });
@@ -267,9 +328,11 @@ const assertCanAttempt = async ({ settings, user, documentType }) => {
   }
 };
 
-/// Another account already verified with this document.
-const findDuplicateOwner = (userId, numberHash) =>
-  User.findOne({ _id: { $ne: userId }, 'kyc.numberHash': numberHash, 'kyc.status': { $in: ['verified', 'needs_review'] } })
+/// Another account of the same kind already verified with this document. A
+/// rider who is also a driver may use the same Aadhaar for both.
+const findDuplicateOwner = (subject, accountId, numberHash) =>
+  subjectConfig(subject).model()
+    .findOne({ _id: { $ne: accountId }, 'kyc.numberHash': numberHash, 'kyc.status': { $in: ['verified', 'needs_review'] } })
     .select('_id')
     .lean();
 
@@ -280,9 +343,9 @@ const providerFailure = (error) => {
   return error;
 };
 
-const finalize = async ({ user, settings, documentType, maskedNumber, numberHash, identity }) => {
-  const duplicate = await findDuplicateOwner(user._id, numberHash);
-  const nameOk = settings.name_mismatch === 'ignore' || !identity.name || namesMatch(user.name, identity.name);
+const finalize = async ({ account, subject, settings, documentType, maskedNumber, numberHash, identity }) => {
+  const duplicate = await findDuplicateOwner(subject, account._id, numberHash);
+  const nameOk = settings.name_mismatch === 'ignore' || !identity.name || namesMatch(account.name, identity.name);
 
   let status = 'verified';
   let reviewReason = '';
@@ -291,10 +354,10 @@ const finalize = async ({ user, settings, documentType, maskedNumber, numberHash
     reviewReason = 'This document is already verified on another account';
   } else if (!nameOk) {
     status = 'needs_review';
-    reviewReason = `Name on document (${identity.name}) does not match profile name (${user.name || '-'})`;
+    reviewReason = `Name on document (${identity.name}) does not match profile name (${account.name || '-'})`;
   }
 
-  Object.assign(user.kyc, {
+  Object.assign(account.kyc, {
     status,
     documentType,
     maskedNumber,
@@ -312,12 +375,13 @@ const finalize = async ({ user, settings, documentType, maskedNumber, numberHash
     failureReason: '',
     verifiedAt: status === 'verified' ? new Date() : null,
   });
-  user.isVerified = status === 'verified';
-  user.markModified('kyc');
-  await user.save();
+  setVerifiedFlag(account, subject, status === 'verified');
+  account.markModified('kyc');
+  await account.save();
 
   await logAttempt({
-    userId: user._id,
+    userId: account._id,
+    subjectType: subject,
     documentType,
     maskedNumber,
     step: documentType === 'aadhaar' ? 'otp_submit' : 'document',
@@ -326,39 +390,39 @@ const finalize = async ({ user, settings, documentType, maskedNumber, numberHash
     environment: settings.provider.environment,
   });
 
-  return serializeUserKyc(user);
+  return serializeUserKyc(account);
 };
 
-const recordFailure = async ({ user, settings, documentType, maskedNumber, step, message }) => {
-  user.kyc.status = 'failed';
-  user.kyc.failureReason = message;
-  user.kyc.documentType = documentType;
-  user.markModified('kyc');
-  await user.save();
-  await logAttempt({ userId: user._id, documentType, maskedNumber, step, outcome: 'failed', message, environment: settings.provider.environment });
+const recordFailure = async ({ account, subject, settings, documentType, maskedNumber, step, message }) => {
+  account.kyc.status = 'failed';
+  account.kyc.failureReason = message;
+  account.kyc.documentType = documentType;
+  account.markModified('kyc');
+  await account.save();
+  await logAttempt({ userId: account._id, subjectType: subject, documentType, maskedNumber, step, outcome: 'failed', message, environment: settings.provider.environment });
 };
 
-export const startAadhaarVerification = async ({ userId, aadhaarNumber }) => {
-  const settings = await getUserKycSettings();
-  const user = await loadUserForKyc(userId);
-  await assertCanAttempt({ settings, user, documentType: 'aadhaar' });
+export const startAadhaarVerification = async ({ userId, aadhaarNumber, subject = 'user' }) => {
+  const settings = await getUserKycSettings(subject);
+  const account = await loadAccount(userId, subject);
+  await assertCanAttempt({ settings, account, subject, documentType: 'aadhaar' });
 
   const number = normalizeDocumentNumber('aadhaar', aadhaarNumber);
   const maskedNumber = maskNumber(number);
   const client = createQuickEkycClient(settings.provider);
 
-  user.kyc.attempts = Number(user.kyc.attempts || 0) + 1;
-  user.kyc.lastAttemptAt = new Date();
+  account.kyc.attempts = Number(account.kyc.attempts || 0) + 1;
+  account.kyc.lastAttemptAt = new Date();
 
   let requestId;
   try {
     ({ requestId } = await client.startAadhaarOtp(number));
   } catch (error) {
-    await recordFailure({ user, settings, documentType: 'aadhaar', maskedNumber, step: 'otp_request', message: error.message });
+    await recordFailure({ account, subject, settings, documentType: 'aadhaar', maskedNumber, step: 'otp_request', message: error.message });
     throw providerFailure(error);
   }
 
-  Object.assign(user.kyc, {
+  Object.assign(account.kyc, {
     status: 'otp_sent',
     documentType: 'aadhaar',
     pendingRequestId: requestId,
@@ -367,9 +431,9 @@ export const startAadhaarVerification = async ({ userId, aadhaarNumber }) => {
     pendingMaskedNumber: maskedNumber,
     failureReason: '',
   });
-  user.markModified('kyc');
-  await user.save();
-  await logAttempt({ userId: user._id, documentType: 'aadhaar', maskedNumber, step: 'otp_request', outcome: 'sent', environment: settings.provider.environment });
+  account.markModified('kyc');
+  await account.save();
+  await logAttempt({ userId: account._id, subjectType: subject, documentType: 'aadhaar', maskedNumber, step: 'otp_request', outcome: 'sent', environment: settings.provider.environment });
 
   return {
     status: 'otp_sent',
@@ -379,18 +443,18 @@ export const startAadhaarVerification = async ({ userId, aadhaarNumber }) => {
   };
 };
 
-export const submitAadhaarOtp = async ({ userId, otp }) => {
-  const settings = await getUserKycSettings();
-  const user = await loadUserForKyc(userId);
+export const submitAadhaarOtp = async ({ userId, otp, subject = 'user' }) => {
+  const settings = await getUserKycSettings(subject);
+  const account = await loadAccount(userId, subject);
   if (!settings.enabled) throw new ApiError(400, 'Identity verification is not enabled');
 
   const cleanOtp = String(otp || '').replace(/\D/g, '');
   if (!/^[0-9]{4,8}$/.test(cleanOtp)) throw new ApiError(400, 'Enter the OTP sent to your Aadhaar-linked mobile');
 
-  const { pendingRequestId, pendingRequestAt, pendingNumberHash, pendingMaskedNumber } = user.kyc || {};
+  const { pendingRequestId, pendingRequestAt, pendingNumberHash, pendingMaskedNumber } = account.kyc || {};
   const expired = !pendingRequestAt ||
     Date.now() - new Date(pendingRequestAt).getTime() > settings.otp_expiry_minutes * 60 * 1000;
-  if (user.kyc?.status !== 'otp_sent' || !pendingRequestId || expired) {
+  if (account.kyc?.status !== 'otp_sent' || !pendingRequestId || expired) {
     throw new ApiError(400, 'OTP expired. Please request a new one.', { code: 'KYC_OTP_EXPIRED' });
   }
 
@@ -399,15 +463,16 @@ export const submitAadhaarOtp = async ({ userId, otp }) => {
   try {
     identity = await client.submitAadhaarOtp(pendingRequestId, cleanOtp);
   } catch (error) {
-    // A wrong OTP keeps the request open so the rider can retype it.
+    // A wrong OTP keeps the request open so the person can retype it.
     if (error instanceof KycProviderError && error.code === 'KYC_VERIFICATION_FAILED') {
-      await logAttempt({ userId: user._id, documentType: 'aadhaar', maskedNumber: pendingMaskedNumber, step: 'otp_submit', outcome: 'failed', message: error.message, environment: settings.provider.environment });
+      await logAttempt({ userId: account._id, subjectType: subject, documentType: 'aadhaar', maskedNumber: pendingMaskedNumber, step: 'otp_submit', outcome: 'failed', message: error.message, environment: settings.provider.environment });
     }
     throw providerFailure(error);
   }
 
   return finalize({
-    user,
+    account,
+    subject,
     settings,
     documentType: 'aadhaar',
     maskedNumber: pendingMaskedNumber,
@@ -416,13 +481,13 @@ export const submitAadhaarOtp = async ({ userId, otp }) => {
   });
 };
 
-export const verifyUserDocument = async ({ userId, documentType, number, dob }) => {
+export const verifyUserDocument = async ({ userId, documentType, number, dob, subject = 'user' }) => {
   if (!KYC_DOCUMENTS[documentType] || documentType === 'aadhaar') {
     throw new ApiError(400, 'Use PAN, driving licence or voter ID here; Aadhaar uses OTP');
   }
-  const settings = await getUserKycSettings();
-  const user = await loadUserForKyc(userId);
-  await assertCanAttempt({ settings, user, documentType });
+  const settings = await getUserKycSettings(subject);
+  const account = await loadAccount(userId, subject);
+  await assertCanAttempt({ settings, account, subject, documentType });
 
   const normalized = normalizeDocumentNumber(documentType, number);
   const maskedNumber = maskNumber(normalized);
@@ -431,20 +496,21 @@ export const verifyUserDocument = async ({ userId, documentType, number, dob }) 
     throw new ApiError(400, 'Enter your date of birth');
   }
 
-  user.kyc.attempts = Number(user.kyc.attempts || 0) + 1;
-  user.kyc.lastAttemptAt = new Date();
+  account.kyc.attempts = Number(account.kyc.attempts || 0) + 1;
+  account.kyc.lastAttemptAt = new Date();
 
   const client = createQuickEkycClient(settings.provider);
   let identity;
   try {
     identity = await client.verifyDocument(documentType, normalized, { dob: cleanDob });
   } catch (error) {
-    await recordFailure({ user, settings, documentType, maskedNumber, step: 'document', message: error.message });
+    await recordFailure({ account, subject, settings, documentType, maskedNumber, step: 'document', message: error.message });
     throw providerFailure(error);
   }
 
   return finalize({
-    user,
+    account,
+    subject,
     settings,
     documentType,
     maskedNumber,
@@ -453,8 +519,8 @@ export const verifyUserDocument = async ({ userId, documentType, number, dob }) 
   });
 };
 
-export const serializeUserKyc = (user) => {
-  const kyc = user?.kyc || {};
+export const serializeUserKyc = (account) => {
+  const kyc = account?.kyc || {};
   return {
     status: kyc.status || 'not_started',
     isVerified: kyc.status === 'verified',
@@ -463,21 +529,21 @@ export const serializeUserKyc = (user) => {
     maskedNumber: kyc.maskedNumber || kyc.pendingMaskedNumber || '',
     verifiedName: kyc.verifiedName || '',
     verifiedAt: kyc.verifiedAt || null,
-    failureReason: kyc.status === 'failed' ? kyc.failureReason || '' : '',
+    failureReason: ['failed', 'rejected'].includes(kyc.status) ? kyc.failureReason || '' : '',
     underReview: kyc.status === 'needs_review',
   };
 };
 
-export const getUserKycStatus = async (userId) => {
-  const [user, config] = await Promise.all([
-    User.findById(userId).select('kyc name').lean(),
-    getPublicKycConfig(),
+export const getUserKycStatus = async (userId, subject = 'user') => {
+  const [account, config] = await Promise.all([
+    subjectConfig(subject).model().findById(userId).select('kyc name').lean(),
+    getPublicKycConfig(subject),
   ]);
-  if (!user) throw new ApiError(404, 'User not found');
-  return { ...serializeUserKyc(user), config };
+  if (!account) throw new ApiError(404, subject === 'driver' ? 'Driver not found' : 'User not found');
+  return { ...serializeUserKyc(account), config };
 };
 
-// ---- booking gate ----------------------------------------------------------
+// ---- gates -----------------------------------------------------------------
 
 const requiresKycFor = (requiredFor, serviceType) => {
   if (requiredFor === 'before_booking' || requiredFor === 'after_signup') return true;
@@ -487,7 +553,7 @@ const requiresKycFor = (requiredFor, serviceType) => {
 
 /// Throws 403 KYC_REQUIRED when this booking needs a verified rider.
 export const assertUserKycForBooking = async ({ userId, serviceType }) => {
-  const settings = await getUserKycSettings();
+  const settings = await getUserKycSettings('user');
   if (!settings.enabled || !requiresKycFor(settings.required_for, String(serviceType || 'ride'))) return;
 
   const user = await User.findById(userId).select('kyc').lean();
@@ -503,60 +569,104 @@ export const assertUserKycForBooking = async ({ userId, serviceType }) => {
   );
 };
 
+const driverKycStatus = async (driverId) => {
+  const driver = await Driver.findById(driverId).select('kyc').lean();
+  return driver?.kyc?.status || 'not_started';
+};
+
+/// Throws 403 DRIVER_KYC_REQUIRED when the admin requires a verified driver to
+/// go online.
+export const assertDriverKycForOnline = async ({ driverId }) => {
+  const settings = await getUserKycSettings('driver');
+  if (!settings.enabled || settings.required_for !== 'before_going_online') return;
+
+  const status = await driverKycStatus(driverId);
+  if (status === 'verified') return;
+
+  throw new ApiError(
+    403,
+    status === 'needs_review'
+      ? 'Your identity verification is under review. You can go online once it is approved.'
+      : 'Please verify your identity before going online.',
+    { code: 'DRIVER_KYC_REQUIRED', kycStatus: status },
+  );
+};
+
+/// Throws 400 DRIVER_KYC_REQUIRED when an admin approves a driver whose
+/// verification the rules require first.
+export const assertDriverKycForApproval = async ({ driverId }) => {
+  const settings = await getUserKycSettings('driver');
+  if (!settings.enabled || settings.required_for !== 'before_approval') return;
+
+  const status = await driverKycStatus(driverId);
+  if (status === 'verified') return;
+
+  throw new ApiError(
+    400,
+    status === 'needs_review'
+      ? 'This driver\'s identity verification needs review. Approve it on the KYC tab first.'
+      : 'This driver has not completed identity verification yet.',
+    { code: 'DRIVER_KYC_REQUIRED', kycStatus: status },
+  );
+};
+
 // ---- admin -----------------------------------------------------------------
 
-export const adminUpdateUserKyc = async ({ userId, action, reason = '', adminId = null }) => {
-  if (!mongoose.Types.ObjectId.isValid(String(userId))) throw new ApiError(400, 'Invalid user id');
-  const user = await loadUserForKyc(userId);
+export const adminUpdateUserKyc = async ({ userId, action, reason = '', adminId = null, subject = 'user' }) => {
+  if (!mongoose.Types.ObjectId.isValid(String(userId))) throw new ApiError(400, 'Invalid id');
+  const account = await loadAccount(userId, subject);
   const note = String(reason || '').trim();
 
   if (action === 'approve') {
-    if (!user.kyc.documentType) throw new ApiError(400, 'This user has not submitted a document yet');
-    user.kyc.status = 'verified';
-    user.kyc.verifiedAt = new Date();
-    user.kyc.reviewReason = note;
-    user.isVerified = true;
+    if (!account.kyc.documentType) throw new ApiError(400, 'No document has been submitted yet');
+    account.kyc.status = 'verified';
+    account.kyc.verifiedAt = new Date();
+    account.kyc.reviewReason = note;
+    setVerifiedFlag(account, subject, true);
   } else if (action === 'reject') {
-    user.kyc.status = 'rejected';
-    user.kyc.failureReason = note || 'Rejected by admin';
-    user.kyc.verifiedAt = null;
-    user.isVerified = false;
+    account.kyc.status = 'rejected';
+    account.kyc.failureReason = note || 'Rejected by admin';
+    account.kyc.verifiedAt = null;
+    setVerifiedFlag(account, subject, false);
   } else if (action === 'reset') {
-    // Lets the rider verify again (also clears the number so it no longer
-    // counts as a duplicate for anyone else).
-    user.kyc = { status: 'not_started' };
-    user.isVerified = false;
+    // Allows verifying again (also clears the number so it no longer counts
+    // as a duplicate for anyone else).
+    account.kyc = { status: 'not_started' };
+    setVerifiedFlag(account, subject, false);
   } else {
     throw new ApiError(400, 'action must be approve, reject or reset');
   }
 
-  user.kyc.reviewedBy = adminId && mongoose.Types.ObjectId.isValid(String(adminId)) ? adminId : null;
-  user.kyc.reviewedAt = new Date();
-  user.markModified('kyc');
-  await user.save();
+  account.kyc.reviewedBy = adminId && mongoose.Types.ObjectId.isValid(String(adminId)) ? adminId : null;
+  account.kyc.reviewedAt = new Date();
+  account.markModified('kyc');
+  await account.save();
 
   await logAttempt({
-    userId: user._id,
-    documentType: user.kyc.documentType || '',
-    maskedNumber: user.kyc.maskedNumber || '',
+    userId: account._id,
+    subjectType: subject,
+    documentType: account.kyc.documentType || '',
+    maskedNumber: account.kyc.maskedNumber || '',
     step: 'admin',
     outcome: action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : 'reset',
     message: note,
-    adminId: user.kyc.reviewedBy,
+    adminId: account.kyc.reviewedBy,
   });
 
-  return { ...serializeUserKyc(user), reviewReason: user.kyc.reviewReason || '' };
+  return { ...serializeUserKyc(account), reviewReason: account.kyc.reviewReason || '' };
 };
 
-export const getUserKycForAdmin = async (userId) => {
-  const user = await User.findById(userId).select('kyc name').lean();
-  if (!user) throw new ApiError(404, 'User not found');
-  const attempts = await UserKycAttempt.find({ userId }).sort({ createdAt: -1 }).limit(20).lean();
+export const getUserKycForAdmin = async (userId, subject = 'user') => {
+  const account = await subjectConfig(subject).model().findById(userId).select('kyc name').lean();
+  if (!account) throw new ApiError(404, subject === 'driver' ? 'Driver not found' : 'User not found');
+  // Rows written before drivers existed have no subjectType: they are riders.
+  const subjectFilter = subject === 'user' ? { subjectType: { $in: ['user', null] } } : { subjectType: subject };
+  const attempts = await UserKycAttempt.find({ userId, ...subjectFilter }).sort({ createdAt: -1 }).limit(20).lean();
   return {
-    ...serializeUserKyc(user),
-    reviewReason: user.kyc?.reviewReason || '',
-    provider: user.kyc?.provider || '',
-    dob: user.kyc?.dob || '',
+    ...serializeUserKyc(account),
+    reviewReason: account.kyc?.reviewReason || '',
+    provider: account.kyc?.provider || '',
+    dob: account.kyc?.dob || '',
     attempts: attempts.map((item) => ({
       id: String(item._id),
       documentType: item.documentType,

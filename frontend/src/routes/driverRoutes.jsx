@@ -17,6 +17,7 @@ import {
   DriverHome,
   DriverIncentives,
   DriverProfile,
+  DriverVerifyIdentity,
   DriverSupportChat,
   DriverWallet,
   EditProfile,
@@ -110,6 +111,7 @@ const driverRoutes = (
     <Route path="chat" element={<Chat />} />
     <Route path="wallet" element={<DriverWallet />} />
     <Route path="profile" element={<DriverProfile />} />
+    <Route path="kyc" element={<DriverVerifyIdentity subject="driver" />} />
     <Route path="profile/bank-details" element={<DriverBankDetailsPage />} />
     <Route path="service-center" element={<ServiceCenterDashboard />} />
     <Route path="service-center/vehicles/new" element={<ServiceCenterVehicleDetails />} />

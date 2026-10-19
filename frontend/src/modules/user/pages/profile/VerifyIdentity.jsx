@@ -3,6 +3,27 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { motion as Motion } from 'framer-motion';
 import { ArrowLeft, BadgeCheck, Clock3, LoaderCircle, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { userService } from '../../services/userService';
+import {
+  getDriverKycStatus,
+  requestDriverAadhaarOtp,
+  verifyDriverAadhaarOtp,
+  verifyDriverKycDocument,
+} from '../../../driver/services/registrationService';
+
+const KYC_API = {
+  user: {
+    getStatus: () => userService.getKycStatus(),
+    requestAadhaarOtp: (payload) => userService.requestAadhaarOtp(payload),
+    verifyAadhaarOtp: (payload) => userService.verifyAadhaarOtp(payload),
+    verifyDocument: (payload) => userService.verifyKycDocument(payload),
+  },
+  driver: {
+    getStatus: getDriverKycStatus,
+    requestAadhaarOtp: requestDriverAadhaarOtp,
+    verifyAadhaarOtp: verifyDriverAadhaarOtp,
+    verifyDocument: verifyDriverKycDocument,
+  },
+};
 
 const unwrap = (response) => response?.data ?? response ?? {};
 const errorMessage = (error, fallback) => error?.message || error?.response?.data?.message || fallback;
@@ -17,13 +38,18 @@ const DOCUMENT_PLACEHOLDERS = {
 const formatAadhaarInput = (value) =>
   value.replace(/\D/g, '').slice(0, 12).replace(/(\d{4})(?=\d)/g, '$1 ');
 
-const VerifyIdentity = () => {
+/// Riders (default) and drivers (`subject="driver"`) verify on this screen.
+const VerifyIdentity = ({ subject = 'user' }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const isDriver = subject === 'driver';
+  const kycApi = KYC_API[isDriver ? 'driver' : 'user'];
   const routePrefix = location.pathname.startsWith('/taxi/user') ? '/taxi/user' : '';
-  // Set when a booking was refused with KYC_REQUIRED: after verifying, the
-  // rider goes back to the screen they booked from.
+  const profileRoute = isDriver ? '/taxi/driver/profile' : `${routePrefix || '/taxi/user'}/profile`;
+  // Set when a booking (rider) or going online (driver) was refused for KYC:
+  // after verifying, go back to that screen.
   const returnToBooking = Boolean(location.state?.returnToBooking);
+  const returnToOnline = Boolean(location.state?.returnToOnline);
 
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState(null);
@@ -38,7 +64,7 @@ const VerifyIdentity = () => {
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      const data = unwrap(await userService.getKycStatus());
+      const data = unwrap(await kycApi.getStatus());
       setStatus(data);
       setDocumentType((current) => current || data?.config?.documents?.[0]?.type || '');
     } catch (loadError) {
@@ -46,7 +72,8 @@ const VerifyIdentity = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subject]);
 
   useEffect(() => {
     load();
@@ -80,11 +107,11 @@ const VerifyIdentity = () => {
     setBusy(true);
     try {
       if (selectedDocument.flow === 'otp' && !otpInfo) {
-        setOtpInfo(unwrap(await userService.requestAadhaarOtp({ aadhaarNumber: number.replace(/\s/g, '') })));
+        setOtpInfo(unwrap(await kycApi.requestAadhaarOtp({ aadhaarNumber: number.replace(/\s/g, '') })));
       } else if (selectedDocument.flow === 'otp') {
-        finish(unwrap(await userService.verifyAadhaarOtp({ otp })));
+        finish(unwrap(await kycApi.verifyAadhaarOtp({ otp })));
       } else {
-        finish(unwrap(await userService.verifyKycDocument({ documentType, number, dob })));
+        finish(unwrap(await kycApi.verifyDocument({ documentType, number, dob })));
       }
     } catch (submitError) {
       if (submitError?.details?.code === 'KYC_OTP_EXPIRED') setOtpInfo(null);
@@ -94,7 +121,7 @@ const VerifyIdentity = () => {
     }
   };
 
-  const goBack = () => (window.history.length > 1 ? navigate(-1) : navigate(`${routePrefix || '/taxi/user'}/profile`));
+  const goBack = () => (window.history.length > 1 ? navigate(-1) : navigate(profileRoute));
 
   const header = (
     <div className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 px-5 pb-4 pt-10 backdrop-blur">
@@ -142,9 +169,9 @@ const VerifyIdentity = () => {
               {status.documentLabel} {status.maskedNumber}
               {status.verifiedName ? ` · ${status.verifiedName}` : ''}
             </p>
-            {returnToBooking ? (
+            {returnToBooking || returnToOnline ? (
               <button type="button" onClick={() => navigate(-1)} className="mt-5 h-12 w-full rounded-2xl bg-blue-600 text-sm font-semibold text-white">
-                Continue booking
+                {returnToOnline ? 'Back to go online' : 'Continue booking'}
               </button>
             ) : null}
           </section>
@@ -154,7 +181,7 @@ const VerifyIdentity = () => {
             <h2 className="mt-3 text-lg font-semibold text-slate-900">Under review</h2>
             <p className="mt-1 text-sm text-slate-500">
               We've received your {status.documentLabel || 'document'} {status.maskedNumber}. Our team will review it shortly;
-              you can book once it's approved.
+              {isDriver ? 'you can continue once it is approved.' : "you can book once it's approved."}
             </p>
           </section>
         ) : !config?.enabled ? (
@@ -171,7 +198,11 @@ const VerifyIdentity = () => {
                 <p className="text-sm text-slate-600">
                   {returnToBooking
                     ? 'Verify your identity once to continue booking. It takes under a minute.'
-                    : 'Verify your identity once to keep your rides safe. We store only the last four digits of your document.'}
+                    : returnToOnline
+                      ? 'Verify your identity to start taking rides. It takes under a minute.'
+                      : isDriver
+                        ? 'Verify your identity to drive with us. We store only the last four digits of your document.'
+                        : 'Verify your identity once to keep your rides safe. We store only the last four digits of your document.'}
                 </p>
               </div>
               {status?.status === 'rejected' || status?.status === 'failed' ? (

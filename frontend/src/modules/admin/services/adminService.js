@@ -380,6 +380,8 @@ export const adminService = {
   testUserKycSettings: () => api.post('/admin/integration-settings/user-kyc/test'),
   getUserKyc: (userId) => api.get(`/admin/users/${userId}/kyc`),
   reviewUserKyc: (userId, data) => api.patch(`/admin/users/${userId}/kyc`, data),
+  getDriverKyc: (driverId) => api.get(`/admin/drivers/${driverId}/kyc`),
+  reviewDriverKyc: (driverId, data) => api.patch(`/admin/drivers/${driverId}/kyc`, data),
 
   /**
    * Onboarding Screens Management

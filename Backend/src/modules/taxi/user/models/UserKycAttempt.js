@@ -4,7 +4,9 @@ import mongoose from 'mongoose';
 // masked number only - never the full Aadhaar / PAN.
 const userKycAttemptSchema = new mongoose.Schema(
   {
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'TaxiUser', required: true, index: true },
+    // The rider or driver id; subjectType says which.
+    userId: { type: mongoose.Schema.Types.ObjectId, required: true, index: true },
+    subjectType: { type: String, enum: ['user', 'driver'], default: 'user', index: true },
     documentType: { type: String, default: '' },
     maskedNumber: { type: String, default: '' },
     step: { type: String, enum: ['otp_request', 'otp_submit', 'document', 'admin'], default: 'document' },

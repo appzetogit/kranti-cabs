@@ -11,6 +11,7 @@ import { useSettings } from "../../../../shared/context/SettingsContext";
 import {
   clearDriverRegistrationSession,
   getDriverApprovalStatus,
+  getDriverKycStatus,
   getDriverDocumentTemplates,
   clearDriverAuthState,
   getLocalDriverToken,
@@ -85,6 +86,23 @@ const RegistrationStatus = () => {
   const appLogo = settings.general?.logo || settings.customization?.logo;
   const isVehicleReapproval = location.state?.statusReason === "vehicle-update" || driver?.approve === false;
   const routePrefix = location.pathname.startsWith('/taxi/owner') ? '/taxi/owner' : '/taxi/driver';
+  // Admin may require identity verification before approving the driver.
+  const [driverKyc, setDriverKyc] = useState(null);
+
+  useEffect(() => {
+    if (routePrefix !== '/taxi/driver') return undefined;
+    let active = true;
+    getDriverKycStatus()
+      .then((response) => { if (active) setDriverKyc(response?.data ?? response ?? null); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [routePrefix]);
+
+  const needsKycForApproval = Boolean(
+    driverKyc?.config?.enabled &&
+    driverKyc.config.requiredFor === 'before_approval' &&
+    driverKyc.status !== 'verified',
+  );
 
   useEffect(() => {
     if (location.state?.role) {
@@ -522,6 +540,29 @@ const getStatusColor = (status) => {
                 </p>
             </div>
         </section>
+
+        {needsKycForApproval ? (
+            <section className="rounded-[2rem] border border-amber-200 bg-amber-50 px-5 py-4">
+                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-amber-700">Action needed</p>
+                <p className="mt-1 text-[15px] font-bold text-slate-900">
+                    {driverKyc.status === 'needs_review' ? 'Identity verification under review' : 'Verify your identity'}
+                </p>
+                <p className="mt-1 text-[13px] font-semibold text-slate-600">
+                    {driverKyc.status === 'needs_review'
+                        ? 'We received your document. Approval continues once our team has checked it.'
+                        : 'Your application can be approved once you verify with Aadhaar, your driving licence or another accepted ID.'}
+                </p>
+                {driverKyc.status !== 'needs_review' ? (
+                    <button
+                        type="button"
+                        onClick={() => navigate(`${routePrefix}/kyc`)}
+                        className="mt-3 h-11 w-full rounded-2xl bg-slate-900 text-[14px] font-bold text-white"
+                    >
+                        Verify now
+                    </button>
+                ) : null}
+            </section>
+        ) : null}
 
         {driver && (
             <motion.section 

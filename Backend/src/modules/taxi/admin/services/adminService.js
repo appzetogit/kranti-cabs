@@ -83,6 +83,7 @@ import { DEFAULT_PROFILE, getSurgeProfiles, listActiveSurges, resetVehicleSurgeS
 import { getBidRideSettings } from '../../services/transportSettingsService.js';
 import { resolveCatalogDispatchType } from '../../services/biddingPolicyService.js';
 import { PriceHike } from '../models/PriceHike.js';
+import { assertDriverKycForApproval } from '../../services/userKycService.js';
 import {
   ADMIN_PERMISSIONS,
   SUPERADMIN_PERMISSION,
@@ -2726,6 +2727,9 @@ const serializeDriver = (driver) => ({
 });
 
 const DRIVER_LIST_SELECT = [
+  'kyc.status',
+  'kyc.documentType',
+  'kyc.maskedNumber',
   '_id',
   'name',
   'phone',
@@ -2757,6 +2761,11 @@ const DRIVER_LIST_SELECT = [
 ].join(' ');
 
 const serializeDriverListItem = (driver) => ({
+  kyc: {
+    status: driver.kyc?.status || 'not_started',
+    documentType: driver.kyc?.documentType || '',
+    maskedNumber: driver.kyc?.maskedNumber || '',
+  },
   _id: driver._id,
   id: driver._id,
   name: driver.name || '',
@@ -5541,6 +5550,13 @@ export const updateDriver = async (id, payload, currentAdmin = null) => {
 
   if ('approve' in payload) {
     update.approve = Boolean(payload.approve);
+    // Admin's rule may require identity verification before approval. Only
+    // checked when a pending driver is being approved, so editing an already
+    // approved driver is never blocked by it.
+    if (update.approve) {
+      const current = await Driver.findById(id).select('approve').lean();
+      if (!current?.approve) await assertDriverKycForApproval({ driverId: id });
+    }
   }
 
   if (payload.status !== undefined) {

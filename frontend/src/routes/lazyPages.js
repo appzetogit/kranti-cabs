@@ -74,6 +74,8 @@ export const UserPoolingList = lazy(() => import('../modules/user/pages/pooling/
 export const UserPoolingSeats = lazy(() => import('../modules/user/pages/pooling/PoolingSeats'));
 export const UserPoolingConfirm = lazy(() => import('../modules/user/pages/pooling/PoolingConfirm'));
 export const VerifyIdentity = lazy(() => import('../modules/user/pages/profile/VerifyIdentity'));
+// Same screen, used by drivers with subject="driver".
+export const DriverVerifyIdentity = VerifyIdentity;
 export const ProfileSettings = lazy(() => import('../modules/user/pages/profile/ProfileSettings'));
 export const PaymentSettings = lazy(() => import('../modules/user/pages/profile/PaymentSettings'));
 export const AddressSettings = lazy(() => import('../modules/user/pages/profile/AddressSettings'));

@@ -32,7 +32,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useSupportInfo } from '../../shared/content/supportInfo';
 import DriverBottomNav from '../../shared/components/DriverBottomNav';
-import { clearDriverAuthState, getCurrentDriver } from '../services/registrationService';
+import { clearDriverAuthState, getCurrentDriver, getDriverKycStatus } from '../services/registrationService';
 
 const unwrapDriver = (response) => response?.data?.data || response?.data || response || null;
 const ROUTE_BOOKING_STORAGE_KEY = 'driver_route_booking_preferences';
@@ -100,6 +100,29 @@ const DriverProfile = () => {
     const role = localStorage.getItem('role') || 'driver';
     const isOwner = role === 'owner';
     const routePrefix = isOwner ? '/taxi/owner' : '/taxi/driver';
+    // Identity verification row: shown while the admin has driver KYC on.
+    const [kycState, setKycState] = useState(null);
+
+    useEffect(() => {
+        if (isOwner) return undefined;
+        let active = true;
+        getDriverKycStatus()
+            .then((response) => { if (active) setKycState(response?.data ?? response ?? null); })
+            .catch(() => {});
+        return () => { active = false; };
+    }, [isOwner]);
+
+    const kycItem = kycState && (kycState.config?.enabled || kycState.status === 'verified')
+        ? [{
+            id: 'kyc',
+            label: 'Verify Identity',
+            sub: kycState.status === 'verified'
+                ? `Verified · ${kycState.documentLabel} ${kycState.maskedNumber}`
+                : kycState.status === 'needs_review' ? 'Under review' : 'Not verified yet',
+            icon: <ShieldCheck size={20} />,
+            path: `${routePrefix}/kyc`,
+        }]
+        : [];
 
     useEffect(() => {
         let active = true;
@@ -321,6 +344,7 @@ Processing Time: Refunds are typically credited back to the original payment met
                 ...(!isOwner ? [
                     { id: 'vehicle', label: 'My Vehicle', icon: <Car size={20} />, path: `${routePrefix}/vehicle-fleet` },
                 ] : []),
+                ...kycItem,
                 { id: 'docs', label: 'Documents', icon: <FileText size={20} />, path: `${routePrefix}/documents` },
                 { id: 'history', label: 'Ride History', icon: <History size={20} />, path: `${routePrefix}/history` },
                 { id: 'notifications', label: 'Notifications', icon: <Bell size={20} />, path: `${routePrefix}/notifications` },

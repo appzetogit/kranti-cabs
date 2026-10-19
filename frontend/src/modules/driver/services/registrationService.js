@@ -466,6 +466,12 @@ const withDriverAuth = (config = {}) => {
 
 export const getCurrentDriver = () => api.get("/drivers/me", withDriverAuth());
 
+// Identity verification (QuickeKYC), under the admin's driver rules.
+export const getDriverKycStatus = () => api.get("/drivers/kyc/status", withDriverAuth());
+export const requestDriverAadhaarOtp = (payload) => api.post("/drivers/kyc/aadhaar/otp", payload, withDriverAuth());
+export const verifyDriverAadhaarOtp = (payload) => api.post("/drivers/kyc/aadhaar/verify", payload, withDriverAuth());
+export const verifyDriverKycDocument = (payload) => api.post("/drivers/kyc/document", payload, withDriverAuth());
+
 export const getPoolingDriverBookings = () =>
   api.get("/drivers/pooling/bookings", withDriverAuth());
 

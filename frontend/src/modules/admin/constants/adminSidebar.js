@@ -277,7 +277,7 @@ export const ADMIN_SIDEBAR_SECTIONS = [
         subItems: [
           { label: 'Payment Gateway Settings', path: '/admin/settings/third-party/payment', permission: 'settings.view' },
           { label: 'Recharge API Setup', path: '/admin/settings/third-party/recharge-api', permission: 'settings.view' },
-          { label: 'User Verification (KYC)', path: '/admin/settings/third-party/user-kyc', permission: 'settings.view' },
+          { label: 'Identity Verification (KYC)', path: '/admin/settings/third-party/user-kyc', permission: 'settings.view' },
           // { label: 'SMS Gateway Settings', path: '/admin/settings/third-party/sms', permission: 'settings.view' },
           // { label: 'Firebase Settings', path: '/admin/settings/third-party/firebase', permission: 'settings.view' },
           // { label: 'Map and Map APIs Settings', path: '/admin/settings/third-party/map-apis', permission: 'settings.view' },

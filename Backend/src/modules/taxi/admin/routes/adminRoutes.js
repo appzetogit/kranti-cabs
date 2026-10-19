@@ -274,6 +274,8 @@ import {
 import { promotionsRouter } from '../promotions/routes/index.js';
 import { listSafetyAlerts, resolveSafetyAlert } from '../../safety/controllers/safetyController.js';
 import {
+  getDriverKyc,
+  reviewDriverKyc,
   getUserKyc,
   getUserKycSettings,
   reviewUserKyc,
@@ -334,6 +336,8 @@ adminRouter.patch('/admin/drivers/deleted/:id/restore', authenticate(['admin']),
 adminRouter.delete('/admin/drivers/deleted/:id', authenticate(['admin']), permanentlyDeleteDeletedDriver);
 adminRouter.post('/admin/drivers', createDriver);
 adminRouter.get('/admin/drivers/:id/profile', getDriverProfile);
+adminRouter.get('/admin/drivers/:id/kyc', getDriverKyc);
+adminRouter.patch('/admin/drivers/:id/kyc', reviewDriverKyc);
 adminRouter.get('/admin/drivers/:id', getDriver);
 adminRouter.patch('/admin/drivers/:id', updateDriver);
 adminRouter.patch('/admin/drivers/update-password/:id', updateDriverPassword);

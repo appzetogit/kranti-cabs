@@ -8,6 +8,13 @@ import { asyncHandler } from "../../../../utils/asyncHandler.js";
 import { authenticate } from "../../middlewares/authMiddleware.js";
 import { getPendingRideOffers } from "../controllers/rideOfferController.js";
 import {
+  getDriverKycStatus,
+  requestDriverAadhaarOtp,
+  verifyDriverAadhaarOtp,
+  verifyDriverKycDocument,
+} from "../controllers/driverKycController.js";
+import {
+  createRateLimitMiddleware,
   loginRateLimit,
   otpSendRateLimit,
   otpVerifyRateLimit,
@@ -638,6 +645,21 @@ driverRouter.post("/subscription/purchase", authenticate(["driver"]), asyncHandl
 driverRouter.get("/subscription/history", authenticate(["driver"]), asyncHandler(getMySubscriptionHistory));
 
 driverRouter.patch("/online", authenticate(["driver"]), asyncHandler(goOnline));
+
+// Identity verification (QuickeKYC). Open to drivers still awaiting approval,
+// since the admin may require it before approving them.
+const driverKycRateLimit = createRateLimitMiddleware({
+  scope: "driver_kyc",
+  max: 10,
+  windowMs: 10 * 60 * 1000,
+  modes: ["auth_or_ip", "ip"],
+  message: "Too many verification requests. Please try again later.",
+});
+const driverKycAuth = authenticate(["driver"], { allowPending: true });
+driverRouter.get("/kyc/status", driverKycAuth, asyncHandler(getDriverKycStatus));
+driverRouter.post("/kyc/aadhaar/otp", driverKycAuth, driverKycRateLimit, asyncHandler(requestDriverAadhaarOtp));
+driverRouter.post("/kyc/aadhaar/verify", driverKycAuth, driverKycRateLimit, asyncHandler(verifyDriverAadhaarOtp));
+driverRouter.post("/kyc/document", driverKycAuth, driverKycRateLimit, asyncHandler(verifyDriverKycDocument));
 // Surge hexagons near the driver, for the "Surge Fare Area" map: each carries
 // its outline, multiplier and minutes left, so the app can draw it without H3.
 driverRouter.get(

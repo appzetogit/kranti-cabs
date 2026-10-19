@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { createKycSubdocument } from '../../common/models/kycSubdocument.js';
 import { VEHICLE_TYPES } from '../../constants/index.js';
 
 const geoPointSchema = new mongoose.Schema(
@@ -504,6 +505,8 @@ const driverSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.Mixed,
       default: {},
     },
+    // Identity verification - see common/models/kycSubdocument.js.
+    kyc: createKycSubdocument(),
     incentiveTracking: {
       currentOnlineStartedAt: {
         type: Date,

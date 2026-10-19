@@ -45,16 +45,135 @@ const SectionHeader = ({ icon, title, subtitle }) => {
   );
 };
 
+const DRIVER_REQUIREMENT_OPTIONS = [
+  { value: 'optional', label: 'Optional', note: 'Never blocks; drivers can verify from their profile' },
+  { value: 'before_approval', label: 'Before admin approval', note: 'You cannot approve a driver until their KYC is verified' },
+  { value: 'before_going_online', label: 'Before going online', note: 'Approved drivers cannot go online until verified' },
+];
+
+const AUDIENCES = {
+  riders: {
+    noun: 'rider',
+    title: 'Rider',
+    requirementOptions: REQUIREMENT_OPTIONS,
+    offNote: 'When off, nothing is checked and no booking is blocked.',
+  },
+  drivers: {
+    noun: 'driver',
+    title: 'Driver',
+    requirementOptions: DRIVER_REQUIREMENT_OPTIONS,
+    offNote: 'When off, nothing is checked and no driver is blocked.',
+  },
+};
+
+/// On/off, "when required", accepted documents and limits for one audience.
+const KycRulesSection = ({ audience, rules, onChange }) => {
+  const { noun, title, requirementOptions, offNote } = AUDIENCES[audience];
+  const update = (key, value) => onChange({ ...rules, [key]: value });
+  const toggleDocument = (type) => {
+    const allowed = new Set(rules.allowed_documents || []);
+    if (allowed.has(type)) allowed.delete(type);
+    else allowed.add(type);
+    update('allowed_documents', DOCUMENT_OPTIONS.map((d) => d.type).filter((t) => allowed.has(t)));
+  };
+
+  return (
+    <>
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <SectionHeader icon={ShieldCheck} title={`${title} verification`} subtitle={`Turn identity checks on and decide when ${noun}s must complete them`} />
+
+        <label className="flex items-center justify-between gap-4 rounded-lg border border-gray-200 px-4 py-3">
+          <span>
+            <span className="block text-sm font-semibold text-gray-900">Enable KYC for {noun}s</span>
+            <span className="block text-xs text-gray-500">{offNote}</span>
+          </span>
+          <input
+            type="checkbox"
+            checked={Boolean(rules.enabled)}
+            onChange={(event) => update('enabled', event.target.checked)}
+            className="h-5 w-5 accent-indigo-600"
+          />
+        </label>
+
+        <div className="mt-5">
+          <p className={labelClass}>When is verification required?</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {requirementOptions.map((option) => (
+              <label
+                key={option.value}
+                className={`flex cursor-pointer gap-3 rounded-lg border px-4 py-3 ${rules.required_for === option.value ? 'border-indigo-500 bg-indigo-50/40' : 'border-gray-200'}`}
+              >
+                <input
+                  type="radio"
+                  name={`${audience}_required_for`}
+                  checked={rules.required_for === option.value}
+                  onChange={() => update('required_for', option.value)}
+                  className="mt-1 accent-indigo-600"
+                />
+                <span>
+                  <span className="block text-sm font-semibold text-gray-900">{option.label}</span>
+                  <span className="block text-xs text-gray-500">{option.note}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <SectionHeader icon={FileCheck2} title="Accepted documents" subtitle={`${title}s choose one of these to verify with`} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {DOCUMENT_OPTIONS.map((doc) => (
+            <label key={doc.type} className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 px-4 py-3">
+              <input
+                type="checkbox"
+                checked={(rules.allowed_documents || []).includes(doc.type)}
+                onChange={() => toggleDocument(doc.type)}
+                className="h-4 w-4 accent-indigo-600"
+              />
+              <span>
+                <span className="block text-sm font-semibold text-gray-900">{doc.label}</span>
+                <span className="block text-xs text-gray-500">{doc.note}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+
+        <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div>
+            <label className={labelClass}>Name on document doesn't match profile</label>
+            <select value={rules.name_mismatch} onChange={(event) => update('name_mismatch', event.target.value)} className={inputClass}>
+              <option value="review">Hold for admin review</option>
+              <option value="ignore">Accept anyway</option>
+            </select>
+          </div>
+          <div>
+            <label className={labelClass}>Max attempts per {noun} per day</label>
+            <input type="number" min={1} max={50} value={rules.max_attempts_per_day} onChange={(event) => update('max_attempts_per_day', event.target.value)} className={inputClass} />
+          </div>
+          <div>
+            <label className={labelClass}>Aadhaar OTP valid for (minutes)</label>
+            <input type="number" min={2} max={30} value={rules.otp_expiry_minutes} onChange={(event) => update('otp_expiry_minutes', event.target.value)} className={inputClass} />
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+
 const UserKycSettings = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [keyConfigured, setKeyConfigured] = useState(false);
   const [settings, setSettings] = useState(null);
+  const [driverSettings, setDriverSettings] = useState(null);
+  const [audience, setAudience] = useState('riders');
 
   const applyResponse = (response) => {
     const payload = unwrapPayload(response);
     if (payload.settings) setSettings(payload.settings);
+    if (payload.driver_settings) setDriverSettings(payload.driver_settings);
     setKeyConfigured(Boolean(payload.metadata?.api_key_configured));
   };
 
@@ -70,7 +189,6 @@ const UserKycSettings = () => {
     })();
   }, []);
 
-  const update = (key, value) => setSettings((current) => ({ ...current, [key]: value }));
   const updateProvider = (key, value) =>
     setSettings((current) => ({ ...current, provider: { ...current.provider, [key]: value } }));
   const updateEndpoint = (key, value) =>
@@ -79,19 +197,11 @@ const UserKycSettings = () => {
       provider: { ...current.provider, endpoints: { ...current.provider.endpoints, [key]: value } },
     }));
 
-  const toggleDocument = (type) =>
-    setSettings((current) => {
-      const allowed = new Set(current.allowed_documents || []);
-      if (allowed.has(type)) allowed.delete(type);
-      else allowed.add(type);
-      return { ...current, allowed_documents: DOCUMENT_OPTIONS.map((d) => d.type).filter((t) => allowed.has(t)) };
-    });
-
   const handleSave = async (event) => {
     event.preventDefault();
     try {
       setSaving(true);
-      applyResponse(await adminService.updateUserKycSettings(settings));
+      applyResponse(await adminService.updateUserKycSettings({ ...settings, driver: driverSettings }));
       toast.success('Verification settings saved');
     } catch (error) {
       toast.error(error?.response?.data?.message || error?.message || 'Could not save settings');
@@ -113,7 +223,7 @@ const UserKycSettings = () => {
     }
   };
 
-  if (loading || !settings) {
+  if (loading || !settings || !driverSettings) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <Loader2 className="animate-spin text-indigo-600" size={32} />
@@ -131,10 +241,10 @@ const UserKycSettings = () => {
           <ChevronRight size={12} />
           <span>Third-party</span>
           <ChevronRight size={12} />
-          <span className="text-gray-700">User Verification (KYC)</span>
+          <span className="text-gray-700">Identity Verification (KYC)</span>
         </div>
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-gray-900">User Verification (QuickeKYC)</h1>
+          <h1 className="text-xl font-semibold text-gray-900">Identity Verification (QuickeKYC)</h1>
           <button
             type="button"
             onClick={() => window.history.back()}
@@ -146,87 +256,36 @@ const UserKycSettings = () => {
       </div>
 
       <form onSubmit={handleSave} className="max-w-5xl mx-auto space-y-6">
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <SectionHeader icon={ShieldCheck} title="Rider verification" subtitle="Turn identity checks on and decide when riders must complete them" />
-
-          <label className="flex items-center justify-between gap-4 rounded-lg border border-gray-200 px-4 py-3">
-            <span>
-              <span className="block text-sm font-semibold text-gray-900">Enable KYC for riders</span>
-              <span className="block text-xs text-gray-500">When off, nothing is checked and no booking is blocked.</span>
-            </span>
-            <input
-              type="checkbox"
-              checked={Boolean(settings.enabled)}
-              onChange={(event) => update('enabled', event.target.checked)}
-              className="h-5 w-5 accent-indigo-600"
-            />
-          </label>
-
-          <div className="mt-5">
-            <p className={labelClass}>When is verification required?</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {REQUIREMENT_OPTIONS.map((option) => (
-                <label
-                  key={option.value}
-                  className={`flex cursor-pointer gap-3 rounded-lg border px-4 py-3 ${settings.required_for === option.value ? 'border-indigo-500 bg-indigo-50/40' : 'border-gray-200'}`}
-                >
-                  <input
-                    type="radio"
-                    name="required_for"
-                    checked={settings.required_for === option.value}
-                    onChange={() => update('required_for', option.value)}
-                    className="mt-1 accent-indigo-600"
-                  />
-                  <span>
-                    <span className="block text-sm font-semibold text-gray-900">{option.label}</span>
-                    <span className="block text-xs text-gray-500">{option.note}</span>
-                  </span>
-                </label>
-              ))}
-            </div>
-          </div>
+        <div className="flex gap-2">
+          {[['riders', 'Riders'], ['drivers', 'Drivers']].map(([key, label]) => {
+            const isOn = key === 'riders' ? settings.enabled : driverSettings.enabled;
+            const active = audience === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setAudience(key)}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${active ? 'bg-indigo-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+              >
+                {label}
+                <span className={`ml-2 text-xs ${active ? 'text-indigo-100' : 'text-gray-400'}`}>{isOn ? 'On' : 'Off'}</span>
+              </button>
+            );
+          })}
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <SectionHeader icon={FileCheck2} title="Accepted documents" subtitle="Riders choose one of these to verify with" />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {DOCUMENT_OPTIONS.map((doc) => (
-              <label key={doc.type} className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 px-4 py-3">
-                <input
-                  type="checkbox"
-                  checked={(settings.allowed_documents || []).includes(doc.type)}
-                  onChange={() => toggleDocument(doc.type)}
-                  className="h-4 w-4 accent-indigo-600"
-                />
-                <span>
-                  <span className="block text-sm font-semibold text-gray-900">{doc.label}</span>
-                  <span className="block text-xs text-gray-500">{doc.note}</span>
-                </span>
-              </label>
-            ))}
-          </div>
-
-          <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-5">
-            <div>
-              <label className={labelClass}>Name on document doesn't match profile</label>
-              <select value={settings.name_mismatch} onChange={(event) => update('name_mismatch', event.target.value)} className={inputClass}>
-                <option value="review">Hold for admin review</option>
-                <option value="ignore">Accept anyway</option>
-              </select>
-            </div>
-            <div>
-              <label className={labelClass}>Max attempts per rider per day</label>
-              <input type="number" min={1} max={50} value={settings.max_attempts_per_day} onChange={(event) => update('max_attempts_per_day', event.target.value)} className={inputClass} />
-            </div>
-            <div>
-              <label className={labelClass}>Aadhaar OTP valid for (minutes)</label>
-              <input type="number" min={2} max={30} value={settings.otp_expiry_minutes} onChange={(event) => update('otp_expiry_minutes', event.target.value)} className={inputClass} />
-            </div>
-          </div>
-        </div>
+        {audience === 'riders' ? (
+          <KycRulesSection
+            audience="riders"
+            rules={settings}
+            onChange={(next) => setSettings((current) => ({ ...next, provider: current.provider }))}
+          />
+        ) : (
+          <KycRulesSection audience="drivers" rules={driverSettings} onChange={setDriverSettings} />
+        )}
 
         <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <SectionHeader icon={KeyRound} title="QuickeKYC connection" subtitle="Credentials stay on the server and are never sent to the apps" />
+          <SectionHeader icon={KeyRound} title="QuickeKYC connection" subtitle="Shared by rider and driver verification. Credentials stay on the server and are never sent to the apps" />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>

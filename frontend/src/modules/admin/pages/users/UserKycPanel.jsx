@@ -15,8 +15,12 @@ const Row = ({ label, value }) => (
   </div>
 );
 
-/// Admin view of one rider's identity verification, with manual overrides.
-const UserKycPanel = ({ userId }) => {
+/// Admin view of one rider's or driver's identity verification, with manual
+/// overrides. `subject` is 'user' (default) or 'driver'.
+const UserKycPanel = ({ userId, subject = 'user' }) => {
+  const api = subject === 'driver'
+    ? { get: adminService.getDriverKyc, review: adminService.reviewDriverKyc }
+    : { get: adminService.getUserKyc, review: adminService.reviewUserKyc };
   const [kyc, setKyc] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busyAction, setBusyAction] = useState('');
@@ -25,13 +29,14 @@ const UserKycPanel = ({ userId }) => {
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      setKyc(unwrapPayload(await adminService.getUserKyc(userId)));
+      setKyc(unwrapPayload(await api.get(userId)));
     } catch (error) {
       toast.error(error?.response?.data?.message || 'Could not load KYC details');
     } finally {
       setLoading(false);
     }
-  }, [userId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, subject]);
 
   useEffect(() => {
     load();
@@ -44,7 +49,7 @@ const UserKycPanel = ({ userId }) => {
     }
     try {
       setBusyAction(action);
-      await adminService.reviewUserKyc(userId, { action, reason: reason.trim() });
+      await api.review(userId, { action, reason: reason.trim() });
       toast.success(action === 'approve' ? 'KYC approved' : action === 'reject' ? 'KYC rejected' : 'KYC reset');
       setReason('');
       await load();
@@ -121,7 +126,7 @@ const UserKycPanel = ({ userId }) => {
             {busyAction === 'reset' ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />} Reset
           </button>
         </div>
-        <p className="mt-2 text-[11px] text-gray-400">Reset lets the rider verify again and frees the document for another account.</p>
+        <p className="mt-2 text-[11px] text-gray-400">Reset lets the {subject === 'driver' ? 'driver' : 'rider'} verify again and frees the document for another account.</p>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden lg:col-span-2">

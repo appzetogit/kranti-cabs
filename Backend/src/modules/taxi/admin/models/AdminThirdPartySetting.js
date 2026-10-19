@@ -16,6 +16,7 @@ const adminThirdPartySettingSchema = new mongoose.Schema(
     recharge_api: { type: mongoose.Schema.Types.Mixed, default: {} },
     // Rider identity verification (QuickeKYC) - see services/userKycService.js
     user_kyc: { type: mongoose.Schema.Types.Mixed, default: {} },
+    driver_kyc: { type: mongoose.Schema.Types.Mixed, default: {} },
     notification_channels: { type: [mongoose.Schema.Types.Mixed], default: [] },
   },
   {

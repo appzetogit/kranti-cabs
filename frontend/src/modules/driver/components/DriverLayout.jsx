@@ -55,6 +55,8 @@ const onboardingRoutes = new Set([
     '/taxi/driver/pooling/onboarding',
     '/taxi/driver/role-signup',
     '/taxi/driver/registration-status',
+    // Identity verification: reachable before approval when the admin requires it.
+    '/taxi/driver/kyc',
     '/taxi/driver/status',
     '/taxi/owner/lang-select',
     '/taxi/owner/login',

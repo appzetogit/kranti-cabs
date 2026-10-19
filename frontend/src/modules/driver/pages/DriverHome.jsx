@@ -1369,13 +1369,18 @@ const DriverHome = () => {
             socketService.disconnect();
             const nextMessage = error?.response?.data?.message || error.message || 'Could not go online.';
             setStatusMessage(nextMessage);
+            if (error?.details?.code === 'DRIVER_KYC_REQUIRED' && error?.details?.kycStatus !== 'needs_review') {
+                // The admin requires identity verification before going online.
+                navigate('/taxi/driver/kyc', { state: { returnToOnline: true } });
+                return;
+            }
             if (String(nextMessage).toLowerCase().includes('selfie is required')) {
                 setShowOnlineSelfiePrompt(true);
             }
         } finally {
             setIsTogglingDuty(false);
         }
-    }, [emitOnlineLocationUpdate, expiredDocumentNames, refreshTodaySummary, routeBookingPreferences.coordinates, routeBookingPreferences.enabled, updateDriverLocation, vehicleReapprovalPending, walletAlertState]);
+    }, [emitOnlineLocationUpdate, expiredDocumentNames, navigate, refreshTodaySummary, routeBookingPreferences.coordinates, routeBookingPreferences.enabled, updateDriverLocation, vehicleReapprovalPending, walletAlertState]);
 
     const goOffline = useCallback(async () => {
         setIsTogglingDuty(true);
