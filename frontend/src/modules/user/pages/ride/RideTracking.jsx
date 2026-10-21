@@ -15,6 +15,8 @@ import bikeIcon from '../../../../assets/icons/bike.png';
 import autoIcon from '../../../../assets/icons/auto.png';
 import deliveryIcon from '../../../../assets/icons/Delivery.png';
 import { useSettings } from '../../../../shared/context/SettingsContext';
+import CancelRideSheet from '../../components/CancelRideSheet';
+import { isCancelReasonError } from '../../utils/cancelReason';
 
 const MAP_CONTAINER_STYLE = { width: '100%', height: '100%' };
 const DEFAULT_CENTER = { lat: 22.7196, lng: 75.8577 };
@@ -424,7 +426,7 @@ const RideTracking = () => {
   const [vehicleImageFallback, setVehicleImageFallback] = useState('');
   const [vehicleImageBroken, setVehicleImageBroken] = useState(false);
   const [arrivalClockFallbackAt, setArrivalClockFallbackAt] = useState('');
-  const [waitingNow, setWaitingNow] = useState(Date.now());
+  const [waitingNow, setWaitingNow] = useState(() => Date.now());
   const [socketRealtimeHealthy, setSocketRealtimeHealthy] = useState(() => socketService.isConnected());
   const routeCacheRef = useRef(new Map());
   const lastResolvedRouteRef = useRef({
@@ -577,17 +579,18 @@ const RideTracking = () => {
     lastMapPanPositionRef.current = null;
   }, [rideId, tripStatus, activeDestination.lat, activeDestination.lng]);
 
-  const handleCancelRide = async () => {
+  const handleCancelRide = async (reasonPayload = {}) => {
     try {
       if (rideId) {
-        await api.patch(`/rides/${rideId}/cancel`);
+        await api.patch(`/rides/${rideId}/cancel`, reasonPayload);
       }
-    } catch (_error) {
+    } catch (error) {
+      // A rejected reason leaves the ride live, so let the sheet ask again.
+      if (isCancelReasonError(error)) throw error;
       // If the ride has already advanced or ended, we still clear the local state below.
-    } finally {
-      clearCurrentRide();
-      navigate('/taxi/user');
     }
+    clearCurrentRide();
+    navigate('/taxi/user');
   };
 
   useEffect(() => {
@@ -1766,46 +1769,15 @@ const RideTracking = () => {
         </div>
       </motion.div>
 
-      <AnimatePresence>
-        {showCancelConfirm && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowCancelConfirm(false)}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] max-w-lg mx-auto"
-            />
-            <motion.div
-              initial={{ scale: 0.92, opacity: 0, y: 40 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.92, opacity: 0, y: 40 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[82%] max-w-sm bg-white rounded-[28px] p-7 z-[101] shadow-2xl text-center"
-            >
-              <div className="w-14 h-14 bg-red-50 rounded-[18px] flex items-center justify-center mx-auto mb-4">
-                <AlertTriangle size={26} className="text-red-400" strokeWidth={2} />
-              </div>
-              <h3 className="text-[18px] font-bold text-slate-900 mb-1.5">Cancel your ride?</h3>
-              <p className="text-[13px] font-bold text-slate-400 mb-6 leading-relaxed">Your captain is already on the way.</p>
-              <div className="space-y-2.5">
-                <motion.button
-                  whileTap={{ scale: 0.97 }}
-                  onClick={handleCancelRide}
-                  className="w-full bg-slate-900 text-white py-3.5 rounded-[16px] text-[13px] font-bold uppercase tracking-widest"
-                >
-                  Yes, Cancel
-                </motion.button>
-                <button
-                  onClick={() => setShowCancelConfirm(false)}
-                  className="w-full py-3.5 text-[13px] font-bold text-slate-400 uppercase tracking-widest"
-                >
-                  No, Go Back
-                </button>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      <CancelRideSheet
+        open={showCancelConfirm}
+        stage="after_driver"
+        title="Cancel your ride?"
+        subtitle="Your captain is already on the way."
+        keepLabel="No, Go Back"
+        onClose={() => setShowCancelConfirm(false)}
+        onConfirm={handleCancelRide}
+      />
     </div>
   );
 };

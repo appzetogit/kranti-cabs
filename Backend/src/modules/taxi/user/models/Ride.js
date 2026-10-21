@@ -466,6 +466,24 @@ const rideSchema = new mongoose.Schema(
       default: '',
       trim: true,
     },
+    // The admin-managed reason a rider picked, kept alongside the text above
+    // so reports can group by reason even after the wording is edited.
+    cancelReasonId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'TaxiCancellationReason',
+      default: null,
+    },
+    cancelReasonNote: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    // 'before_driver' or 'after_driver': which list the rider picked from.
+    cancelStage: {
+      type: String,
+      default: '',
+      trim: true,
+    },
     cancelledAt: {
       type: Date,
       default: null,

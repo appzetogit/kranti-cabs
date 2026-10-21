@@ -10,6 +10,8 @@ import { getCurrentRide, isActiveCurrentRide, saveCurrentRide } from '../../serv
 import { useBaseGoogleMapsLoader, HAS_VALID_GOOGLE_MAPS_KEY } from '../../../admin/utils/googleMaps';
 import { scheduleScheduledRideReminders } from '../../utils/upcomingRideReminderService';
 import { toHistorySafeState } from '../../../../shared/utils/historyState';
+import CancelRideSheet from '../../components/CancelRideSheet';
+import { isCancelReasonError } from '../../utils/cancelReason';
 
 const MAP_OPTIONS = {
   disableDefaultUI: true,
@@ -823,7 +825,8 @@ const SearchingDriver = () => {
     };
   }, [isScheduledBiddingRide, isScheduledRide, navigate, routePrefix, routeState, searchNonce, selectedVehicleTypeId, userHomeRoute]);
 
-  const handleCancel = useCallback(async () => {
+  // The default covers the browser back button, which cancels without the sheet.
+  const handleCancel = useCallback(async (reasonPayload = { reason: 'Left the search screen' }) => {
     if (cancellingRef.current) {
       return;
     }
@@ -835,9 +838,14 @@ const SearchingDriver = () => {
 
     try {
       if (rideId) {
-        await api.patch(`/rides/${rideId}/cancel`);
+        await api.patch(`/rides/${rideId}/cancel`, reasonPayload);
       }
-    } catch (_error) {
+    } catch (error) {
+      // A rejected reason leaves the ride live, so let the sheet ask again.
+      if (isCancelReasonError(error)) {
+        cancellingRef.current = false;
+        throw error;
+      }
       // Navigation still proceeds even if the cancel request races with another state update.
     }
 
@@ -932,10 +940,11 @@ const SearchingDriver = () => {
 
   const navigateAfterCancel = async (nextState = {}) => {
     const rideId = activeRideIdRef.current;
+    const reason = nextState.rideMode === 'schedule' ? 'Scheduled the ride instead' : 'Tried another vehicle';
 
     try {
       if (rideId) {
-        await api.patch(`/rides/${rideId}/cancel`);
+        await api.patch(`/rides/${rideId}/cancel`, { reason });
       }
     } catch {
       // Navigation should still proceed even if cancellation races with another update.
@@ -1382,35 +1391,15 @@ const SearchingDriver = () => {
         </AnimatePresence>
       </div>
 
-      <AnimatePresence>
-        {showCancelConfirm && (
-          <div className="z-[100] relative">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => setShowCancelConfirm(false)}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] max-w-lg mx-auto" />
-            <motion.div initial={{ scale: 0.92, opacity: 0, y: 40 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.92, opacity: 0, y: 40 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[82%] max-w-sm bg-white rounded-[28px] p-7 z-[101] shadow-2xl text-center">
-              <div className="w-14 h-14 bg-red-50 rounded-[18px] flex items-center justify-center mx-auto mb-4">
-                <AlertTriangle size={26} className="text-red-400" strokeWidth={2} />
-              </div>
-              <h3 className="text-[18px] font-bold text-slate-900 mb-1.5">Cancel ride?</h3>
-              <p className="text-[13px] font-bold text-slate-400 mb-6 leading-relaxed">
-                {"We're still searching. Stop looking?"}
-              </p>
-              <div className="space-y-2.5">
-                <motion.button whileTap={{ scale: 0.97 }} onClick={handleCancel}
-                  className="w-full bg-slate-900 text-white py-3.5 rounded-[16px] text-[13px] font-bold uppercase tracking-widest">
-                  Yes, Cancel
-                </motion.button>
-                <button onClick={() => setShowCancelConfirm(false)}
-                  className="w-full py-3.5 text-[13px] font-bold text-slate-400 uppercase tracking-widest">
-                  {isSearching ? 'Keep Searching' : 'Go Back'}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <CancelRideSheet
+        open={showCancelConfirm}
+        stage={isSearching ? 'before_driver' : 'after_driver'}
+        title="Cancel ride?"
+        subtitle={isSearching ? "We're still searching. Stop looking?" : ''}
+        keepLabel={isSearching ? 'Keep Searching' : 'Go Back'}
+        onClose={() => setShowCancelConfirm(false)}
+        onConfirm={handleCancel}
+      />
     </div>
   );
 };

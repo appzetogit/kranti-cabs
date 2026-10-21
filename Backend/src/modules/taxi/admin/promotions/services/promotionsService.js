@@ -4,6 +4,8 @@ import { ServiceLocation } from '../../models/ServiceLocation.js';
 import { ensureAdminState } from '../../services/adminService.js';
 import { User } from '../../../user/models/User.js';
 import { Banner } from '../models/Banner.js';
+import { Zone } from '../../../driver/models/Zone.js';
+import { findZonesContainingPoint } from '../../../services/matchingService.js';
 import { Notification } from '../models/Notification.js';
 import { PromoCode } from '../models/PromoCode.js';
 import { uploadDataUrl } from '../../../../../utils/fileUpload.js';
@@ -143,16 +145,12 @@ const serializeBanner = (item) => ({
   deep_link: item.deep_link || '',
   redirect_url: item.redirect_url || item.external_link || item.deep_link || '',
   active: item.active !== false,
+  audience: item.audience || 'both',
+  zone_ids: (item.zone_ids || []).map(String),
   push_count: Number(item.push_count || 0),
   last_pushed_at: item.last_pushed_at || null,
   createdAt: item.createdAt,
   updatedAt: item.updatedAt,
-});
-
-const serializeBannerMinimal = (item) => ({
-  _id: item._id,
-  image: item.image || '',
-  active: item.active !== false,
 });
 
 const serializeBannerFromPayload = (item, payload = {}) => {
@@ -186,8 +184,96 @@ const serializeBannerFromPayload = (item, payload = {}) => {
   if (keys.has('redirect_url') || keys.has('target_route_url')) {
     response.redirect_url = item.redirect_url || item.external_link || item.deep_link || '';
   }
+  if (keys.has('audience')) {
+    response.audience = item.audience || 'both';
+  }
+  if (keys.has('zone_ids')) {
+    response.zone_ids = (item.zone_ids || []).map(String);
+  }
 
   return response;
+};
+
+/// What the apps get: enough to render and open a banner, without the admin
+/// bookkeeping (push counts, which zones it targets).
+const serializePublicBanner = (item) => ({
+  _id: item._id,
+  image: item.image || '',
+  active: item.active !== false,
+  // Untitled banners get "Banner <ISO date>" on save; that is not for riders.
+  title: /^Banner \d{4}-\d{2}-\d{2}T/.test(item.title || '') ? '' : item.title || '',
+  link_type: item.link_type || 'external_link',
+  redirect_url: item.redirect_url || item.external_link || item.deep_link || '',
+  audience: item.audience || 'both',
+});
+
+const BANNER_AUDIENCE_ALIASES = {
+  both: 'both',
+  all: 'both',
+  rider: 'rider',
+  riders: 'rider',
+  user: 'rider',
+  users: 'rider',
+  driver: 'driver',
+  drivers: 'driver',
+};
+
+const normalizeBannerAudience = (value) => {
+  const audience = BANNER_AUDIENCE_ALIASES[normalizeText(value).toLowerCase() || 'both'];
+  if (!audience) {
+    throw new ApiError(400, 'Audience must be rider, driver or both', { code: 'INVALID_BANNER_AUDIENCE' });
+  }
+  return audience;
+};
+
+/// Accepts an array, a comma-separated string or a JSON array string (form
+/// posts), and checks every zone still exists so a typo cannot silently hide
+/// a banner everywhere.
+const normalizeBannerZoneIds = async (value) => {
+  let list = value;
+  if (typeof list === 'string') {
+    const trimmed = list.trim();
+    if (trimmed.startsWith('[')) {
+      try {
+        list = JSON.parse(trimmed);
+      } catch {
+        throw new ApiError(400, 'zone_ids must be a list of zone ids', { code: 'INVALID_BANNER_ZONE' });
+      }
+    } else {
+      list = trimmed.split(',');
+    }
+  }
+  if (list === null || list === undefined) list = [];
+  if (!Array.isArray(list)) list = [list];
+
+  const ids = [...new Set(list.map((id) => normalizeText(id?._id ?? id)).filter(Boolean))];
+  if (!ids.length) return [];
+
+  const invalid = ids.find((id) => !mongoose.isValidObjectId(id));
+  if (invalid) {
+    throw new ApiError(400, `Invalid zone id: ${invalid}`, { code: 'INVALID_BANNER_ZONE' });
+  }
+
+  const found = await Zone.find({ _id: { $in: ids } }, { _id: 1 }).lean();
+  if (found.length !== ids.length) {
+    throw new ApiError(400, 'One or more selected zones no longer exist', { code: 'BANNER_ZONE_NOT_FOUND' });
+  }
+
+  return ids.map((id) => new mongoose.Types.ObjectId(id));
+};
+
+/// Adds zone names for the admin list. Looked up rather than populated so a
+/// deleted zone still shows (as "Deleted zone") instead of vanishing and
+/// making the banner look like it runs everywhere.
+const attachBannerZones = async (banners) => {
+  const ids = [...new Set(banners.flatMap((banner) => (banner.zone_ids || []).map(String)))];
+  const zones = ids.length ? await Zone.find({ _id: { $in: ids } }, { name: 1 }).lean() : [];
+  const names = new Map(zones.map((zone) => [String(zone._id), zone.name || '']));
+
+  return banners.map((banner) => ({
+    ...banner,
+    zones: banner.zone_ids.map((id) => ({ _id: id, name: names.has(id) ? names.get(id) : 'Deleted zone', exists: names.has(id) })),
+  }));
 };
 
 const ensureServiceLocationExists = async (serviceLocationId) => {
@@ -380,6 +466,11 @@ const normalizeBannerPayload = async (payload, existing = null) => {
     payload.redirect_url ?? payload.external_link ?? payload.deep_link ?? payload.target_route_url ?? existing?.redirect_url,
   );
   const active = normalizeBoolean(payload.active ?? payload.status, existing?.active ?? true);
+  const audience = normalizeBannerAudience(payload.audience ?? existing?.audience);
+  // Absent means "leave as is", so a status toggle keeps the targeting.
+  const zoneIds = payload.zone_ids !== undefined
+    ? await normalizeBannerZoneIds(payload.zone_ids)
+    : (existing?.zone_ids || []);
   if (!image) {
     throw new ApiError(400, 'Banner image is required');
   }
@@ -410,6 +501,8 @@ const normalizeBannerPayload = async (payload, existing = null) => {
     deep_link: linkType === 'deep_link' ? redirectUrl : '',
     redirect_url: redirectUrl,
     active,
+    audience,
+    zone_ids: zoneIds,
   };
 };
 
@@ -579,7 +672,7 @@ export const listBanners = async ({ page = 1, limit = 50, active }) => {
   ]);
 
   return {
-    results: items.map(serializeBannerMinimal),
+    results: await attachBannerZones(items.map(serializeBanner)),
     paginator: {
       current_page: safePage,
       per_page: safeLimit,
@@ -587,6 +680,103 @@ export const listBanners = async ({ page = 1, limit = 50, active }) => {
       last_page: Math.max(1, Math.ceil(total / safeLimit)),
     },
   };
+};
+
+const PUBLIC_BANNER_LIMIT = 50;
+
+const parseBannerLocation = ({ lat, lng }) => {
+  const hasLat = lat !== undefined && lat !== null && lat !== '';
+  const hasLng = lng !== undefined && lng !== null && lng !== '';
+  if (!hasLat && !hasLng) return null;
+
+  const latitude = Number(lat);
+  const longitude = Number(lng);
+  if (!hasLat || !hasLng || !Number.isFinite(latitude) || !Number.isFinite(longitude)
+    || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+    throw new ApiError(400, 'lat and lng must be a valid coordinate pair', { code: 'INVALID_LOCATION' });
+  }
+  return [longitude, latitude];
+};
+
+/// Active banners for one app at one place: those targeted at any zone the
+/// place falls in, plus the all-zone ones. With no location only the all-zone
+/// banners come back, so builds that never send one keep seeing exactly what
+/// they saw before targeting existed.
+export const listPublicBanners = async (query = {}, { defaultAudience = 'rider' } = {}) => {
+  const audience = normalizeBannerAudience(query.audience || defaultAudience);
+  if (audience === 'both') {
+    throw new ApiError(400, 'Audience must be rider or driver', { code: 'INVALID_BANNER_AUDIENCE' });
+  }
+  const otherAudience = audience === 'rider' ? 'driver' : 'rider';
+
+  let zones = [];
+  const zoneId = normalizeText(query.zone_id);
+  if (zoneId) {
+    if (!mongoose.isValidObjectId(zoneId)) {
+      throw new ApiError(400, 'Invalid zone id', { code: 'INVALID_ZONE' });
+    }
+    const zone = await Zone.findOne(
+      { _id: zoneId, active: { $ne: false }, status: { $ne: 'inactive' } },
+      { name: 1 },
+    ).lean();
+    zones = zone ? [zone] : [];
+  } else {
+    const coordinates = parseBannerLocation(query);
+    if (coordinates) {
+      zones = await findZonesContainingPoint(coordinates);
+    }
+  }
+
+  const zoneIds = zones.map((zone) => zone._id);
+  // `$ne` rather than `$in` so banners saved before the field existed count as 'both'.
+  const audienceFilter = { audience: { $ne: otherAudience } };
+  const [items, anyBanners] = await Promise.all([
+    Banner.find({
+      active: true,
+      ...audienceFilter,
+      $or: [
+        { zone_ids: { $exists: false } },
+        { zone_ids: { $size: 0 } },
+        ...(zoneIds.length ? [{ zone_ids: { $in: zoneIds } }] : []),
+      ],
+    })
+      .sort({ createdAt: -1 })
+      .limit(PUBLIC_BANNER_LIMIT)
+      .lean(),
+    Banner.exists({ active: true, ...audienceFilter }),
+  ]);
+
+  // Banners aimed at this zone lead the carousel; newest first within each group.
+  const ordered = [
+    ...items.filter((item) => item.zone_ids?.length),
+    ...items.filter((item) => !item.zone_ids?.length),
+  ];
+
+  return {
+    results: ordered.map(serializePublicBanner),
+    paginator: {
+      current_page: 1,
+      per_page: PUBLIC_BANNER_LIMIT,
+      total: ordered.length,
+      last_page: 1,
+    },
+    audience,
+    zones: zones.map((zone) => ({ _id: zone._id, name: zone.name || '' })),
+    // Lets a client tell "nothing for this zone" apart from "no banners set
+    // up at all", where it may show its own placeholder promos instead.
+    any_banners: Boolean(anyBanners),
+  };
+};
+
+/// Zones offered in the banner form. Served from promotions rather than the
+/// zones module so a promotions-only admin can still target banners.
+export const listBannerZones = async () => {
+  const zones = await Zone.find({}, { name: 1, active: 1, status: 1 }).sort({ name: 1 }).lean();
+  return zones.map((zone) => ({
+    _id: zone._id,
+    name: zone.name || '',
+    active: zone.active !== false && zone.status !== 'inactive',
+  }));
 };
 
 export const createBanner = async (payload) => {

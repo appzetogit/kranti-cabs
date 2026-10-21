@@ -6,6 +6,7 @@ import {
   deleteBanner,
   deleteNotification,
   deletePromoCode,
+  getBannerZones,
   getBanners,
   getNotifications,
   getPromoCodes,
@@ -39,6 +40,7 @@ promotionsRouter.delete('/admin/notifications/:id', deleteNotification);
 promotionsRouter.delete('/admin/push-notifications/:id', deleteNotification);
 
 promotionsRouter.get('/admin/banners', getBanners);
+promotionsRouter.get('/admin/banners/zones', getBannerZones);
 promotionsRouter.post('/admin/banners', createBanner);
 promotionsRouter.patch('/admin/banners/:id', updateBanner);
 promotionsRouter.delete('/admin/banners/:id', deleteBanner);

@@ -19,6 +19,7 @@ import toast from 'react-hot-toast';
 import { uploadService } from '../../../../shared/services/uploadService';
 import api from '../../../../shared/api/axiosInstance';
 import { useSettings } from '../../../../shared/context/SettingsContext';
+import { isGeneratedBannerTitle } from '../../../../shared/hooks/useZoneBanners';
 
 const STORAGE_KEY = 'Appzeto :admin:user-app-settings';
 
@@ -87,16 +88,20 @@ const AdminUserAppManagement = ({ tab: initialTab }) => {
       try {
         const bannersRes = await api.get('/admin/banners');
         const bannersData = bannersRes.data?.data?.results || bannersRes.data?.results || bannersRes.data || [];
-        fetchedPromos = bannersData.map((b, idx) => ({
-          id: b._id || b.id || String(idx + 1),
-          title: b.title || 'Experience A New Standard With Kranti Cabs',
-          subtitle: b.subtitle || 'A premier private hire service where luxury and reliability converge.',
-          imageUrl: b.image || '',
-          image: b.image || '',
-          route: b.redirect_url || b.external_link || b.deep_link || '/taxi/user/ride/select-location',
-          status: b.active !== false ? 'active' : 'inactive',
-          order: idx + 1
-        }));
+        // Zone- or driver-targeted banners stay out of this shared copy; the
+        // rider home fetches them per zone from /users/banners instead.
+        fetchedPromos = bannersData
+          .filter((b) => !(b.zone_ids || []).length && b.audience !== 'driver')
+          .map((b, idx) => ({
+            id: b._id || b.id || String(idx + 1),
+            title: (!isGeneratedBannerTitle(b.title) && b.title) || 'Experience A New Standard With Kranti Cabs',
+            subtitle: b.subtitle || 'A premier private hire service where luxury and reliability converge.',
+            imageUrl: b.image || '',
+            image: b.image || '',
+            route: b.redirect_url || b.external_link || b.deep_link || '/taxi/user/ride/select-location',
+            status: b.active !== false ? 'active' : 'inactive',
+            order: idx + 1
+          }));
       } catch (e) {
         console.error('Failed to fetch banners list:', e);
       }

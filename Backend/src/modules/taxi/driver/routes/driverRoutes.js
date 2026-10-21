@@ -7,6 +7,7 @@ import {
 import { asyncHandler } from "../../../../utils/asyncHandler.js";
 import { authenticate } from "../../middlewares/authMiddleware.js";
 import { getPendingRideOffers } from "../controllers/rideOfferController.js";
+import { getDriverBanners } from "../../admin/promotions/controllers/promotionsController.js";
 import {
   getDriverKycStatus,
   requestDriverAadhaarOtp,
@@ -181,6 +182,8 @@ driverRouter.get(
   authenticate(["driver"]),
   asyncHandler(getPendingRideOffers),
 );
+// Home-screen promo banners for the driver's zone (`lat`, `lng`).
+driverRouter.get("/banners", asyncHandler(getDriverBanners));
 driverRouter.get(
   "/me",
   authenticate(["driver", "owner", "pooling_driver", "bus_driver", "service_center", "service_center_staff"], { allowPending: true }),

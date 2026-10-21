@@ -1037,7 +1037,9 @@ export const cancelRideByAdmin = async (rideId) => {
   return ride;
 };
 
-export const cancelRideByUser = async ({ rideId, userId }) => {
+/// `cancellation` comes from resolveRiderCancelReason; it is validated by the
+/// caller before this runs, because dispatch is stopped on the first line.
+export const cancelRideByUser = async ({ rideId, userId, cancellation = null }) => {
   const dispatchState = getDispatchState(rideId);
   stopDispatchFlow(rideId, { releaseLease: false });
 
@@ -1071,10 +1073,19 @@ export const cancelRideByUser = async ({ rideId, userId }) => {
   const cancelUpdate = {
     status: RIDE_STATUS.CANCELLED,
     liveStatus: RIDE_LIVE_STATUS.CANCELLED,
+    cancelledBy: 'user',
+    cancelledAt: new Date(),
+    cancelReason: cancellation?.cancelReason || '',
+    cancelReasonId: cancellation?.cancelReasonId || null,
+    cancelReasonNote: cancellation?.cancelReasonNote || '',
+    cancelStage: cancellation?.cancelStage || '',
   };
   if (existing.bookingMode === 'bidding') {
     cancelUpdate.biddingStatus = 'cancelled';
   }
+  const driverCancelMessage = cancellation?.driverLabel
+    ? `Rider cancelled: ${cancellation.driverLabel}`
+    : 'User cancelled the ride.';
 
   let ride = await Ride.findOneAndUpdate(
     {
@@ -1129,7 +1140,8 @@ export const cancelRideByUser = async ({ rideId, userId }) => {
     emitToRoom(getDriverRoom(ride.driverId), 'rideRequestClosed', {
       rideId: String(ride._id),
       reason: 'user-cancelled',
-      message: 'User cancelled the ride.',
+      message: driverCancelMessage,
+      cancelReason: cancellation?.driverLabel || '',
     });
     // Their trip is gone; they may be next to another ride still searching.
     notifyLateAvailableDriver(ride.driverId).catch(() => null);

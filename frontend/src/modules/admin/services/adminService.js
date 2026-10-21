@@ -199,6 +199,10 @@ export const adminService = {
   getOverallEarnings: () => api.get('/admin/dashboard/overall-earnings'),
   getCancelChart: () => api.get('/admin/dashboard/cancel-chart'),
   cancelRideRequest: (id, reason = '') => api.post(`/admin/ride-requests/${id}/cancel`, { reason }),
+  getCancellationReasons: (params = {}) => api.get('/admin/cancellation-reasons', { params }),
+  createCancellationReason: (data) => api.post('/admin/cancellation-reasons', data),
+  updateCancellationReason: (id, data) => api.patch(`/admin/cancellation-reasons/${id}`, data),
+  deleteCancellationReason: (id) => api.delete(`/admin/cancellation-reasons/${id}`),
   deleteRideRequest: (id) => api.delete(`/admin/ride-requests/${id}`),
   getSafetyAlerts: ({ page = 1, limit = 25, status = 'active' } = {}) =>
     api.get(`/admin/safety/alerts?page=${page}&limit=${limit}&status=${encodeURIComponent(status)}`),

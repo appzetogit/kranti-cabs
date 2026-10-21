@@ -177,6 +177,8 @@ const FooterBannerImage = ({ footerSettings, fallbackImage }) => {
 };
 import { userService } from '../services/userService';
 import { getLocalUserToken, clearLocalUserSession } from '../services/authService';
+import { getSavedLocation, LOCATION_UPDATED_EVENT } from '../services/locationStore';
+import { isGeneratedBannerTitle, useZoneBanners } from '../../../shared/hooks/useZoneBanners';
 import {
   CURRENT_RIDE_UPDATED_EVENT,
   getCurrentRide,
@@ -732,7 +734,39 @@ const Home = () => {
     lastRideSignatureRef.current = getCurrentRideSignature(currentRide);
   }, [currentRide]);
 
-  const rawBanners = uiSettings?.promos || defaultSettings.promos;
+  // Banners for the zone the rider is in, keyed off the saved location that
+  // the location picker and GPS lookup keep current.
+  const [bannerPosition, setBannerPosition] = useState(() => {
+    const saved = getSavedLocation();
+    return saved && saved.lat !== null && saved.lon !== null ? { lat: saved.lat, lng: saved.lon } : null;
+  });
+  useEffect(() => {
+    const syncBannerPosition = () => {
+      const saved = getSavedLocation();
+      if (saved && saved.lat !== null && saved.lon !== null) {
+        setBannerPosition((prev) => (prev?.lat === saved.lat && prev?.lng === saved.lon ? prev : { lat: saved.lat, lng: saved.lon }));
+      }
+    };
+    window.addEventListener(LOCATION_UPDATED_EVENT, syncBannerPosition);
+    return () => window.removeEventListener(LOCATION_UPDATED_EVENT, syncBannerPosition);
+  }, []);
+  const zoneBanners = useZoneBanners('/users/banners', bannerPosition);
+  const zonePromos = useMemo(() => zoneBanners.banners.map((banner, idx) => ({
+    id: banner._id,
+    title: isGeneratedBannerTitle(banner.title) ? 'Experience A New Standard With Kranti Cabs' : banner.title || 'Experience A New Standard With Kranti Cabs',
+    subtitle: 'A premier private hire service where luxury and reliability converge.',
+    imageUrl: banner.image || '',
+    image: banner.image || '',
+    route: banner.redirect_url || '',
+    status: 'active',
+    order: idx + 1,
+  })), [zoneBanners.banners]);
+
+  // The zone feed wins once it answers. The admin-saved promos remain the
+  // fallback for when it cannot be reached or no banners exist at all.
+  const rawBanners = zoneBanners.loaded && zoneBanners.anyBanners
+    ? zonePromos
+    : (uiSettings?.promos || defaultSettings.promos);
   const promoBanners = useMemo(() => {
     if (!Array.isArray(rawBanners)) return [];
     return rawBanners.filter(b => {
@@ -1356,7 +1390,9 @@ const Home = () => {
                   key={item.id || item._id}
                   className="promo-slide cursor-pointer"
                   onClick={() => {
-                    if (item.route) {
+                    if (/^https?:\/\//i.test(item.route || '')) {
+                      window.open(item.route, '_blank', 'noopener,noreferrer');
+                    } else if (item.route) {
                       const targetRoute = item.route;
                       const isSelectLocationRoute = targetRoute.includes('/ride/select-location');
                       if (isSelectLocationRoute) {

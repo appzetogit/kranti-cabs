@@ -39,6 +39,19 @@ const bannerSchema = new mongoose.Schema(
       default: true,
       index: true,
     },
+    // Which app shows the banner. Banners created before targeting existed
+    // have no value and read as 'both'.
+    audience: {
+      type: String,
+      enum: ['both', 'rider', 'driver'],
+      default: 'both',
+      trim: true,
+    },
+    // Zones the banner is limited to. Empty means every zone.
+    zone_ids: {
+      type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'TaxiZone' }],
+      default: [],
+    },
     push_count: {
       type: Number,
       default: 0,

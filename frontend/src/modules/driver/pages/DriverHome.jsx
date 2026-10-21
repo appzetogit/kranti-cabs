@@ -32,6 +32,8 @@ import DriverBottomNav from '../../shared/components/DriverBottomNav';
 import IncomingRideRequest from './IncomingRideRequest';
 import { DriverSurgeCard, DriverSurgeLayer } from '../components/DriverSurgeLayer';
 import { useDriverSurges } from '../components/useDriverSurges';
+import DriverZoneBanners from '../components/DriverZoneBanners';
+import { useZoneBanners } from '../../../shared/hooks/useZoneBanners';
 import api from '../../../shared/api/axiosInstance';
 import { useSettings } from '../../../shared/context/SettingsContext';
 import { uploadService } from '../../../shared/services/uploadService';
@@ -697,6 +699,8 @@ const DriverHome = () => {
     const driverPosition = useMemo(() => toLatLng(driverCoords || DEFAULT_MAP_COORDS), [driverCoords]);
     // Surge areas near the driver, only while online - the map Rapido drivers use to chase demand.
     const surgeAreas = useDriverSurges(driverCoords ? driverPosition : null, isOnline);
+    // Admin promo banners for the zone the driver is in (all-zone ones until a fix arrives).
+    const { banners: zoneBanners } = useZoneBanners('/drivers/banners', driverCoords ? driverPosition : null);
     const mapVehicleIcon = useMemo(
         () => getMapIconForVehicle(vehicleIconUrl || vehicleIconType),
         [vehicleIconType, vehicleIconUrl],
@@ -2509,6 +2513,8 @@ const DriverHome = () => {
                         </motion.div>
                     ) : null}
                 </AnimatePresence>
+
+                <DriverZoneBanners banners={zoneBanners} />
 
                 {/* Today's Stats Summary - Visible in both offline and online modes */}
                 <AnimatePresence>

@@ -1,6 +1,7 @@
 import { asyncHandler } from '../../../../utils/asyncHandler.js';
 import { ApiError } from '../../../../utils/ApiError.js';
 import { CancellationReason } from '../models/CancellationReason.js';
+import { normalizeStage } from '../../services/cancellationReasonService.js';
 
 /**
  * Cancellation reasons, for the apps and for the admin panel.
@@ -29,6 +30,7 @@ const present = (reason) => ({
   _id: String(reason._id),
   title: reason.title,
   audience: reason.audience,
+  stage: reason.stage || 'any',
   requiresNote: Boolean(reason.requiresNote),
   requires_note: Boolean(reason.requiresNote),
   order_by: Number(reason.order_by || 0),
@@ -41,8 +43,14 @@ const present = (reason) => ({
 /// cancel for different reasons and one catalog serves both.
 export const getPublicCancellationReasons = asyncHandler(async (req, res) => {
   const audience = normalizeAudience(req.query.audience);
+  const query = { audience, active: true };
+  // Without a stage the app gets every reason and can filter itself; rows
+  // saved before stages existed have none and count as 'any'.
+  if (req.query.stage) {
+    query.stage = { $in: [normalizeStage(req.query.stage), 'any', null] };
+  }
 
-  const reasons = await CancellationReason.find({ audience, active: true })
+  const reasons = await CancellationReason.find(query)
     .sort({ order_by: 1, createdAt: 1 })
     .lean();
 
@@ -62,11 +70,13 @@ export const listCancellationReasons = asyncHandler(async (req, res) => {
 
 export const createCancellationReason = asyncHandler(async (req, res) => {
   const title = String(req.body?.title || '').trim();
-  if (!title) throw new ApiError(400, 'Reason title is required');
+  if (!title) throw new ApiError(400, 'Reason title is required', { code: 'CANCEL_REASON_TITLE_REQUIRED' });
 
+  const audience = normalizeAudience(req.body?.audience);
   const reason = await CancellationReason.create({
     title,
-    audience: normalizeAudience(req.body?.audience),
+    audience,
+    stage: audience === 'user' ? normalizeStage(req.body?.stage) : 'any',
     requiresNote: req.body?.requiresNote === true || req.body?.requires_note === true,
     order_by: Number(req.body?.order_by || 0),
     active: req.body?.active !== false,
@@ -80,11 +90,15 @@ export const updateCancellationReason = asyncHandler(async (req, res) => {
 
   if (req.body?.title !== undefined) {
     const title = String(req.body.title || '').trim();
-    if (!title) throw new ApiError(400, 'Reason title cannot be empty');
+    if (!title) throw new ApiError(400, 'Reason title cannot be empty', { code: 'CANCEL_REASON_TITLE_REQUIRED' });
     updates.title = title;
   }
   if (req.body?.audience !== undefined) {
     updates.audience = normalizeAudience(req.body.audience);
+    if (updates.audience === 'driver') updates.stage = 'any';
+  }
+  if (req.body?.stage !== undefined && updates.stage === undefined) {
+    updates.stage = normalizeStage(req.body.stage);
   }
   if (req.body?.requiresNote !== undefined || req.body?.requires_note !== undefined) {
     updates.requiresNote = req.body.requiresNote === true || req.body.requires_note === true;
@@ -101,13 +115,13 @@ export const updateCancellationReason = asyncHandler(async (req, res) => {
     runValidators: true,
   }).lean();
 
-  if (!reason) throw new ApiError(404, 'Cancellation reason not found');
+  if (!reason) throw new ApiError(404, 'Cancellation reason not found', { code: 'CANCEL_REASON_NOT_FOUND' });
 
   ok(res, present(reason));
 });
 
 export const deleteCancellationReason = asyncHandler(async (req, res) => {
   const reason = await CancellationReason.findByIdAndDelete(req.params.id).lean();
-  if (!reason) throw new ApiError(404, 'Cancellation reason not found');
+  if (!reason) throw new ApiError(404, 'Cancellation reason not found', { code: 'CANCEL_REASON_NOT_FOUND' });
   ok(res, { id: String(reason._id) });
 });

@@ -168,6 +168,12 @@ export const findZoneByPickup = async (pickupCoords, options = {}) => {
   return pickMostSpecificZone(await Zone.find(buildZoneIntersectionQuery(coordinates)));
 };
 
+/// Every active zone containing a point, not just the most specific one.
+/// Zone-targeted content (banners) uses this so a banner aimed at a
+/// nationwide zone still reaches riders inside a city zone nested in it.
+export const findZonesContainingPoint = async (coords) =>
+  Zone.find(buildZoneIntersectionQuery(normalizePoint(coords, 'coordinates')), { name: 1 }).lean();
+
 const toLocalMeters = (origin, target) => {
   const [originLng, originLat] = origin;
   const [targetLng, targetLat] = target;

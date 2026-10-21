@@ -2,37 +2,65 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
   ChevronRight,
-  Filter,
   Image as ImageIcon,
   Loader2,
+  MapPin,
+  Pencil,
   Plus,
   Save,
   Trash2,
   Upload,
+  Users,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { isGeneratedBannerTitle } from '../../../../shared/hooks/useZoneBanners';
 
 const Motion = motion;
 const LIST_PATH = '/admin/promotions/banner-image';
 const CREATE_PATH = '/admin/promotions/banner-image/create';
+const EDIT_PATH_PREFIX = '/admin/promotions/banner-image/edit/';
+
+const AUDIENCE_OPTIONS = [
+  { value: 'both', label: 'Rider & driver apps' },
+  { value: 'rider', label: 'Rider app only' },
+  { value: 'driver', label: 'Driver app only' },
+];
+const AUDIENCE_LABELS = { both: 'Rider & Driver', rider: 'Rider', driver: 'Driver' };
+
+const inputClass = 'w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-800 bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-colors';
+const labelClass = 'block text-xs font-semibold text-gray-500 mb-1.5';
 
 const createInitialFormData = () => ({
   image: null,
   image_url: '',
   use_url: false,
+  title: '',
+  audience: 'both',
+  zone_ids: [],
 });
+
+// The rider home-screen settings keep a copy of the banners as a fallback for
+// when the zone feed cannot be reached. Only banners meant for every rider
+// belong in it, or a zone-targeted banner would leak to every city.
+const isEveryRiderBanner = (banner) => !(banner.zone_ids || []).length && banner.audience !== 'driver';
 
 const BannerImage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { id: editId } = useParams();
   const isCreateRoute = location.pathname === CREATE_PATH;
+  const isEditRoute = Boolean(editId) && location.pathname.startsWith(EDIT_PATH_PREFIX);
+  const isFormRoute = isCreateRoute || isEditRoute;
 
   const [banners, setBanners] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState(createInitialFormData);
   const [imagePreview, setImagePreview] = useState(null);
+  const [zones, setZones] = useState([]);
+  const [zonesError, setZonesError] = useState('');
+  const [zoneSearch, setZoneSearch] = useState('');
 
   // The transparent decorations shown at the very top of the app home screen,
   // stored as an array in user_home_settings.topBanners. Admins can add several
@@ -65,9 +93,9 @@ const BannerImage = () => {
       const homeData = await homeRes.json();
       const currentSettings = homeData.settings || {};
 
-      const nextPromos = bannersList.map((b, idx) => ({
+      const nextPromos = bannersList.filter(isEveryRiderBanner).map((b, idx) => ({
         id: b._id || b.id || String(idx + 1),
-        title: b.title || 'Experience A New Standard With Kranti Cabs',
+        title: (!isGeneratedBannerTitle(b.title) && b.title) || 'Experience A New Standard With Kranti Cabs',
         subtitle: b.subtitle || 'A premier private hire service where luxury and reliability converge.',
         imageUrl: b.image || '',
         image: b.image || '',
@@ -238,17 +266,76 @@ const BannerImage = () => {
     }
   }, [baseUrl, token, syncBannersToHomeSettings]);
 
+  const fetchZones = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${baseUrl}/banners/zones`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || 'Failed to load zones');
+      setZones(data.data?.results || []);
+      setZonesError('');
+    } catch (error) {
+      console.error('Failed to load zones:', error);
+      setZonesError('Could not load zones. The banner will show in all zones unless you pick some.');
+    }
+  }, [baseUrl, token]);
+
   useEffect(() => {
     fetchData();
     fetchTopBanners();
-  }, [fetchData, fetchTopBanners]);
+    fetchZones();
+  }, [fetchData, fetchTopBanners, fetchZones]);
 
   useEffect(() => {
-    if (!isCreateRoute) {
+    if (!isFormRoute) {
       setFormData(createInitialFormData());
       setImagePreview(null);
+      setZoneSearch('');
     }
-  }, [isCreateRoute]);
+  }, [isFormRoute]);
+
+  // Fill the form from the list once it has loaded, so a reload on the edit
+  // URL works too.
+  const editingBanner = useMemo(
+    () => (isEditRoute ? banners.find((banner) => String(banner._id || banner.id) === String(editId)) : null),
+    [isEditRoute, banners, editId],
+  );
+  useEffect(() => {
+    if (!editingBanner) return;
+    setFormData({
+      ...createInitialFormData(),
+      title: editingBanner.title || '',
+      audience: editingBanner.audience || 'both',
+      zone_ids: (editingBanner.zone_ids || []).map(String),
+    });
+    setImagePreview(editingBanner.image ? resolveImageUrl(editingBanner.image) : null);
+  }, [editingBanner, resolveImageUrl]);
+
+  // Zones the banner points at that are no longer listed (deleted) still need
+  // a chip so the admin can see and remove them.
+  const zoneOptions = useMemo(() => {
+    const known = new Map(zones.map((zone) => [String(zone._id), zone]));
+    (editingBanner?.zones || []).forEach((zone) => {
+      if (!known.has(String(zone._id))) known.set(String(zone._id), { _id: zone._id, name: zone.name, active: false, missing: true });
+    });
+    return [...known.values()];
+  }, [zones, editingBanner]);
+  const visibleZoneOptions = useMemo(() => {
+    const query = zoneSearch.trim().toLowerCase();
+    return query ? zoneOptions.filter((zone) => zone.name.toLowerCase().includes(query)) : zoneOptions;
+  }, [zoneOptions, zoneSearch]);
+
+  const toggleZone = (zoneId) => {
+    const id = String(zoneId);
+    setFormData((current) => ({
+      ...current,
+      zone_ids: current.zone_ids.includes(id)
+        ? current.zone_ids.filter((value) => value !== id)
+        : [...current.zone_ids, id],
+    }));
+  };
 
   const rows = useMemo(() => banners, [banners]);
 
@@ -268,7 +355,13 @@ const BannerImage = () => {
   const handleSave = async (event) => {
     event.preventDefault();
 
-    if (!formData.use_url && !formData.image) {
+    // Editing may keep the current image; creating needs one.
+    const hasNewImage = formData.use_url ? Boolean(formData.image_url.trim()) : Boolean(formData.image);
+    if (!isEditRoute && !formData.use_url && !formData.image) {
+      alert('Please upload a banner image');
+      return;
+    }
+    if (isEditRoute && !hasNewImage && !imagePreview) {
       alert('Please upload a banner image');
       return;
     }
@@ -292,13 +385,16 @@ const BannerImage = () => {
       }
 
       const payload = {
-        image: imageData,
-        image_url: formData.image_url.trim(),
-        use_url: formData.use_url,
+        audience: formData.audience,
+        zone_ids: formData.zone_ids,
+        ...(formData.title.trim() ? { title: formData.title.trim() } : {}),
+        ...(hasNewImage || !isEditRoute
+          ? { image: imageData, image_url: formData.image_url.trim(), use_url: formData.use_url }
+          : {}),
       };
 
-      const res = await fetch(`${baseUrl}/banners`, {
-        method: 'POST',
+      const res = await fetch(isEditRoute ? `${baseUrl}/banners/${editId}` : `${baseUrl}/banners`, {
+        method: isEditRoute ? 'PATCH' : 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -370,15 +466,15 @@ const BannerImage = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-[17px] font-black text-[#2D3A6E] uppercase tracking-tight italic leading-none mb-1">
-            {isCreateRoute ? 'CREATE' : 'BANNER IMAGE'}
+            {isEditRoute ? 'EDIT' : isCreateRoute ? 'CREATE' : 'BANNER IMAGE'}
           </h1>
           <div className="flex items-center gap-2 text-[11px] font-bold text-gray-400 uppercase tracking-widest leading-none">
             <span>Banner Image</span>
             <ChevronRight size={12} className="opacity-50" />
-            <span className="text-gray-900">{isCreateRoute ? 'Create' : 'Banner Image'}</span>
+            <span className="text-gray-900">{isEditRoute ? 'Edit' : isCreateRoute ? 'Create' : 'Banner Image'}</span>
           </div>
         </div>
-        {isCreateRoute ? (
+        {isFormRoute ? (
           <button
             type="button"
             onClick={() => navigate(LIST_PATH)}
@@ -390,7 +486,7 @@ const BannerImage = () => {
       </div>
 
       <AnimatePresence mode="wait">
-        {!isCreateRoute ? (
+        {!isFormRoute ? (
           <Motion.div
             key="banner-list"
             initial={{ opacity: 0, y: 10 }}
@@ -538,6 +634,8 @@ const BannerImage = () => {
                   <thead className="bg-gray-50">
                     <tr className="text-[13px] font-bold text-gray-700">
                       <th className="px-6 py-4">Icon</th>
+                      <th className="px-6 py-4">Shown in</th>
+                      <th className="px-6 py-4">Zones</th>
                       <th className="px-6 py-4">Status</th>
                       <th className="px-6 py-4">Action</th>
                     </tr>
@@ -545,13 +643,13 @@ const BannerImage = () => {
                   <tbody className="divide-y divide-gray-100">
                     {loading ? (
                       <tr>
-                        <td colSpan="3" className="px-6 py-14 text-center text-sm text-gray-400">
+                        <td colSpan="5" className="px-6 py-14 text-center text-sm text-gray-400">
                           Loading banners...
                         </td>
                       </tr>
                     ) : rows.length === 0 ? (
                       <tr>
-                        <td colSpan="3" className="px-6 py-14 text-center text-sm text-gray-400">
+                        <td colSpan="5" className="px-6 py-14 text-center text-sm text-gray-400">
                           No banners found.
                         </td>
                       </tr>
@@ -572,6 +670,35 @@ const BannerImage = () => {
                                 </div>
                               )}
                             </div>
+                            {item.title && !isGeneratedBannerTitle(item.title) ? (
+                              <p className="mt-1.5 max-w-52 truncate text-[12px] font-semibold text-gray-700">{item.title}</p>
+                            ) : null}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="inline-flex whitespace-nowrap rounded bg-indigo-50 px-2.5 py-1 text-[11px] font-bold text-indigo-700">
+                              {AUDIENCE_LABELS[item.audience] || AUDIENCE_LABELS.both}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            {(item.zones || []).length === 0 ? (
+                              <span className="inline-flex whitespace-nowrap rounded bg-gray-100 px-2.5 py-1 text-[11px] font-bold text-gray-600">
+                                All zones
+                              </span>
+                            ) : (
+                              <div className="flex max-w-xs flex-wrap gap-1.5">
+                                {item.zones.map((zone) => (
+                                  <span
+                                    key={zone._id}
+                                    title={zone.exists === false ? 'This zone was deleted. Edit the banner to remove it.' : undefined}
+                                    className={`inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] font-bold ${
+                                      zone.exists === false ? 'bg-rose-50 text-rose-600' : 'bg-amber-50 text-amber-700'
+                                    }`}
+                                  >
+                                    <MapPin size={11} /> {zone.name}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </td>
                           <td className="px-6 py-4">
                             <button
@@ -588,6 +715,15 @@ const BannerImage = () => {
                             <div className="flex items-center gap-2">
                               <button
                                 type="button"
+                                aria-label="Edit banner"
+                                onClick={() => navigate(`${EDIT_PATH_PREFIX}${item._id || item.id}`)}
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-indigo-600"
+                              >
+                                <Pencil size={16} />
+                              </button>
+                              <button
+                                type="button"
+                                aria-label="Delete banner"
                                 onClick={() => handleDelete(item._id || item.id)}
                                 className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-rose-600"
                               >
@@ -700,6 +836,105 @@ const BannerImage = () => {
                     />
                   </div>
                 ) : null}
+              </div>
+
+              <div>
+                <label className={labelClass} htmlFor="banner-title">Title (optional)</label>
+                <input
+                  id="banner-title"
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) => setFormData((current) => ({ ...current, title: e.target.value }))}
+                  className={`${inputClass} max-w-xl`}
+                  placeholder="Diwali offer - Indore"
+                />
+              </div>
+
+              <div className="rounded-xl border border-gray-200 p-6">
+                <div className="flex items-center gap-3 mb-5 pb-4 border-b border-gray-100">
+                  <div className="w-9 h-9 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
+                    <Users size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900">Who sees it</h3>
+                    <p className="text-xs text-gray-400">Pick the app and the zones. No zones selected means every zone.</p>
+                  </div>
+                </div>
+
+                <div className="space-y-5">
+                  <div>
+                    <label className={labelClass} htmlFor="banner-audience">Show in</label>
+                    <select
+                      id="banner-audience"
+                      value={formData.audience}
+                      onChange={(e) => setFormData((current) => ({ ...current, audience: e.target.value }))}
+                      className={`${inputClass} max-w-xs`}
+                    >
+                      {AUDIENCE_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between gap-3 mb-1.5 max-w-xl">
+                      <span className="text-xs font-semibold text-gray-500">
+                        <MapPin size={12} className="inline mr-1 text-gray-400" />
+                        Zones
+                      </span>
+                      {formData.zone_ids.length ? (
+                        <button
+                          type="button"
+                          onClick={() => setFormData((current) => ({ ...current, zone_ids: [] }))}
+                          className="text-xs font-semibold text-indigo-600 hover:text-indigo-700"
+                        >
+                          Clear ({formData.zone_ids.length})
+                        </button>
+                      ) : null}
+                    </div>
+                    <p className="text-xs text-gray-500 mb-3">
+                      {formData.zone_ids.length === 0
+                        ? 'Showing in all zones.'
+                        : `Showing only to people currently in ${formData.zone_ids.length === 1 ? 'this zone' : `these ${formData.zone_ids.length} zones`}. A city zone inside a bigger zone (such as "India") counts as being in both.`}
+                    </p>
+                    {zoneOptions.length > 8 ? (
+                      <input
+                        type="search"
+                        value={zoneSearch}
+                        onChange={(e) => setZoneSearch(e.target.value)}
+                        className={`${inputClass} max-w-xs mb-3`}
+                        placeholder="Search zones"
+                      />
+                    ) : null}
+                    {zonesError ? <p className="text-xs font-semibold text-rose-600 mb-2">{zonesError}</p> : null}
+                    <div className="flex flex-wrap gap-2">
+                      {visibleZoneOptions.map((zone) => {
+                        const selected = formData.zone_ids.includes(String(zone._id));
+                        return (
+                          <button
+                            key={zone._id}
+                            type="button"
+                            aria-pressed={selected}
+                            onClick={() => toggleZone(zone._id)}
+                            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                              selected
+                                ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                                : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                            }`}
+                          >
+                            <MapPin size={14} />
+                            {zone.name || 'Unnamed zone'}
+                            {zone.missing ? <span className="text-[11px] text-rose-500">(deleted)</span> : null}
+                            {!zone.missing && zone.active === false ? <span className="text-[11px] text-gray-400">(inactive)</span> : null}
+                          </button>
+                        );
+                      })}
+                      {!zonesError && zoneOptions.length === 0 ? (
+                        <p className="text-sm text-gray-400">No zones set up yet.</p>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 

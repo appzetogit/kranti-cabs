@@ -34,6 +34,7 @@ import {
   startDispatchFlow,
 } from '../../services/dispatchService.js';
 import { getTipSettings } from '../../services/appSettingsService.js';
+import { resolveRiderCancelReason } from '../../services/cancellationReasonService.js';
 import { getBidRideSettings, getTransportRideSettings } from '../../services/transportSettingsService.js';
 import { matchDrivers } from '../../services/matchingService.js';
 import { Ride } from '../models/Ride.js';
@@ -1288,9 +1289,20 @@ export const getRideAppTipSettings = async (_req, res) => {
 };
 
 export const cancelRide = async (req, res) => {
+  // Reason is checked first: a bad reason must not reach cancelRideByUser,
+  // which stops the driver search before it looks at anything else.
+  const current = mongoose.isValidObjectId(req.params.rideId)
+    ? await Ride.findOne({ _id: req.params.rideId, userId: req.auth.sub }).select('driverId').lean()
+    : null;
+  if (!current) {
+    throw new ApiError(404, 'Ride not found', { code: 'RIDE_NOT_FOUND' });
+  }
+  const cancellation = await resolveRiderCancelReason({ ride: current, input: req.body || {} });
+
   const ride = await cancelRideByUser({
     rideId: req.params.rideId,
     userId: req.auth.sub,
+    cancellation,
   });
 
   if (!ride) {
@@ -1303,6 +1315,7 @@ export const cancelRide = async (req, res) => {
       rideId: String(ride._id),
       status: ride.status,
       liveStatus: ride.liveStatus,
+      cancelReason: ride.cancelReason || '',
     },
   });
 };

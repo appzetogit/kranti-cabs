@@ -126,6 +126,7 @@ import {
   AdminPriceHike,
   AdminTipSettings,
   AdminRideVoiceSettings,
+  AdminCancellationReasons,
   AdminTransportRideSettings,
   AdminTrips,
   AdminUserBulkUpload,
@@ -278,6 +279,7 @@ const adminRoutes = (
       <Route path="promotions/send-notification/create" element={<AdminSendNotification />} />
       <Route path="promotions/banner-image" element={<AdminBannerImage />} />
       <Route path="promotions/banner-image/create" element={<AdminBannerImage />} />
+      <Route path="promotions/banner-image/edit/:id" element={<AdminBannerImage />} />
 
       <Route path="management/admins" element={<AdminAdmins />} />
       <Route path="management/admins/create" element={<AdminAdminCreate />} />
@@ -409,6 +411,7 @@ const adminRoutes = (
       <Route path="settings/app/wallet" element={<AdminWalletSettings />} />
       <Route path="settings/app/tip" element={<AdminTipSettings />} />
       <Route path="settings/app/ride-voice" element={<AdminRideVoiceSettings />} />
+      <Route path="settings/app/cancellation-reasons" element={<AdminCancellationReasons />} />
       <Route path="settings/app/country" element={<AdminCountryManagement />} />
       <Route path="settings/app/onboard" element={<AdminOnboardingScreens />} />
 

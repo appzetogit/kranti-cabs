@@ -52,7 +52,25 @@ const normalizeRow = (row = {}) => ({
   // How it was actually paid, e.g. "Paid online via Razorpay (booked as cash)".
   paymentDetail: row.paymentDetail || '',
   paymentReference: row.paymentReference || '',
+  cancelledAt: row.cancelledAt || null,
+  cancelledBy: row.cancelledBy || '',
+  cancelReason: row.cancelReason || '',
+  cancelStage: row.cancelStage || '',
 });
+
+const CANCEL_STAGE_LABELS = {
+  before_driver: 'Before driver assigned',
+  after_driver: 'After driver assigned',
+};
+
+// cancelledBy is 'user', 'driver' or 'admin:<name>'.
+const formatCancelledBy = (value) => {
+  const raw = String(value || '');
+  if (raw === 'user') return 'Rider';
+  if (raw === 'driver') return 'Driver';
+  if (raw.startsWith('admin')) return `Admin${raw.includes(':') ? ` (${raw.split(':').slice(1).join(':')})` : ''}`;
+  return raw || '—';
+};
 
 const TripDetailsModal = ({ trip, onClose }) => {
   if (!trip) return null;
@@ -99,6 +117,27 @@ const TripDetailsModal = ({ trip, onClose }) => {
                 {String(trip.tripStatus).toLowerCase()}
               </span>
             </div>
+            {trip.tripStatus === 'CANCELLED' && (
+              <div className="col-span-2 rounded-xl border border-red-100 bg-red-50/60 p-4 space-y-3">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wider font-bold text-gray-400 mb-1">Cancelled By</p>
+                    <p className="text-[13px] font-bold text-gray-900">{formatCancelledBy(trip.cancelledBy)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wider font-bold text-gray-400 mb-1">Cancelled At</p>
+                    <p className="text-[13px] font-bold text-gray-900">{trip.cancelledAt ? formatDate(trip.cancelledAt) : '—'}</p>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-wider font-bold text-gray-400 mb-1">Reason</p>
+                  <p className="text-[13px] font-bold text-gray-900 break-words">{trip.cancelReason || 'No reason given'}</p>
+                  {trip.cancelStage && CANCEL_STAGE_LABELS[trip.cancelStage] ? (
+                    <p className="text-[11px] text-gray-500 mt-0.5">{CANCEL_STAGE_LABELS[trip.cancelStage]}</p>
+                  ) : null}
+                </div>
+              </div>
+            )}
           </div>
         </div>
         <div className="border-t border-gray-100 p-4 bg-gray-50 flex justify-end">

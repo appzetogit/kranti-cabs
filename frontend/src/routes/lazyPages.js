@@ -248,6 +248,7 @@ export const AdminDriverSubscriptionSettings = lazy(() => import('../modules/adm
 export const AdminWalletSettings = lazy(() => import('../modules/admin/pages/settings/WalletSettings'));
 export const AdminTipSettings = lazy(() => import('../modules/admin/pages/settings/TipSettings'));
 export const AdminRideVoiceSettings = lazy(() => import('../modules/admin/pages/settings/RideVoiceSettings'));
+export const AdminCancellationReasons = lazy(() => import('../modules/admin/pages/settings/CancellationReasons'));
 export const AdminAppModules = lazy(() => import('../modules/admin/pages/settings/AppModules'));
 export const AdminOnboardingScreens = lazy(() => import('../modules/admin/pages/settings/OnboardingScreens'));
 export const AdminPaymentGateways = lazy(() => import('../modules/admin/pages/settings/PaymentGateways'));

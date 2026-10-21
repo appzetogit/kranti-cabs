@@ -44,14 +44,24 @@ export const deleteNotification = asyncHandler(async (req, res) => {
 /// Public banner feed for the apps' home carousel.
 ///
 /// Separate from the admin list on purpose: this returns only active
-/// banners and takes no paging or filter input, so an unauthenticated
-/// caller cannot page through drafts.
-export const getPublicBanners = asyncHandler(async (_req, res) =>
-  ok(res, await promotionsService.listBanners({ active: true, limit: 50 })),
+/// banners and takes no paging input, so an unauthenticated caller cannot
+/// page through drafts. `lat`/`lng` (or `zone_id`) narrow it to the
+/// caller's zone; `audience` defaults to the rider app.
+export const getPublicBanners = asyncHandler(async (req, res) =>
+  ok(res, await promotionsService.listPublicBanners(req.query, { defaultAudience: 'rider' })),
+);
+
+/// The same feed for the driver app's home screen.
+export const getDriverBanners = asyncHandler(async (req, res) =>
+  ok(res, await promotionsService.listPublicBanners({ ...req.query, audience: 'driver' })),
 );
 
 export const getBanners = asyncHandler(async (req, res) =>
   ok(res, await promotionsService.listBanners(req.query)),
+);
+
+export const getBannerZones = asyncHandler(async (_req, res) =>
+  ok(res, { results: await promotionsService.listBannerZones() }),
 );
 
 export const createBanner = asyncHandler(async (req, res) =>

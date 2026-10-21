@@ -21,6 +21,14 @@ const cancellationReasonSchema = new mongoose.Schema(
       trim: true,
       index: true,
     },
+    /// When in the trip the rider sees it: while still waiting for a driver,
+    /// once one is assigned, or both. Driver reasons always use 'any'.
+    stage: {
+      type: String,
+      enum: ['any', 'before_driver', 'after_driver'],
+      default: 'any',
+      trim: true,
+    },
     /// Set for the catch-all entry ("Other"), which asks the person to type
     /// something instead of just recording the label.
     requiresNote: {

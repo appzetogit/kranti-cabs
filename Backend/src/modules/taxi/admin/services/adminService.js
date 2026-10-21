@@ -6358,6 +6358,11 @@ const toAdminRideRow = (ride) => {
       vehicleType: ride.driverId.vehicleType || '',
       vehicleNumber: ride.driverId.vehicleNumber || '',
     } : null,
+    cancelledAt: ride.cancelledAt || null,
+    cancelledBy: ride.cancelledBy || '',
+    cancelReason: ride.cancelReason || '',
+    cancelReasonNote: ride.cancelReasonNote || '',
+    cancelStage: ride.cancelStage || '',
   };
 };
 

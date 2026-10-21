@@ -123,7 +123,8 @@ userRouter.get('/landing-content', asyncHandler(getPublicLandingContent));
 userRouter.get('/vehicle-map-icons', asyncHandler(getVehicleMapIcons));
 userRouter.get('/vehicle-map-icons/:vehicleId/image', asyncHandler(getVehicleMapIconImage));
 // Home-screen promo banners, which were only exposed under /admin, so the
-// app's request 404'd and the carousel stayed empty.
+// app's request 404'd and the carousel stayed empty. Pass `lat`/`lng` to
+// get the banners for that zone.
 userRouter.get('/banners', asyncHandler(getPublicBanners));
 userRouter.get('/legal-content', asyncHandler(getPublicLegalContent));
 userRouter.get('/set-prices', asyncHandler(getSetPrices));
