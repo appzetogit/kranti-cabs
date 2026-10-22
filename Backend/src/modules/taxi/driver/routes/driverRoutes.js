@@ -6,7 +6,7 @@ import {
 } from "../controllers/driverSubscriptionController.js";
 import { asyncHandler } from "../../../../utils/asyncHandler.js";
 import { authenticate } from "../../middlewares/authMiddleware.js";
-import { getPendingRideOffers } from "../controllers/rideOfferController.js";
+import { acceptRideOffer, getPendingRideOffers, rejectRideOffer } from "../controllers/rideOfferController.js";
 import { getDriverBanners } from "../../admin/promotions/controllers/promotionsController.js";
 import {
   getDriverKycStatus,
@@ -182,6 +182,9 @@ driverRouter.get(
   authenticate(["driver"]),
   asyncHandler(getPendingRideOffers),
 );
+// Answers from the native offer card shown while the app is closed.
+driverRouter.post("/ride-offers/:rideId/accept", authenticate(["driver"]), acceptRideOffer);
+driverRouter.post("/ride-offers/:rideId/reject", authenticate(["driver"]), rejectRideOffer);
 // Home-screen promo banners for the driver's zone (`lat`, `lng`).
 driverRouter.get("/banners", asyncHandler(getDriverBanners));
 driverRouter.get(

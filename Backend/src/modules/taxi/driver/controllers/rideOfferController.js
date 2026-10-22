@@ -4,6 +4,8 @@ import { Vehicle } from '../../admin/models/Vehicle.js';
 import { RIDE_STATUS } from '../../constants/index.js';
 import { resolveTransportDispatchConfig } from '../../services/transportSettingsService.js';
 import { serializeRideRental } from '../../services/rentalPackageService.js';
+import { acceptRideAssignment } from '../../services/rideService.js';
+import { markDriverRejectedFromDispatch, notifyRideAccepted } from '../../services/dispatchService.js';
 
 /**
  * Offers this driver was dispatched but has not answered yet.
@@ -129,4 +131,24 @@ export const getPendingRideOffers = asyncHandler(async (req, res) => {
 
   // Keyed `offers` to match what the driver app reads.
   ok(res, { offers });
+});
+
+// Accept / reject from the app's native offer card, which can answer while the
+// app (and so its socket) is closed. Same calls as the socket `acceptRide` /
+// `rejectRide` events, so the first successful accept still wins. The driver
+// joins the ride room itself when it opens the trip.
+export const acceptRideOffer = asyncHandler(async (req, res) => {
+  const ride = await acceptRideAssignment({ rideId: req.params.rideId, driverId: req.auth.sub });
+  await notifyRideAccepted(ride);
+  ok(res, {
+    rideId: String(ride._id),
+    status: ride.status,
+    liveStatus: ride.liveStatus,
+    acceptedAt: ride.acceptedAt,
+  });
+});
+
+export const rejectRideOffer = asyncHandler(async (req, res) => {
+  await markDriverRejectedFromDispatch(req.params.rideId, req.auth.sub);
+  ok(res, { rideId: String(req.params.rideId) });
 });

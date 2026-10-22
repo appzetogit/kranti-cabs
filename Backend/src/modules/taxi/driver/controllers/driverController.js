@@ -3020,6 +3020,7 @@ export const getCurrentDriver = async (req, res) => {
     success: true,
     data: {
       id: driver._id,
+      createdAt: driver.createdAt || null,
       name: driver.name,
       phone: driver.phone,
       email: driver.email,
