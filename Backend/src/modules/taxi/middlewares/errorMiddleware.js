@@ -1,3 +1,4 @@
+import { noteTransactionError } from '../../../config/database.js';
 import { ApiError } from '../../../utils/ApiError.js';
 
 export const notFoundHandler = (req, _res, next) => {
@@ -6,6 +7,8 @@ export const notFoundHandler = (req, _res, next) => {
 
 export const errorHandler = (error, _req, res, _next) => {
   const statusCode = error.statusCode || 500;
+
+  noteTransactionError(error);
 
   if (error.name === 'ValidationError') {
     return res.status(400).json({
