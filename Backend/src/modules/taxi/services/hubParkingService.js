@@ -244,6 +244,33 @@ export const applyHubParkingCharge = (ride) => {
   return total;
 };
 
+/**
+ * Every location charge in a ride's fare, one line each, for the rider,
+ * driver and admin trip screens: the airport fee and station entry fee (from
+ * booking) and the parking (once the trip completes).
+ */
+export const rideLocationChargeLines = (ride) => {
+  const lines = [];
+  const category = ride?.trip_category || {};
+  if (Number(category.airport_fee) > 0) {
+    lines.push({ code: 'airport_fee', label: `Airport fee${category.airport_name ? ` - ${category.airport_name}` : ''}`, amount: money(category.airport_fee) });
+  }
+  (category.station_fee_lines || []).forEach((line) => {
+    if (Number(line.fee) > 0) {
+      lines.push({ code: 'station_entry', label: `Station entry - ${line.name || 'station'}`, amount: money(line.fee) });
+    }
+  });
+  const parking = ride?.hub_parking;
+  if (Number(parking?.pickup?.fee) > 0) {
+    const { name, minutes } = parking.pickup;
+    lines.push({ code: 'pickup_parking', label: `Parking - ${name || 'pickup'}${minutes ? ` (${minutes} min)` : ''}`, amount: money(parking.pickup.fee) });
+  }
+  if (Number(parking?.drop?.fee) > 0) {
+    lines.push({ code: 'drop_fee', label: `Drop-off fee - ${parking.drop.name || 'drop'}`, amount: money(parking.drop.fee) });
+  }
+  return lines;
+};
+
 /// For the apps and admin: what was charged and why, without the geofence.
 export const serializeRideHubParking = (parking) => {
   if (!parking || (!parking.pickup?.hub_id && !parking.drop?.hub_id)) return null;

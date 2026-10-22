@@ -16,6 +16,7 @@ import autoIcon from '../../../../assets/icons/auto.png';
 import deliveryIcon from '../../../../assets/icons/Delivery.png';
 import { useSettings } from '../../../../shared/context/SettingsContext';
 import CancelRideSheet from '../../components/CancelRideSheet';
+import LocationCharges from '../../../../shared/components/LocationCharges';
 import { isCancelReasonError } from '../../utils/cancelReason';
 
 const MAP_CONTAINER_STYLE = { width: '100%', height: '100%' };
@@ -724,6 +725,8 @@ const RideTracking = () => {
             otp: payload?.otp || latestStateRef.current.otp || latestStateRef.current.ride_otp || '',
             arrivedAt: payload?.arrivedAt || latestStateRef.current.arrivedAt || '',
             pricingSnapshot: payload?.pricingSnapshot || latestStateRef.current.pricingSnapshot || null,
+            locationCharges: payload?.locationCharges || latestStateRef.current.locationCharges || null,
+            hubParking: payload?.hubParking || latestStateRef.current.hubParking || null,
             driverPaymentCollection: payload?.driverPaymentCollection || latestStateRef.current.driverPaymentCollection || null,
             completedAt: payload?.completedAt || null,
             feedback: payload?.feedback || null,
@@ -757,6 +760,8 @@ const RideTracking = () => {
               otp: payload?.otp || latestStateRef.current.otp || latestStateRef.current.ride_otp || '',
               arrivedAt: payload?.arrivedAt || latestStateRef.current.arrivedAt || '',
               pricingSnapshot: payload?.pricingSnapshot || latestStateRef.current.pricingSnapshot || null,
+              locationCharges: payload?.locationCharges || latestStateRef.current.locationCharges || null,
+              hubParking: payload?.hubParking || latestStateRef.current.hubParking || null,
               driverPaymentCollection: payload?.driverPaymentCollection || latestStateRef.current.driverPaymentCollection || null,
               completedAt: payload?.completedAt || null,
               feedback: payload?.feedback || null,
@@ -795,6 +800,8 @@ const RideTracking = () => {
           otp: payload?.otp || latestStateRef.current.otp || latestStateRef.current.ride_otp || '',
           arrivedAt: payload?.arrivedAt || latestStateRef.current.arrivedAt || '',
           pricingSnapshot: payload?.pricingSnapshot || latestStateRef.current.pricingSnapshot || null,
+          locationCharges: payload?.locationCharges || latestStateRef.current.locationCharges || null,
+          hubParking: payload?.hubParking || latestStateRef.current.hubParking || null,
           driverPaymentCollection: payload?.driverPaymentCollection || latestStateRef.current.driverPaymentCollection || null,
           completedAt: payload?.completedAt || null,
           feedback: payload?.feedback || null,
@@ -810,6 +817,8 @@ const RideTracking = () => {
           scheduledAt: payload?.scheduledAt || latestStateRef.current.scheduledAt || null,
           arrivedAt: payload?.arrivedAt || latestStateRef.current.arrivedAt || '',
           pricingSnapshot: payload?.pricingSnapshot || latestStateRef.current.pricingSnapshot || null,
+          locationCharges: payload?.locationCharges || latestStateRef.current.locationCharges || null,
+          hubParking: payload?.hubParking || latestStateRef.current.hubParking || null,
           driverPaymentCollection: payload?.driverPaymentCollection || latestStateRef.current.driverPaymentCollection || null,
         });
       } catch {
@@ -989,6 +998,8 @@ const RideTracking = () => {
         otp: payload.otp || prev?.otp || latestState.otp || latestState.ride_otp || '',
         arrivedAt: payload.arrivedAt || prev?.arrivedAt || latestState.arrivedAt || '',
         pricingSnapshot: payload.pricingSnapshot || prev?.pricingSnapshot || latestState.pricingSnapshot || null,
+        locationCharges: payload.locationCharges || prev?.locationCharges || latestState.locationCharges || null,
+        hubParking: payload.hubParking || prev?.hubParking || latestState.hubParking || null,
         driverPaymentCollection: payload.driverPaymentCollection || prev?.driverPaymentCollection || latestState.driverPaymentCollection || null,
         completedAt: payload.completedAt || null,
         feedback: payload.feedback || null,
@@ -1051,6 +1062,8 @@ const RideTracking = () => {
           scheduledAt: payload.scheduledAt || latestState.scheduledAt || null,
           arrivedAt: payload.arrivedAt || latestState.arrivedAt || '',
           pricingSnapshot: payload.pricingSnapshot || latestState.pricingSnapshot || null,
+          locationCharges: payload.locationCharges || latestState.locationCharges || null,
+          hubParking: payload.hubParking || latestState.hubParking || null,
           driverPaymentCollection: payload.driverPaymentCollection || latestState.driverPaymentCollection || null,
         });
       }
@@ -1061,6 +1074,8 @@ const RideTracking = () => {
         scheduledAt: payload.scheduledAt || prev?.scheduledAt || latestStateRef.current.scheduledAt || null,
         arrivedAt: payload.arrivedAt || prev?.arrivedAt || '',
         pricingSnapshot: payload.pricingSnapshot || prev?.pricingSnapshot || null,
+        locationCharges: payload.locationCharges || prev?.locationCharges || null,
+        hubParking: payload.hubParking || prev?.hubParking || null,
         driverPaymentCollection: payload.driverPaymentCollection || prev?.driverPaymentCollection || null,
         completedAt: payload.completedAt || prev?.completedAt || null,
       }));
@@ -1128,6 +1143,8 @@ const RideTracking = () => {
           arrivedAt: payload.arrivedAt || prev?.arrivedAt || latestState.arrivedAt || '',
           startedAt: payload.startedAt || prev?.startedAt || latestState.startedAt || null,
           pricingSnapshot: payload.pricingSnapshot || prev?.pricingSnapshot || latestState.pricingSnapshot || null,
+          locationCharges: payload.locationCharges || prev?.locationCharges || latestState.locationCharges || null,
+          hubParking: payload.hubParking || prev?.hubParking || latestState.hubParking || null,
           driverPaymentCollection: payload.driverPaymentCollection || prev?.driverPaymentCollection || latestState.driverPaymentCollection || null,
           completedAt: payload.completedAt || prev?.completedAt || null,
           feedback: payload.feedback || prev?.feedback || null,
@@ -1748,6 +1765,12 @@ const RideTracking = () => {
               </motion.button>
             ))}
           </div>
+
+          <LocationCharges
+            className="mb-3"
+            lines={rideRealtime?.locationCharges || state.locationCharges || []}
+            hubParking={rideRealtime?.hubParking || state.hubParking || null}
+          />
 
           {/* Footer: Fare & Cancellation Section */}
           <div className="flex items-end justify-between pt-2 border-t border-slate-50">

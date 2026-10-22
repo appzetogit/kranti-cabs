@@ -668,6 +668,26 @@ const rideSchema = new mongoose.Schema(
         type: Number,
         default: 0,
       },
+      // Railway station entry fee, also added at booking. Already in the fare;
+      // kept out of commission at settlement.
+      station_fee: {
+        type: Number,
+        default: 0,
+      },
+      station_fee_lines: {
+        type: [
+          new mongoose.Schema(
+            {
+              hub_id: { type: mongoose.Schema.Types.ObjectId, ref: 'TaxiAirport' },
+              name: { type: String, default: '', trim: true },
+              end: { type: String, enum: ['pickup', 'drop'] },
+              fee: { type: Number, default: 0 },
+            },
+            { _id: false },
+          ),
+        ],
+        default: [],
+      },
     },
     // Surge the fare was quoted under; the fare already includes it.
     surge: {

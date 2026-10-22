@@ -965,19 +965,22 @@ const parkingClassOf = (vehicle) => {
 // airport fee is added to the fare by the server at booking, so `price` stays
 // the trip fare alone and the fee is only shown here; parking is charged by
 // the server at trip end from how long the driver waited, so it is an estimate.
+// A railway station's entry fee is added by the server at booking the same way.
 const getLocationFees = (tripCategory, vehicle) => {
   const airportFee = Math.max(0, Number(tripCategory?.airport?.total_fee) || 0);
   const parking = tripCategory?.hub_parking?.by_vehicle_class?.[parkingClassOf(vehicle)] || null;
   return {
     airportFee,
     airportName: tripCategory?.airport?.name || '',
+    stationFee: Math.max(0, Number(tripCategory?.station_fee?.total_fee) || 0),
+    stationName: tripCategory?.station_fee?.lines?.map((line) => line.name).join(' & ') || '',
     parkingFrom: Math.max(0, Number(parking?.estimated_total) || 0),
     parkingVaries: Boolean(parking?.pickup?.varies_with_wait),
   };
 };
 
 const formatVehicleFare = (vehicle, stepCount) => {
-  const airportFee = Math.max(0, Number(vehicle?.airportFee) || 0);
+  const airportFee = Math.max(0, Number(vehicle?.airportFee) || 0) + Math.max(0, Number(vehicle?.stationFee) || 0);
   if (!vehicle?.supportsBidding) {
     return formatCurrency((Number(vehicle?.price) || 0) + airportFee);
   }
@@ -1130,6 +1133,8 @@ const createHistorySafeVehicle = (vehicle) => {
     maxBidSteps: vehicle.maxBidSteps,
     airportFee: vehicle.airportFee || 0,
     airportName: vehicle.airportName || '',
+    stationFee: vehicle.stationFee || 0,
+    stationName: vehicle.stationName || '',
     parkingFrom: vehicle.parkingFrom || 0,
   };
 };
@@ -2589,13 +2594,19 @@ const SelectVehicle = () => {
                 </div>
               </div>
 
-              {(previewVehicle.airportFee > 0 || previewVehicle.parkingFrom > 0) && (
+              {(previewVehicle.airportFee > 0 || previewVehicle.stationFee > 0 || previewVehicle.parkingFrom > 0) && (
                 <div className="mt-4 rounded-[20px] border border-slate-100 bg-slate-50/70 px-4 py-4">
                   <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Location charges</p>
                   {previewVehicle.airportFee > 0 && (
                     <div className="mt-2 flex items-center justify-between text-[12px] font-bold text-slate-700">
                       <span>{previewVehicle.airportName ? `${previewVehicle.airportName} fee` : 'Airport fee'}</span>
                       <span className="text-slate-900">{formatCurrency(previewVehicle.airportFee)}</span>
+                    </div>
+                  )}
+                  {previewVehicle.stationFee > 0 && (
+                    <div className="mt-2 flex items-center justify-between text-[12px] font-bold text-slate-700">
+                      <span>{previewVehicle.stationName ? `${previewVehicle.stationName} entry` : 'Station entry fee'}</span>
+                      <span className="text-slate-900">{formatCurrency(previewVehicle.stationFee)}</span>
                     </div>
                   )}
                   {previewVehicle.parkingFrom > 0 && (
@@ -2606,6 +2617,7 @@ const SelectVehicle = () => {
                   )}
                   <p className="mt-2 text-[11px] font-semibold leading-4 text-slate-500">
                     {previewVehicle.airportFee > 0 ? 'The airport fee is included in the estimated fare. ' : ''}
+                    {previewVehicle.stationFee > 0 ? 'The station entry fee is included in the estimated fare. ' : ''}
                     {previewVehicle.parkingFrom > 0 ? 'Parking is added at the end of the trip from how long the driver waits at the hub.' : ''}
                   </p>
                 </div>

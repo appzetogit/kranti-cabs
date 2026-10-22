@@ -56,6 +56,9 @@ const normalizeRow = (row = {}) => ({
   cancelledBy: row.cancelledBy || '',
   cancelReason: row.cancelReason || '',
   cancelStage: row.cancelStage || '',
+  fare: Number(row.fare || 0),
+  // Airport fee, station entry fee and parking inside the fare.
+  locationCharges: Array.isArray(row.locationCharges) ? row.locationCharges : [],
 });
 
 const CANCEL_STAGE_LABELS = {
@@ -110,6 +113,21 @@ const TripDetailsModal = ({ trip, onClose }) => {
               <p className="text-[13px] font-bold text-gray-900 capitalize">{String(trip.paymentOption).toLowerCase()}</p>
               {trip.paymentDetail ? <p className="text-[11px] text-gray-500 mt-0.5">{trip.paymentDetail}</p> : null}
               {trip.paymentReference ? <p className="text-[10px] text-gray-400 font-mono break-all">Ref. {trip.paymentReference}</p> : null}
+            </div>
+            <div className="col-span-2 pt-2 border-t border-gray-50">
+              <p className="text-[11px] uppercase tracking-wider font-bold text-gray-400 mb-1">Fare</p>
+              <p className="text-[13px] font-bold text-gray-900">Rs {trip.fare}</p>
+              {trip.locationCharges.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  {trip.locationCharges.map((line) => (
+                    <div key={`${line.code}-${line.label}`} className="flex justify-between gap-3 text-[12px] text-gray-600">
+                      <span className="min-w-0 truncate">{line.label}</span>
+                      <span className="shrink-0 font-semibold text-gray-900">Rs {line.amount}</span>
+                    </div>
+                  ))}
+                  <p className="text-[10px] text-gray-400">Included in the fare. Station entry and parking go to the driver with no commission.</p>
+                </div>
+              )}
             </div>
             <div className="col-span-2 pt-2 border-t border-gray-50">
               <p className="text-[11px] uppercase tracking-wider font-bold text-gray-400 mb-2">Trip Status</p>
@@ -190,6 +208,8 @@ const handlePrintInvoice = (trip) => {
           <tr><th>Transport Type</th><td style="text-transform: capitalize;">${String(trip.transportType).toLowerCase()}</td></tr>
           <tr><th>Payment Method</th><td style="text-transform: capitalize;">${String(trip.paymentOption).toLowerCase()}${trip.paymentDetail ? ` - ${trip.paymentDetail}` : ''}${trip.paymentReference ? ` (Ref. ${trip.paymentReference})` : ''}</td></tr>
           <tr><th>Trip Status</th><td style="text-transform: capitalize;">${String(trip.tripStatus).toLowerCase()}</td></tr>
+          ${(trip.locationCharges || []).map((line) => `<tr><th>${line.label}</th><td>Rs ${line.amount}</td></tr>`).join('')}
+          <tr><th>Fare</th><td class="highlight">Rs ${trip.fare}</td></tr>
         </table>
         <div class="footer">
           Thank you for choosing our service.<br/>

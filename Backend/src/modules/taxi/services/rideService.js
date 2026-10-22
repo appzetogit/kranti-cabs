@@ -25,6 +25,7 @@ import {
   applyHubParkingCharge,
   buildRideHubParking,
   hubParkingStampsForLocation,
+  rideLocationChargeLines,
   serializeRideHubParking,
 } from './hubParkingService.js';
 import { getTipSettings } from './appSettingsService.js';
@@ -1142,8 +1143,12 @@ export const createRideRecord = async ({
     airport_id: tripClass?.airport?.id || null,
     airport_name: tripClass?.airport?.name || '',
     airport_fee: airportFee,
+    // Railway station entry fee, added the same way. Unlike the airport fee
+    // it is the station's money, so settlement passes it to the driver.
+    station_fee: Math.max(0, Number(tripClass?.station_fee?.total_fee) || 0),
+    station_fee_lines: tripClass?.station_fee?.lines || [],
   };
-  const safeFare = Math.round((quotedFare + airportFee) * 100) / 100;
+  const safeFare = Math.round((quotedFare + airportFee + tripCategory.station_fee) * 100) / 100;
 
   const dispatchVehicleTypeIds = normalizeVehicleTypeIds(vehicleTypeIds, vehicleTypeId);
 
@@ -1748,6 +1753,8 @@ export const serializeRideRealtime = (ride) => ({
   promo: ride.promo?.code ? ride.promo : null,
   // Airport / railway station parking - in the fare once the trip completes.
   hubParking: serializeRideHubParking(ride.hub_parking),
+  // Airport fee, station entry fee and parking, one line each.
+  locationCharges: rideLocationChargeLines(ride),
   pricingSnapshot: ride.pricingSnapshot
     ? {
         setPriceId: ride.pricingSnapshot.setPriceId || null,

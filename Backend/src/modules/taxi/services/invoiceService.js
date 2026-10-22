@@ -121,7 +121,11 @@ export const buildInvoiceModel = async ({ rideId }) => {
         ? `Parking - ${leg.name || 'pickup'}${leg.minutes ? ` (${leg.minutes} min)` : ''}`
         : `Drop-off fee - ${leg.name || 'drop'}`,
       amount: Number(leg.fee),
-    }));
+    }))
+    // The railway station entry fee is printed with them, for the same reason.
+    .concat((ride.trip_category?.station_fee_lines || [])
+      .filter((line) => Number(line.fee) > 0)
+      .map((line) => ({ label: `Station entry - ${line.name || 'station'}`, amount: Number(line.fee) })));
   const parkingTotal = Math.min(
     parkingLines.reduce((sum, line) => sum + line.amount, 0),
     fare,

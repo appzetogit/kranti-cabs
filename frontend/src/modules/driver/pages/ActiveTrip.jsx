@@ -30,6 +30,7 @@ import bikeIcon from '../../../assets/icons/bike.png';
 import carIcon from '../../../assets/icons/car.png';
 import { getLocalDriverToken } from '../services/registrationService';
 import { BACKEND_ORIGIN } from '../../../shared/api/runtimeConfig';
+import LocationCharges from '../../../shared/components/LocationCharges';
 
 const MAP_CONTAINER_STYLE = {
     width: '100%',
@@ -510,13 +511,21 @@ const formatDurationLabel = (start, end = Date.now()) => {
     return `${minutes} min`;
 };
 
-const computeCommissionSummary = ({ fare = 0, pricingSnapshot = null, explicitCommissionAmount, explicitDriverEarnings }) => {
+// Station entry fee and parking in the fare: the driver's to pay at the barrier,
+// so, as at settlement, commission is never taken on them.
+const PASS_THROUGH_CHARGE_CODES = new Set(['station_entry', 'pickup_parking', 'drop_fee']);
+const passThroughChargeTotal = (lines) => (Array.isArray(lines) ? lines : [])
+    .filter((line) => PASS_THROUGH_CHARGE_CODES.has(line?.code))
+    .reduce((sum, line) => sum + Math.max(0, Number(line.amount) || 0), 0);
+
+const computeCommissionSummary = ({ fare = 0, passThrough = 0, pricingSnapshot = null, explicitCommissionAmount, explicitDriverEarnings }) => {
     const normalizedFare = Math.max(0, Number(fare || 0));
+    const commissionableFare = Math.max(0, normalizedFare - Math.max(0, Number(passThrough) || 0));
     const commissionType = Number(pricingSnapshot?.admin_commission_type_from_driver ?? 1);
     const commissionValue = Math.max(0, Number(pricingSnapshot?.admin_commission_from_driver ?? 0));
     const fallbackCommissionAmount = commissionType === 1
-        ? Math.round(((normalizedFare * commissionValue) / 100) * 100) / 100
-        : Math.min(normalizedFare, commissionValue);
+        ? Math.round(((commissionableFare * commissionValue) / 100) * 100) / 100
+        : Math.min(commissionableFare, commissionValue);
     const normalizedExplicitCommission = Number(explicitCommissionAmount);
     const normalizedExplicitDriverEarnings = Number(explicitDriverEarnings);
     const hasSettledExplicitCommission = Number.isFinite(normalizedExplicitCommission) && (
@@ -752,6 +761,8 @@ const buildPersistedTripState = (job = {}, overrides = {}) => {
         arrivedAt: mergedJob.arrivedAt || '',
         paymentMethod: mergedJob.paymentMethod || 'Cash',
         pricingSnapshot: mergedJob.pricingSnapshot || null,
+        locationCharges: mergedJob.locationCharges || [],
+        hubParking: mergedJob.hubParking || null,
         currentDriverCoords: mergedJob.lastDriverLocation?.coordinates || mergedJob.driverLocation?.coordinates || null,
         request: {
             type: currentType,
@@ -1463,8 +1474,11 @@ const ActiveTrip = () => {
     const paymentModeLabel = selectedPaymentMode
         ? (selectedPaymentMode === 'cash' ? 'Cash' : 'Online')
         : (effectiveState?.paymentMethod || liveRequest?.payment || tripData.payment || 'Pending');
+    const locationChargeLines = liveRaw?.locationCharges || liveRequest?.raw?.locationCharges || effectiveState?.locationCharges || [];
+    const hubParking = liveRaw?.hubParking || liveRequest?.raw?.hubParking || effectiveState?.hubParking || null;
     const commissionSummary = computeCommissionSummary({
         fare: fareAmount,
+        passThrough: passThroughChargeTotal(locationChargeLines),
         pricingSnapshot: waitingPricing,
         explicitCommissionAmount: liveRaw?.commissionAmount ?? effectiveState?.commissionAmount,
         explicitDriverEarnings: liveRaw?.driverEarnings ?? effectiveState?.driverEarnings,
@@ -2540,6 +2554,7 @@ const ActiveTrip = () => {
                                     </div>
                                 </div>
                             )}
+                            <LocationCharges className="mb-6" title="Station / airport charges" lines={locationChargeLines} hubParking={hubParking} />
                             <div className="flex justify-center gap-3 mb-8">
                                 {otp.map((digit, index) => (
                                     <input
@@ -2785,6 +2800,11 @@ const ActiveTrip = () => {
                                         <div className="mt-2 flex justify-between"><span>Package</span><span>{formatCurrencyAmount(settledRental.packagePrice)}</span></div>
                                         <div className="mt-1 flex justify-between"><span>Extra {settledRental.extraKm} km ({settledRental.travelledKm} km driven)</span><span>{formatCurrencyAmount(settledRental.extraKmCharge)}</span></div>
                                         <div className="mt-1 flex justify-between"><span>Extra {formatRentalMinutes(settledRental.extraMinutes)} ({formatRentalMinutes(settledRental.usedMinutes)} used)</span><span>{formatCurrencyAmount(settledRental.extraTimeCharge)}</span></div>
+                                    </div>
+                                )}
+                                {(locationChargeLines.length > 0 || hubParking) && (
+                                    <div className="border-t border-slate-100 px-5 py-4">
+                                        <LocationCharges title="Included in fare" lines={locationChargeLines} hubParking={hubParking} />
                                     </div>
                                 )}
                                 <div className="grid grid-cols-3 gap-3 border-t border-slate-100 px-5 py-4">

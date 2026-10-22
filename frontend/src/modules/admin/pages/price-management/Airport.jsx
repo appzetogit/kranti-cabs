@@ -58,6 +58,7 @@ const defaultFormData = {
   longitude: '',
   airport_surge: '',
   support_airport_fee: '',
+  station_entry_fee: '',
 };
 
 const Airport = ({ mode: initialMode = "list" }) => {
@@ -208,6 +209,10 @@ const Airport = ({ mode: initialMode = "list" }) => {
       alert('Support airport fee must be greater than or equal to 0.');
       return;
     }
+    if (formData.station_entry_fee && Number(formData.station_entry_fee) < 0) {
+      alert('Station entry fee must be greater than or equal to 0.');
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
@@ -244,6 +249,7 @@ const Airport = ({ mode: initialMode = "list" }) => {
       longitude: airport.longitude ?? '',
       airport_surge: airport.airport_surge ?? '',
       support_airport_fee: airport.support_airport_fee ?? '',
+      station_entry_fee: airport.station_entry_fee ?? '',
       status: airport.status || 'active',
     });
     setBoundaryCoords(Array.isArray(airport.boundary_coordinates) ? airport.boundary_coordinates : []);
@@ -656,7 +662,24 @@ const Airport = ({ mode: initialMode = "list" }) => {
                           />
                         </div>
                       </div>
-                      ) : null}
+                      ) : (
+                      <div>
+                        <label className={labelClass}>
+                          <Globe size={12} className="inline mr-1 text-gray-400" />
+                          Station Entry Fee
+                        </label>
+                        <p className="text-[10px] text-gray-400 mb-2">Flat vehicle entry charge, added once to every trip that starts or ends at this station. Passed to the driver; no commission is taken. Waiting-time parking is set below.</p>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={formData.station_entry_fee}
+                          onChange={(e) => setFormData(p => ({ ...p, station_entry_fee: e.target.value }))}
+                          placeholder="Enter station entry fee"
+                          className={inputClass}
+                        />
+                      </div>
+                      )}
 
                       <div>
                         <label className={labelClass}>

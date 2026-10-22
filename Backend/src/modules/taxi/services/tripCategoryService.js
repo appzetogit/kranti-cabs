@@ -32,7 +32,7 @@ let moduleCache = { rows: null, at: 0 };
 const activeHubs = async () => {
   if (hubCache.rows && Date.now() - hubCache.at < CACHE_MS) return hubCache.rows;
   const rows = await Airport.find({ active: true, status: 'active' })
-    .select('hub_type parking name code location boundary latitude longitude pickup_availability drop_availability airport_surge support_airport_fee')
+    .select('hub_type parking name code location boundary latitude longitude pickup_availability drop_availability airport_surge support_airport_fee station_entry_fee')
     .lean();
   hubCache = { rows, at: Date.now() };
   return rows;
@@ -70,6 +70,33 @@ const serviceLocationOf = (zone) => {
 
 const hubBrief = (row) => (row ? { id: String(row._id), name: row.name, hub_type: hubTypeOf(row) } : null);
 
+/**
+ * The railway station entry fee a trip pays: each station end with a fee pays
+ * it once, and a trip that starts and ends at the same station pays it once.
+ * Unlike parking it does not depend on the wait, so it is known at booking.
+ */
+export const stationEntryFees = (pickupHub, dropHub) => {
+  const ends = [['pickup', pickupHub], ['drop', dropHub]]
+    .filter(([, row]) => row && hubTypeOf(row) === 'railway_station' && Number(row.station_entry_fee) > 0);
+  const seen = new Set();
+  const lines = [];
+  ends.forEach(([end, row]) => {
+    if (seen.has(String(row._id))) return;
+    seen.add(String(row._id));
+    lines.push({
+      hub_id: String(row._id),
+      name: row.name,
+      end,
+      fee: Math.round(Number(row.station_entry_fee) * 100) / 100,
+    });
+  });
+  if (!lines.length) return null;
+  return {
+    lines,
+    total_fee: Math.round(lines.reduce((sum, line) => sum + line.fee, 0) * 100) / 100,
+  };
+};
+
 /// Parking estimate for each vehicle class, so a vehicle list can show each.
 const parkingByClass = (pickupHub, dropHub) => {
   if (!pickupHub?.parking?.enabled && !dropHub?.parking?.enabled) return null;
@@ -104,6 +131,7 @@ export const classifyTrip = async ({ pickup, drop, vehicleClass = '' }) => {
       module_name: null,
       airport: null,
       hubs: { pickup: null, drop: null },
+      station_fee: null,
       hub_parking: null,
     };
   }
@@ -149,6 +177,9 @@ export const classifyTrip = async ({ pickup, drop, vehicleClass = '' }) => {
       : null,
     // Any hub at either end - airport or railway station.
     hubs: { pickup: hubBrief(pickupHub), drop: hubBrief(dropHub) },
+    // Railway station entry fee, added to the fare by the server at booking
+    // like the airport fee - the app shows it but never sends it.
+    station_fee: stationEntryFees(pickupHub, dropHub),
     // Parking the hubs charge, added to the fare by the server when the trip
     // completes - the pickup part by how long the driver waited inside.
     hub_parking: vehicleClass

@@ -450,9 +450,12 @@ export const settleCompletedRideWallet = async ({ rideId }) => {
     // in the fare the rider paid but is passed straight back to the driver, so
     // commission is never taken on it.
     const parkingFee = Math.min(Math.max(0, Number(ride.hub_parking?.total_fee) || 0), fare);
+    // The railway station entry fee is the same kind of money: the station's.
+    const stationFee = Math.min(Math.max(0, Number(ride.trip_category?.station_fee) || 0), fare - parkingFee);
+    const passThroughFee = Math.round((parkingFee + stationFee) * 100) / 100;
     const commissionConfig = await resolveCommissionConfigForRide(ride, session);
     const tripCommission = computeCommissionAmount({
-      fare: Math.round((fare - parkingFee) * 100) / 100,
+      fare: Math.round((fare - passThroughFee) * 100) / 100,
       type: commissionConfig.type,
       value: commissionConfig.value,
     });
@@ -482,7 +485,7 @@ export const settleCompletedRideWallet = async ({ rideId }) => {
 
     const waivedCommission = coveringSubscription ? tripCommission : 0;
     const chargeableCommission = coveringSubscription ? 0 : tripCommission;
-    const commissionAmount = Math.min(Math.round((chargeableCommission + platformFee) * 100) / 100, fare - parkingFee);
+    const commissionAmount = Math.min(Math.round((chargeableCommission + platformFee) * 100) / 100, fare - passThroughFee);
     const paymentMethod = normalizePaymentMethod(ride.paymentMethod);
     const driverEarnings = Math.max(Math.round((fare - commissionAmount) * 100) / 100, 0);
     const amount = paymentMethod === 'cash' ? -commissionAmount : driverEarnings;
@@ -534,6 +537,7 @@ export const settleCompletedRideWallet = async ({ rideId }) => {
         tripCommission,
         platformFee,
         parkingFee,
+        stationFee,
         subscriptionId: coveringSubscription ? String(coveringSubscription._id) : null,
         commissionWaived: waivedCommission,
       },

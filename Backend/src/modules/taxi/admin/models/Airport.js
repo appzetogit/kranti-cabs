@@ -128,6 +128,13 @@ const airportSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    // Railway stations only: the flat vehicle entry fee the station charges,
+    // added once per station end at booking and passed through to the driver.
+    station_entry_fee: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     status: {
       type: String,
       enum: ['active', 'inactive'],

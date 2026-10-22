@@ -15,7 +15,7 @@ import { createDefaultBusinessSettings } from '../data/defaultBusinessSettings.j
 import { createDefaultAppSettings } from '../data/defaultAppSettings.js';
 import { createDefaultRideVoiceSettings } from '../data/defaultRideVoiceSettings.js';
 import { Airport } from '../models/Airport.js';
-import { HUB_TYPES, hubTypeOf, normalizeParkingConfig } from '../../services/hubParkingService.js';
+import { HUB_TYPES, hubTypeOf, normalizeParkingConfig, rideLocationChargeLines } from '../../services/hubParkingService.js';
 import { Employee } from '../models/Employee.js';
 import { BusService } from '../models/BusService.js';
 import { DriverNeededDocument } from '../models/DriverNeededDocument.js';
@@ -2530,6 +2530,7 @@ const serializeAirport = (item) => ({
     : [],
   airport_surge: Number(item.airport_surge ?? 0),
   support_airport_fee: Number(item.support_airport_fee ?? 0),
+  station_entry_fee: Number(item.station_entry_fee ?? 0),
   hub_type: hubTypeOf(item),
   parking: normalizeParkingConfig(item.parking || {}),
   status: item.status || (item.active === false ? 'inactive' : 'active'),
@@ -6333,6 +6334,8 @@ const toAdminRideRow = (ride) => {
     liveStatus: ride.liveStatus,
     ...tripPaymentFields(ride),
     fare: Number(ride.fare || 0),
+    // Airport fee, station entry fee and parking inside that fare.
+    locationCharges: rideLocationChargeLines(ride),
     // Prefer the human address the customer actually gave. Falling straight to
     // coordinates showed "12.9716, 77.5946" for website bookings, which carry a
     // placeholder point because the form has no map — useless to whoever is
@@ -9955,6 +9958,7 @@ export const createAirport = async (payload, currentAdmin = null) => {
         : undefined,
     airport_surge: Math.max(0, Number(payload.airport_surge ?? 0) || 0),
     support_airport_fee: Math.max(0, Number(payload.support_airport_fee ?? 0) || 0),
+    station_entry_fee: Math.max(0, Number(payload.station_entry_fee ?? 0) || 0),
     hub_type: HUB_TYPES.includes(payload.hub_type) ? payload.hub_type : 'airport',
     parking: normalizeParkingConfig(payload.parking),
     status,
@@ -10030,6 +10034,9 @@ export const updateAirport = async (id, payload, currentAdmin = null) => {
   }
   if (payload.support_airport_fee !== undefined) {
     item.support_airport_fee = Math.max(0, Number(payload.support_airport_fee ?? 0) || 0);
+  }
+  if (payload.station_entry_fee !== undefined) {
+    item.station_entry_fee = Math.max(0, Number(payload.station_entry_fee ?? 0) || 0);
   }
   if (payload.hub_type !== undefined && HUB_TYPES.includes(payload.hub_type)) {
     item.hub_type = payload.hub_type;
