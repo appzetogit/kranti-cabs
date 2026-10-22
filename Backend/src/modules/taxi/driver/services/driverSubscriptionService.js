@@ -30,17 +30,17 @@ const toList = (value) =>
 export const resolveDriverSubscriptionSettings = async () => {
   const group = (await getDriverSubscriptionSettings()) || {};
 
-  // A paid pass is mandatory for every driver, so the admin's mode / expiry
-  // behaviour / wallet-minimum switches no longer apply: with a pass the wallet
-  // balance is not checked, without one no ride is offered at all. Commission
-  // waiver, plans, payment methods and the cycle hour stay admin-controlled.
+  // The admin's mode is the on/off switch for requiring a pass to receive
+  // rides; anything unrecognised falls back to 'off' so a bad value never
+  // silently stops every driver's rides.
+  const mode = String(group.subscription_mode || 'off').trim().toLowerCase();
   return {
-    mode: 'subscription_only',
+    mode: ['off', 'both', 'subscription_only'].includes(mode) ? mode : 'off',
     waiveCommission: isOn(group.waive_commission, true),
-    waiveWalletMinimum: true,
+    waiveWalletMinimum: isOn(group.waive_wallet_minimum, true),
     multiVehicleRule: String(group.multi_vehicle_rule || 'highest').trim().toLowerCase(),
     paymentMethods: toList(group.payment_methods || 'wallet,gateway'),
-    onExpiry: 'block',
+    onExpiry: String(group.on_expiry || 'commission').trim().toLowerCase() === 'block' ? 'block' : 'commission',
     cycleStartHour: Math.min(23, Math.max(0, Number(group.cycle_start_hour ?? 6) || 0)),
     timezone: String(group.cycle_timezone || 'Asia/Kolkata').trim() || 'Asia/Kolkata',
   };

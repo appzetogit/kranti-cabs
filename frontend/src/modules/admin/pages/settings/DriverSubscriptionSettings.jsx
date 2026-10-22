@@ -193,17 +193,29 @@ const DriverSubscriptionSettings = () => {
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
         <SectionHeader title="How drivers pay Kranti Cabs" />
         <div className="px-6">
-          <ChoiceRow
-            label="Subscription mode"
-            hint="Off keeps the commission model exactly as it is today."
-            value={mode}
-            onChange={(value) => set('subscription_mode', value)}
-            options={[
-              { value: 'off', label: 'Off - commission only' },
-              { value: 'both', label: 'Both - driver may buy a pass' },
-              { value: 'subscription_only', label: 'Subscription required' },
-            ]}
+          <ToggleRow
+            label="Driver subscription"
+            hint={
+              mode === 'off'
+                ? 'Off: every driver receives rides and pays commission per trip.'
+                : mode === 'subscription_only'
+                  ? 'On: only drivers with an active pass receive rides.'
+                  : 'On: drivers may buy a pass; those without one still receive rides on commission.'
+            }
+            checked={mode !== 'off'}
+            onChange={(value) => set('subscription_mode', value ? 'subscription_only' : 'off')}
           />
+          {mode !== 'off' && (
+            <ChoiceRow
+              label="Drivers without an active pass"
+              value={mode}
+              onChange={(value) => set('subscription_mode', value)}
+              options={[
+                { value: 'subscription_only', label: 'Receive no rides' },
+                { value: 'both', label: 'Still receive rides on commission' },
+              ]}
+            />
+          )}
           <ToggleRow
             label="Waive commission while a pass is active"
             hint="Driver keeps the full fare. The rider's platform fee still goes to Kranti Cabs."
@@ -249,15 +261,17 @@ const DriverSubscriptionSettings = () => {
               ))}
             </div>
           </div>
-          <ChoiceRow
-            label="When a pass expires and is not renewed"
-            value={String(settings.on_expiry || 'commission')}
-            onChange={(value) => set('on_expiry', value)}
-            options={[
-              { value: 'commission', label: 'Back to commission' },
-              { value: 'block', label: 'Stop sending rides' },
-            ]}
-          />
+          {mode === 'both' && (
+            <ChoiceRow
+              label="When a pass expires and is not renewed"
+              value={String(settings.on_expiry || 'commission')}
+              onChange={(value) => set('on_expiry', value)}
+              options={[
+                { value: 'commission', label: 'Back to commission' },
+                { value: 'block', label: 'Stop sending rides' },
+              ]}
+            />
+          )}
           <div className="py-4 flex flex-wrap items-end gap-4">
             <div>
               <p className="text-sm font-medium text-gray-800">Day starts at</p>

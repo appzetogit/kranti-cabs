@@ -1,5 +1,9 @@
 import { DriverSubscription } from '../models/DriverSubscription.js';
-import { getActiveDriverSubscription } from './driverSubscriptionService.js';
+import {
+  getActiveDriverSubscription,
+  isSubscriptionEnabled,
+  resolveDriverSubscriptionSettings,
+} from './driverSubscriptionService.js';
 import { syncDriverWalletBlockedFlag } from './walletService.js';
 import { sendPushNotificationToEntities } from '../../services/pushNotificationService.js';
 
@@ -22,6 +26,9 @@ let sweepTimer = null;
  */
 export const sweepExpiredDriverSubscriptions = async () => {
   const now = new Date();
+  // With subscriptions switched off by the admin a lapsed pass changes nothing,
+  // so telling the driver to renew would be wrong.
+  const notify = isSubscriptionEnabled(await resolveDriverSubscriptionSettings());
 
   const expired = await DriverSubscription.find({
     status: 'active',
@@ -46,6 +53,8 @@ export const sweepExpiredDriverSubscriptions = async () => {
 
       // The pass was waiving the wallet minimum; now it counts again.
       await syncDriverWalletBlockedFlag(row.driverId);
+
+      if (!notify) continue;
 
       await sendPushNotificationToEntities({
         driverIds: [String(row.driverId)],

@@ -12,6 +12,8 @@ const adminBusinessSettingSchema = new mongoose.Schema(
     customization: { type: mongoose.Schema.Types.Mixed, default: {} },
     transport_ride: { type: mongoose.Schema.Types.Mixed, default: {} },
     bid_ride: { type: mongoose.Schema.Types.Mixed, default: {} },
+    // Without a path here the admin's subscription settings were silently dropped on save.
+    driver_subscription: { type: mongoose.Schema.Types.Mixed, default: {} },
     user_home_settings: { type: mongoose.Schema.Types.Mixed, default: {} },
     subscription: { type: mongoose.Schema.Types.Mixed, default: { mode: 'commissionOnly' } },
     referral: {
