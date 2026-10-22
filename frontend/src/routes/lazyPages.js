@@ -184,6 +184,7 @@ export const AdminPendingServiceStores = lazy(() => import('../modules/admin/pag
 export const AdminPendingServiceStaff = lazy(() => import('../modules/admin/pages/price-management/PendingServiceStaff'));
 export const AdminZoneManagement = lazy(() => import('../modules/admin/pages/price-management/ZoneManagement'));
 export const AdminAirportManagement = lazy(() => import('../modules/admin/pages/price-management/Airport'));
+export const AdminStateTax = lazy(() => import('../modules/admin/pages/price-management/StateTax'));
 export const AdminSetPrices = lazy(() => import('../modules/admin/pages/price-management/SetPrices'));
 export const AdminSetPackagePrices = lazy(() => import('../modules/admin/pages/price-management/SetPackagePrices'));
 export const AdminCreatePackagePrice = lazy(() => import('../modules/admin/pages/price-management/CreatePackagePrice'));

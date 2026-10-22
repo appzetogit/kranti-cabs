@@ -452,7 +452,9 @@ export const settleCompletedRideWallet = async ({ rideId }) => {
     const parkingFee = Math.min(Math.max(0, Number(ride.hub_parking?.total_fee) || 0), fare);
     // The railway station entry fee is the same kind of money: the station's.
     const stationFee = Math.min(Math.max(0, Number(ride.trip_category?.station_fee) || 0), fare - parkingFee);
-    const passThroughFee = Math.round((parkingFee + stationFee) * 100) / 100;
+    // So is state / MCD tax: the driver paid it at the border.
+    const taxFee = Math.min(Math.max(0, Number(ride.trip_category?.tax_fee) || 0), fare - parkingFee - stationFee);
+    const passThroughFee = Math.round((parkingFee + stationFee + taxFee) * 100) / 100;
     const commissionConfig = await resolveCommissionConfigForRide(ride, session);
     const tripCommission = computeCommissionAmount({
       fare: Math.round((fare - passThroughFee) * 100) / 100,
@@ -538,6 +540,7 @@ export const settleCompletedRideWallet = async ({ rideId }) => {
         platformFee,
         parkingFee,
         stationFee,
+        taxFee,
         subscriptionId: coveringSubscription ? String(coveringSubscription._id) : null,
         commissionWaived: waivedCommission,
       },

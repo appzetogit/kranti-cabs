@@ -246,8 +246,8 @@ export const applyHubParkingCharge = (ride) => {
 
 /**
  * Every location charge in a ride's fare, one line each, for the rider,
- * driver and admin trip screens: the airport fee and station entry fee (from
- * booking) and the parking (once the trip completes).
+ * driver and admin trip screens: the airport fee, station entry fee and state /
+ * MCD tax (from booking) and the parking (once the trip completes).
  */
 export const rideLocationChargeLines = (ride) => {
   const lines = [];
@@ -258,6 +258,12 @@ export const rideLocationChargeLines = (ride) => {
   (category.station_fee_lines || []).forEach((line) => {
     if (Number(line.fee) > 0) {
       lines.push({ code: 'station_entry', label: `Station entry - ${line.name || 'station'}`, amount: money(line.fee) });
+    }
+  });
+  (category.tax_fee_lines || []).forEach((line) => {
+    if (Number(line.fee) > 0) {
+      const mcd = line.tax_type === 'mcd_tax';
+      lines.push({ code: mcd ? 'mcd_tax' : 'state_tax', label: `${mcd ? 'MCD tax' : 'State tax'} - ${line.state || line.name || 'state'}`, amount: money(line.fee) });
     }
   });
   const parking = ride?.hub_parking;

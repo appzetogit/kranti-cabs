@@ -203,6 +203,10 @@ export const adminService = {
   createCancellationReason: (data) => api.post('/admin/cancellation-reasons', data),
   updateCancellationReason: (id, data) => api.patch(`/admin/cancellation-reasons/${id}`, data),
   deleteCancellationReason: (id) => api.delete(`/admin/cancellation-reasons/${id}`),
+  getStateTaxes: () => api.get('/admin/state-taxes'),
+  createStateTax: (data) => api.post('/admin/state-taxes', data),
+  updateStateTax: (id, data) => api.patch(`/admin/state-taxes/${id}`, data),
+  deleteStateTax: (id) => api.delete(`/admin/state-taxes/${id}`),
   deleteRideRequest: (id) => api.delete(`/admin/ride-requests/${id}`),
   getSafetyAlerts: ({ page = 1, limit = 25, status = 'active' } = {}) =>
     api.get(`/admin/safety/alerts?page=${page}&limit=${limit}&status=${encodeURIComponent(status)}`),

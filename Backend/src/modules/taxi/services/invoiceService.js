@@ -125,7 +125,14 @@ export const buildInvoiceModel = async ({ rideId }) => {
     // The railway station entry fee is printed with them, for the same reason.
     .concat((ride.trip_category?.station_fee_lines || [])
       .filter((line) => Number(line.fee) > 0)
-      .map((line) => ({ label: `Station entry - ${line.name || 'station'}`, amount: Number(line.fee) })));
+      .map((line) => ({ label: `Station entry - ${line.name || 'station'}`, amount: Number(line.fee) })))
+    // And state / MCD tax, paid by the driver at the border.
+    .concat((ride.trip_category?.tax_fee_lines || [])
+      .filter((line) => Number(line.fee) > 0)
+      .map((line) => ({
+        label: `${line.tax_type === 'mcd_tax' ? 'MCD tax' : 'State tax'} - ${line.state || line.name || 'state'}`,
+        amount: Number(line.fee),
+      })));
   const parkingTotal = Math.min(
     parkingLines.reduce((sum, line) => sum + line.amount, 0),
     fare,

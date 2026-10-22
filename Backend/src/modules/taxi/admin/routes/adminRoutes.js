@@ -271,6 +271,12 @@ import {
   listCancellationReasons,
   updateCancellationReason,
 } from '../controllers/cancellationReasonController.js';
+import {
+  createStateTax,
+  deleteStateTax,
+  listStateTaxes,
+  updateStateTax,
+} from '../controllers/stateTaxController.js';
 import { promotionsRouter } from '../promotions/routes/index.js';
 import { listSafetyAlerts, resolveSafetyAlert } from '../../safety/controllers/safetyController.js';
 import {
@@ -571,6 +577,11 @@ adminRouter.get('/admin/cancellation-reasons', listCancellationReasons);
 adminRouter.post('/admin/cancellation-reasons', createCancellationReason);
 adminRouter.patch('/admin/cancellation-reasons/:id', updateCancellationReason);
 adminRouter.delete('/admin/cancellation-reasons/:id', deleteCancellationReason);
+
+adminRouter.get('/admin/state-taxes', listStateTaxes);
+adminRouter.post('/admin/state-taxes', createStateTax);
+adminRouter.patch('/admin/state-taxes/:id', updateStateTax);
+adminRouter.delete('/admin/state-taxes/:id', deleteStateTax);
 
 adminRouter.get('/on-boarding', getUserOnboarding);
 adminRouter.post('/on-boarding', createOnboardingScreen);

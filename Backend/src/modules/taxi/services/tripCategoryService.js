@@ -2,6 +2,7 @@ import { Airport } from '../admin/models/Airport.js';
 import { TaxiAppModule } from '../admin/models/TaxiAppModule.js';
 import { findZoneByPickup } from './matchingService.js';
 import { estimateHubParking, hubAt, hubTypeOf } from './hubParkingService.js';
+import { stateTaxFees } from './stateTaxService.js';
 
 /**
  * What kind of trip a pickup and drop make, which decides the vehicles a rider
@@ -132,9 +133,13 @@ export const classifyTrip = async ({ pickup, drop, vehicleClass = '' }) => {
       airport: null,
       hubs: { pickup: null, drop: null },
       station_fee: null,
+      tax_fee: null,
       hub_parking: null,
     };
   }
+
+  // A failed state lookup quotes the trip without the tax, never refuses it.
+  const taxFee = await stateTaxFees({ pickup, drop, vehicleClass }).catch(() => null);
 
   const airports = hubs.filter((row) => hubTypeOf(row) === 'airport');
   const pickupAirport = hubAt(airports, pickup);
@@ -180,6 +185,10 @@ export const classifyTrip = async ({ pickup, drop, vehicleClass = '' }) => {
     // Railway station entry fee, added to the fare by the server at booking
     // like the airport fee - the app shows it but never sends it.
     station_fee: stationEntryFees(pickupHub, dropHub),
+    // State tax / MCD tax for entering the drop's state, added to the fare by
+    // the server at booking like the station fee. Per vehicle class when no
+    // class was asked for.
+    tax_fee: taxFee,
     // Parking the hubs charge, added to the fare by the server when the trip
     // completes - the pickup part by how long the driver waited inside.
     hub_parking: vehicleClass

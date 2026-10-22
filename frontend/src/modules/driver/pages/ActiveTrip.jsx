@@ -513,7 +513,7 @@ const formatDurationLabel = (start, end = Date.now()) => {
 
 // Station entry fee and parking in the fare: the driver's to pay at the barrier,
 // so, as at settlement, commission is never taken on them.
-const PASS_THROUGH_CHARGE_CODES = new Set(['station_entry', 'pickup_parking', 'drop_fee']);
+const PASS_THROUGH_CHARGE_CODES = new Set(['station_entry', 'pickup_parking', 'drop_fee', 'state_tax', 'mcd_tax']);
 const passThroughChargeTotal = (lines) => (Array.isArray(lines) ? lines : [])
     .filter((line) => PASS_THROUGH_CHARGE_CODES.has(line?.code))
     .reduce((sum, line) => sum + Math.max(0, Number(line.amount) || 0), 0);

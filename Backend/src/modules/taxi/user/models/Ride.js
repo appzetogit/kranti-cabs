@@ -688,6 +688,27 @@ const rideSchema = new mongoose.Schema(
         ],
         default: [],
       },
+      // State tax / MCD tax for entering the drop's state, added at booking.
+      // Already in the fare; kept out of commission at settlement.
+      tax_fee: {
+        type: Number,
+        default: 0,
+      },
+      tax_fee_lines: {
+        type: [
+          new mongoose.Schema(
+            {
+              rule_id: { type: mongoose.Schema.Types.ObjectId, ref: 'TaxiStateTax' },
+              name: { type: String, default: '', trim: true },
+              tax_type: { type: String, enum: ['state_tax', 'mcd_tax'], default: 'state_tax' },
+              state: { type: String, default: '', trim: true },
+              fee: { type: Number, default: 0 },
+            },
+            { _id: false },
+          ),
+        ],
+        default: [],
+      },
     },
     // Surge the fare was quoted under; the fare already includes it.
     surge: {

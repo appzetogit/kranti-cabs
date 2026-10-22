@@ -965,11 +965,18 @@ const parkingClassOf = (vehicle) => {
 // airport fee is added to the fare by the server at booking, so `price` stays
 // the trip fare alone and the fee is only shown here; parking is charged by
 // the server at trip end from how long the driver waited, so it is an estimate.
-// A railway station's entry fee is added by the server at booking the same way.
+// A railway station's entry fee is added by the server at booking the same way,
+// and so is state / MCD tax for entering the drop's state (priced per class).
 const getLocationFees = (tripCategory, vehicle) => {
   const airportFee = Math.max(0, Number(tripCategory?.airport?.total_fee) || 0);
   const parking = tripCategory?.hub_parking?.by_vehicle_class?.[parkingClassOf(vehicle)] || null;
+  const tax = tripCategory?.tax_fee?.by_vehicle_class?.[parkingClassOf(vehicle)] || null;
   return {
+    taxFee: Math.max(0, Number(tax?.total_fee) || 0),
+    taxLines: (tax?.lines || []).map((line) => ({
+      label: `${line.tax_type === 'mcd_tax' ? 'MCD tax' : 'State tax'} - ${line.state || line.name}`,
+      fee: Math.max(0, Number(line.fee) || 0),
+    })),
     airportFee,
     airportName: tripCategory?.airport?.name || '',
     stationFee: Math.max(0, Number(tripCategory?.station_fee?.total_fee) || 0),
@@ -980,7 +987,9 @@ const getLocationFees = (tripCategory, vehicle) => {
 };
 
 const formatVehicleFare = (vehicle, stepCount) => {
-  const airportFee = Math.max(0, Number(vehicle?.airportFee) || 0) + Math.max(0, Number(vehicle?.stationFee) || 0);
+  const airportFee = Math.max(0, Number(vehicle?.airportFee) || 0)
+    + Math.max(0, Number(vehicle?.stationFee) || 0)
+    + Math.max(0, Number(vehicle?.taxFee) || 0);
   if (!vehicle?.supportsBidding) {
     return formatCurrency((Number(vehicle?.price) || 0) + airportFee);
   }
@@ -1135,6 +1144,8 @@ const createHistorySafeVehicle = (vehicle) => {
     airportName: vehicle.airportName || '',
     stationFee: vehicle.stationFee || 0,
     stationName: vehicle.stationName || '',
+    taxFee: vehicle.taxFee || 0,
+    taxLines: vehicle.taxLines || [],
     parkingFrom: vehicle.parkingFrom || 0,
   };
 };
@@ -2594,7 +2605,7 @@ const SelectVehicle = () => {
                 </div>
               </div>
 
-              {(previewVehicle.airportFee > 0 || previewVehicle.stationFee > 0 || previewVehicle.parkingFrom > 0) && (
+              {(previewVehicle.airportFee > 0 || previewVehicle.stationFee > 0 || previewVehicle.taxFee > 0 || previewVehicle.parkingFrom > 0) && (
                 <div className="mt-4 rounded-[20px] border border-slate-100 bg-slate-50/70 px-4 py-4">
                   <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Location charges</p>
                   {previewVehicle.airportFee > 0 && (
@@ -2609,6 +2620,12 @@ const SelectVehicle = () => {
                       <span className="text-slate-900">{formatCurrency(previewVehicle.stationFee)}</span>
                     </div>
                   )}
+                  {(previewVehicle.taxLines || []).map((line) => (
+                    <div key={line.label} className="mt-2 flex items-center justify-between text-[12px] font-bold text-slate-700">
+                      <span>{line.label}</span>
+                      <span className="text-slate-900">{formatCurrency(line.fee)}</span>
+                    </div>
+                  ))}
                   {previewVehicle.parkingFrom > 0 && (
                     <div className="mt-2 flex items-center justify-between text-[12px] font-bold text-slate-700">
                       <span>Parking{previewVehicle.parkingVaries ? ' (from)' : ''}</span>
@@ -2618,6 +2635,7 @@ const SelectVehicle = () => {
                   <p className="mt-2 text-[11px] font-semibold leading-4 text-slate-500">
                     {previewVehicle.airportFee > 0 ? 'The airport fee is included in the estimated fare. ' : ''}
                     {previewVehicle.stationFee > 0 ? 'The station entry fee is included in the estimated fare. ' : ''}
+                    {previewVehicle.taxFee > 0 ? 'State / MCD tax for entering the drop state is included in the estimated fare. ' : ''}
                     {previewVehicle.parkingFrom > 0 ? 'Parking is added at the end of the trip from how long the driver waits at the hub.' : ''}
                   </p>
                 </div>

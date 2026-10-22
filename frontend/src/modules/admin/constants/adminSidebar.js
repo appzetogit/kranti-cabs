@@ -66,6 +66,7 @@ export const ADMIN_SIDEBAR_SECTIONS = [
           { label: 'Service Location', path: '/admin/pricing/service-location', permission: 'service_locations.view' },
           { label: 'Zone', path: '/admin/pricing/zone', permission: 'zones.view' },
           { label: 'Airport', path: '/admin/pricing/airport', permission: 'airports.view' },
+          { label: 'State & MCD Tax', path: '/admin/pricing/state-tax', permission: 'set_prices.view' },
           { label: 'Set Price', path: '/admin/pricing/set-price', permission: 'set_prices.view' },
           //{ label: 'Goods Types', path: '/admin/pricing/goods-types', permission: 'goods_types.view' },
         ],

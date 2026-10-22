@@ -21,6 +21,7 @@ import { consumeUserSubscriptionRide, resolveApplicableUserSubscription } from '
 import { applyPromoToRideInTransaction } from './promoService.js';
 import { ABSOLUTE_MAX_MULTIPLIER, getSurgeAt, getSurgeProfiles, surgeForVehicle } from './surgeService.js';
 import { classifyTrip, resolveTripHubs } from './tripCategoryService.js';
+import { stateTaxFees } from './stateTaxService.js';
 import {
   applyHubParkingCharge,
   buildRideHubParking,
@@ -1148,7 +1149,6 @@ export const createRideRecord = async ({
     station_fee: Math.max(0, Number(tripClass?.station_fee?.total_fee) || 0),
     station_fee_lines: tripClass?.station_fee?.lines || [],
   };
-  const safeFare = Math.round((quotedFare + airportFee + tripCategory.station_fee) * 100) / 100;
 
   const dispatchVehicleTypeIds = normalizeVehicleTypeIds(vehicleTypeIds, vehicleTypeId);
 
@@ -1173,6 +1173,19 @@ export const createRideRecord = async ({
     primaryVehicle?.vehicle_type ||
     '',
   ).trim();
+
+  // State tax / MCD tax for entering the drop's state, priced for this
+  // vehicle's class, so worked out once the vehicle is known. Added like the
+  // station fee and, like it, passed to the driver at settlement.
+  const taxFee = await stateTaxFees({
+    pickup: pickupCoords,
+    drop: dropCoords,
+    vehicleClass: primaryVehicle?.category || resolvedVehicleIconType,
+  }).catch(() => null);
+  tripCategory.tax_fee = Math.max(0, Number(taxFee?.total_fee) || 0);
+  tripCategory.tax_fee_lines = taxFee?.lines || [];
+  const safeFare = Math.round((quotedFare + airportFee + tripCategory.station_fee + tripCategory.tax_fee) * 100) / 100;
+
   const normalizedTransportType = normalizeRideTransportType(transport_type);
   // The rider app sends neither id, so every ride was stored without a zone
   // or city and priced its commission and waiting charge from a fallback
