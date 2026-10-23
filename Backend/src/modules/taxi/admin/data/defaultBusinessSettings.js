@@ -93,8 +93,14 @@ export const createDefaultBusinessSettings = () => ({
     enable_eta_price_on_complete: '1',
     enable_secondary_ride: '0',
     max_dist_secondary_ride: '2',
+    // Destination mode ("Go Home"); see services/destinationModeService.js.
     enable_my_route_booking_feature: '0',
     how_many_times_a_driver_can_enable_the_my_route_booking_per_day: '1',
+    destination_mode_corridor_km: '2',
+    destination_mode_max_detour_percent: '30',
+    destination_mode_max_hours: '3',
+    destination_mode_arrival_meters: '500',
+    destination_mode_home_change_days: '7',
   },
   bid_ride: {
     // The master switch, and which services may be bid on at all. Both are

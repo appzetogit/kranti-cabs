@@ -7,6 +7,11 @@ import {
 import { asyncHandler } from "../../../../utils/asyncHandler.js";
 import { authenticate } from "../../middlewares/authMiddleware.js";
 import { acceptRideOffer, getPendingRideOffers, rejectRideOffer } from "../controllers/rideOfferController.js";
+import {
+  getMyDestinationMode,
+  updateMyDestinationMode,
+  updateMyHomeLocation,
+} from "../controllers/destinationModeController.js";
 import { getDriverBanners } from "../../admin/promotions/controllers/promotionsController.js";
 import {
   getDriverKycStatus,
@@ -185,6 +190,11 @@ driverRouter.get(
 // Answers from the native offer card shown while the app is closed.
 driverRouter.post("/ride-offers/:rideId/accept", authenticate(["driver"]), acceptRideOffer);
 driverRouter.post("/ride-offers/:rideId/reject", authenticate(["driver"]), rejectRideOffer);
+// Destination mode ("Go Home"): only rides on the driver's way, and their
+// saved home for it.
+driverRouter.get("/me/destination", authenticate(["driver"]), getMyDestinationMode);
+driverRouter.put("/me/destination", authenticate(["driver"]), updateMyDestinationMode);
+driverRouter.put("/me/home-location", authenticate(["driver"]), updateMyHomeLocation);
 // Home-screen promo banners for the driver's zone (`lat`, `lng`).
 driverRouter.get("/banners", asyncHandler(getDriverBanners));
 driverRouter.get(

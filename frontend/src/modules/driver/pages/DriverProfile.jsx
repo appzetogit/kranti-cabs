@@ -32,7 +32,14 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useSupportInfo } from '../../shared/content/supportInfo';
 import DriverBottomNav from '../../shared/components/DriverBottomNav';
-import { clearDriverAuthState, getCurrentDriver, getDriverKycStatus } from '../services/registrationService';
+import {
+    clearDriverAuthState,
+    getCurrentDriver,
+    getDriverDestinationMode,
+    getDriverKycStatus,
+    updateDriverDestinationMode,
+    updateDriverHomeLocation,
+} from '../services/registrationService';
 
 const unwrapDriver = (response) => response?.data?.data || response?.data || response || null;
 const ROUTE_BOOKING_STORAGE_KEY = 'driver_route_booking_preferences';
@@ -90,13 +97,17 @@ const normalizeBankDetails = (bankDetails = {}) => ({
 const DriverProfile = () => {
     const support = useSupportInfo();
     const navigate = useNavigate();
-    const [routeBookingPreferences, setRouteBookingPreferences] = useState(() => readRouteBookingPreferences());
+    // Only written now, to keep the home screen's stored copy in sync; Go Home
+    // below replaces the old "My Route Booking" toggle.
+    const [, setRouteBookingPreferences] = useState(() => readRouteBookingPreferences());
     const [isLogoutOpen, setIsLogoutOpen] = useState(false);
     const [legalModal, setLegalModal] = useState(null);
     const [driver, setDriver] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
-    const [routeBookingBusy, setRouteBookingBusy] = useState(false);
+    // Go Home (destination mode) and the saved home it uses.
+    const [destination, setDestination] = useState(null);
+    const [destinationBusy, setDestinationBusy] = useState(false);
     const role = localStorage.getItem('role') || 'driver';
     const isOwner = role === 'owner';
     const routePrefix = isOwner ? '/taxi/owner' : '/taxi/driver';
@@ -108,6 +119,15 @@ const DriverProfile = () => {
         let active = true;
         getDriverKycStatus()
             .then((response) => { if (active) setKycState(response?.data ?? response ?? null); })
+            .catch(() => {});
+        return () => { active = false; };
+    }, [isOwner]);
+
+    useEffect(() => {
+        if (isOwner) return undefined;
+        let active = true;
+        getDriverDestinationMode()
+            .then((response) => { if (active) setDestination(unwrapDriver(response)); })
             .catch(() => {});
         return () => { active = false; };
     }, [isOwner]);
@@ -237,13 +257,16 @@ Processing Time: Refunds are typically credited back to the original payment met
     const driverNumber = useMemo(() => driver?.vehicleNumber || 'N/A', [driver?.vehicleNumber]);
     const driverColor = useMemo(() => driver?.vehicleColor || 'N/A', [driver?.vehicleColor]);
     const driverRating = useMemo(() => Number(driver?.rating || 0), [driver?.rating]);
-    const routeBookingSubtitle = useMemo(() => {
-        if (!routeBookingPreferences.enabled) {
-            return 'Receive requests from your live location';
+    const goHomeSubtitle = useMemo(() => {
+        if (destination?.enabled) {
+            return `Only rides towards ${destination.destination?.label || 'home'}`;
         }
-
-        return routeBookingPreferences.label || formatRouteBookingLabel(routeBookingPreferences.coordinates);
-    }, [routeBookingPreferences.coordinates, routeBookingPreferences.enabled, routeBookingPreferences.label]);
+        if (destination && destination.featureEnabled === false) return 'Not available right now';
+        if (!destination?.home) return 'Save your home location first';
+        return destination.usesPerDay
+            ? `Off · used ${destination.usedToday || 0}/${destination.usesPerDay} today`
+            : 'Off';
+    }, [destination]);
     const bankDetails = useMemo(() => normalizeBankDetails(driver?.bankDetails), [driver?.bankDetails]);
     const bankDetailsSubtitle = useMemo(() => {
         if (bankDetails.accountHolderName) return bankDetails.accountHolderName;
@@ -258,70 +281,61 @@ Processing Time: Refunds are typically credited back to the original payment met
         navigate(`${routePrefix}/profile/bank-details`);
     };
 
-    const handleRouteBookingToggle = async () => {
-        if (routeBookingBusy) {
+    // Go Home: only rides on the way home. The server plans the route from
+    // the driver's live location, so the driver must be online with GPS.
+    const apiMessage = (err, fallback) => err?.response?.data?.message || err?.message || fallback;
+
+    const handleGoHomeToggle = async () => {
+        if (destinationBusy) return;
+        if (!destination?.enabled && !destination?.home) {
+            setError('Save your home location first (Home Location below).');
             return;
         }
-
-        if (routeBookingPreferences.enabled) {
-            setRouteBookingBusy(true);
-            setError('');
-            try {
-                const response = await updateDriverProfile({
-                    routeBooking: {
-                        enabled: false,
-                    },
-                });
-                const nextRouteBooking = normalizeRouteBookingPreferences(
-                    unwrapDriver(response)?.routeBooking || { enabled: false },
-                );
-                setRouteBookingPreferences(writeRouteBookingPreferences(nextRouteBooking));
-            } catch (err) {
-                setError(err?.response?.data?.message || err?.message || 'Could not update route booking.');
-            } finally {
-                setRouteBookingBusy(false);
-            }
-            return;
+        setDestinationBusy(true);
+        setError('');
+        try {
+            const response = await updateDriverDestinationMode(
+                destination?.enabled ? { enabled: false } : { enabled: true, useHome: true },
+            );
+            setDestination(unwrapDriver(response));
+        } catch (err) {
+            setError(apiMessage(err, 'Could not update Go Home.'));
+        } finally {
+            setDestinationBusy(false);
         }
+    };
 
+    const handleSetHomeHere = () => {
+        if (destinationBusy) return;
         if (!navigator.geolocation) {
             setError('Location is not available on this device.');
             return;
         }
+        const moveNote = destination?.home
+            ? '\n\nYou can only move home once every few days.'
+            : '';
+        if (!window.confirm(`Save where you are now as your home?${moveNote}`)) return;
 
-        setRouteBookingBusy(true);
+        setDestinationBusy(true);
         setError('');
-
         navigator.geolocation.getCurrentPosition(
             async (position) => {
-                const nextCoordinates = [position.coords.longitude, position.coords.latitude];
-                const nextLabel = formatRouteBookingLabel(nextCoordinates);
-
                 try {
-                    const response = await updateDriverProfile({
-                        routeBooking: {
-                            enabled: true,
-                            coordinates: nextCoordinates,
-                            label: nextLabel,
-                        },
+                    const response = await updateDriverHomeLocation({
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude,
+                        address: 'Home',
                     });
-                    const nextRouteBooking = normalizeRouteBookingPreferences(
-                        unwrapDriver(response)?.routeBooking || {
-                            enabled: true,
-                            coordinates: nextCoordinates,
-                            label: nextLabel,
-                        },
-                    );
-                    setRouteBookingPreferences(writeRouteBookingPreferences(nextRouteBooking));
+                    setDestination(unwrapDriver(response));
                 } catch (err) {
-                    setError(err?.response?.data?.message || err?.message || 'Could not update route booking.');
+                    setError(apiMessage(err, 'Could not save home.'));
                 } finally {
-                    setRouteBookingBusy(false);
+                    setDestinationBusy(false);
                 }
             },
             () => {
-                setRouteBookingBusy(false);
-                setError('Please allow location permission to enable route booking.');
+                setDestinationBusy(false);
+                setError('Please allow location permission to save your home.');
             },
             { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
         );
@@ -361,7 +375,25 @@ Processing Time: Refunds are typically credited back to the original payment met
         {
             title: 'Preferences',
             items: [
-                { id: 'routeBooking', label: 'My Route Booking', sub: routeBookingSubtitle, icon: <Route size={20} />, type: 'toggle' },
+                ...(!isOwner ? [
+                    {
+                        id: 'goHome',
+                        label: 'Go Home',
+                        sub: goHomeSubtitle,
+                        icon: <Route size={20} />,
+                        type: 'toggle',
+                        toggleOn: Boolean(destination?.enabled),
+                        toggleBusy: destinationBusy,
+                        onToggle: handleGoHomeToggle,
+                    },
+                    {
+                        id: 'homeLocation',
+                        label: 'Home Location',
+                        sub: destination?.home?.address || 'Not set - tap to save where you are now',
+                        icon: <Landmark size={20} />,
+                        action: handleSetHomeHere,
+                    },
+                ] : []),
             ]
         },
         {
@@ -489,12 +521,12 @@ Processing Time: Refunds are typically credited back to the original payment met
                                     </div>
                                     {item.type === 'toggle' ? (
                                         <button
-                                            onClick={(e) => { e.stopPropagation(); handleRouteBookingToggle(); }}
-                                            disabled={routeBookingBusy}
-                                            className={`w-10 h-5.5 rounded-full relative transition-colors duration-300 ${routeBookingPreferences.enabled ? 'bg-slate-900' : 'bg-slate-200'} ${routeBookingBusy ? 'opacity-70' : ''}`}
+                                            onClick={(e) => { e.stopPropagation(); item.onToggle?.(); }}
+                                            disabled={item.toggleBusy}
+                                            className={`w-10 h-5.5 rounded-full relative transition-colors duration-300 ${item.toggleOn ? 'bg-slate-900' : 'bg-slate-200'} ${item.toggleBusy ? 'opacity-70' : ''}`}
                                         >
                                             <Motion.motion.div
-                                                animate={{ x: routeBookingPreferences.enabled ? 20 : 2 }}
+                                                animate={{ x: item.toggleOn ? 20 : 2 }}
                                                 className="absolute top-1 w-3.5 h-3.5 rounded-full bg-white shadow-sm"
                                             />
                                         </button>

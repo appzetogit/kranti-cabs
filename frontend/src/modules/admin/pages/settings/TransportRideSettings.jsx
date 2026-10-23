@@ -260,6 +260,83 @@ const TransportRideSettings = () => {
                 </div>
              </div>
 
+             <div className="mt-10 pt-8 border-t border-gray-100">
+                <h4 className="text-[13px] font-bold text-gray-700 uppercase tracking-tight mb-1">Destination mode (Go Home)</h4>
+                <p className="text-sm text-gray-500 mb-6">
+                   A driver heading home (or to a place they pick) turns this on and is offered only
+                   rides whose pickup and drop both lie within the corridor of their road route, that
+                   carry them forward, and that add at most the allowed detour. It switches off on
+                   arrival or after the time limit. Drivers save home in their app and can move it
+                   only every few days.
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6">
+                   <div className="space-y-6">
+                      <div className="space-y-1.5">
+                         <label className="text-sm font-medium text-gray-700 block ml-0.5">Destination Mode</label>
+                         <select
+                          value={settings.enable_my_route_booking_feature || '0'}
+                          onChange={(e) => handleChange('enable_my_route_booking_feature', e.target.value)}
+                          className="w-full bg-white border border-gray-200 rounded-lg py-2.5 px-4 text-sm text-gray-900 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 transition-all outline-none shadow-sm"
+                         >
+                            <option value="0">Off</option>
+                            <option value="1">On</option>
+                         </select>
+                      </div>
+                      <InputField
+                         label="Times a Driver Can Turn It On Per Day (0 = no limit)"
+                         name="how_many_times_a_driver_can_enable_the_my_route_booking_per_day"
+                         value={settings.how_many_times_a_driver_can_enable_the_my_route_booking_per_day}
+                         onChange={handleChange}
+                         type="number"
+                         placeholder="1"
+                      />
+                      <InputField
+                         label="Corridor Either Side of the Route (Kilometer)"
+                         name="destination_mode_corridor_km"
+                         value={settings.destination_mode_corridor_km}
+                         onChange={handleChange}
+                         type="number"
+                         placeholder="2"
+                      />
+                      <InputField
+                         label="Maximum Detour (Percent)"
+                         name="destination_mode_max_detour_percent"
+                         value={settings.destination_mode_max_detour_percent}
+                         onChange={handleChange}
+                         type="number"
+                         placeholder="30"
+                      />
+                   </div>
+                   <div className="space-y-6">
+                      <InputField
+                         label="Turns Off After (Hours)"
+                         name="destination_mode_max_hours"
+                         value={settings.destination_mode_max_hours}
+                         onChange={handleChange}
+                         type="number"
+                         placeholder="3"
+                      />
+                      <InputField
+                         label="Counts As Arrived Within (Meters)"
+                         name="destination_mode_arrival_meters"
+                         value={settings.destination_mode_arrival_meters}
+                         onChange={handleChange}
+                         type="number"
+                         placeholder="500"
+                      />
+                      <InputField
+                         label="Driver Can Move Home Once Every (Days, 0 = any time)"
+                         name="destination_mode_home_change_days"
+                         value={settings.destination_mode_home_change_days}
+                         onChange={handleChange}
+                         type="number"
+                         placeholder="7"
+                      />
+                   </div>
+                </div>
+             </div>
+
              <div className="mt-10 flex justify-end pt-6 border-t border-gray-100">
                 <button 
                   onClick={handleUpdate}

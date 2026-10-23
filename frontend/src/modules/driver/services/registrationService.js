@@ -480,6 +480,12 @@ export const getDriverRideHistory = (params = {}) =>
 
 export const updateDriverProfile = (payload) =>
   api.patch("/drivers/me", payload, withDriverAuth());
+// Destination mode ("Go Home"): only rides on the driver's way.
+export const getDriverDestinationMode = () => api.get("/drivers/me/destination", withDriverAuth());
+export const updateDriverDestinationMode = (payload) =>
+  api.put("/drivers/me/destination", payload, withDriverAuth());
+export const updateDriverHomeLocation = (payload) =>
+  api.put("/drivers/me/home-location", payload, withDriverAuth());
 export const verifyDriverBankDetails = (mode = "penny_less") =>
   api.post("/drivers/me/bank-details/verify", { mode }, withDriverAuth());
 export const verifyDriverUpiDetails = (mode = "basic") =>

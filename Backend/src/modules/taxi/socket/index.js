@@ -34,6 +34,7 @@ import { authorizeRideRoomAccess } from './middleware/rideRoomAuth.js';
 import { attachSocketAuth } from './middleware/socketAuth.js';
 import { clearDriverRoute } from './services/driverRouteService.js';
 import { consumeScopedRateLimit } from '../middlewares/rateLimitMiddleware.js';
+import { handleDestinationModeLocation } from '../services/destinationModeService.js';
 import { getSocketClientIp as resolveSocketClientIp } from '../../../utils/clientIp.js';
 
 const DRIVER_LOCATION_WRITE_MIN_DISTANCE_METERS = 25;
@@ -340,6 +341,12 @@ export const configureTaxiSocketServer = async (httpServer) => {
             speed: normalizedSpeed,
           }).catch((error) => {
             console.error('Failed to persist driver location history', error.message);
+          });
+
+          // Destination mode: end it on arrival or expiry, re-plan the route
+          // if the driver left it. A no-op for drivers not in the mode.
+          handleDestinationModeLocation(identity.sub, normalizedCoords).catch((error) => {
+            console.error('Destination mode location check failed', error.message);
           });
         }
 

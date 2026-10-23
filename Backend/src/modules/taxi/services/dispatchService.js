@@ -265,6 +265,8 @@ const matchDispatchDrivers = async ({
     vehicleTypeId: ride.vehicleTypeId,
     vehicleTypeIds: dispatchVehicleTypeIds,
     driverId,
+    // Drivers in destination mode get only rides on their way.
+    dropCoords: ride.dropLocation?.coordinates || null,
   };
 
   // Only drivers whose wallet lets them take this ride: a cash ride whose

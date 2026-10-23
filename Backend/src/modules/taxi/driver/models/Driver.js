@@ -475,6 +475,32 @@ const driverSchema = new mongoose.Schema(
         default: null,
       },
     },
+    // The driver's saved home, for one-tap "Go Home" destination mode. Kept
+    // apart from destinationMode so turning that off never forgets it.
+    homeLocation: {
+      location: { type: geoPointSchema, default: null },
+      address: { type: String, default: '', trim: true },
+      updatedAt: { type: Date, default: null },
+    },
+    // While on, the driver is offered only rides whose pickup and drop lie
+    // along their road route to the destination. See
+    // services/destinationModeService.js.
+    destinationMode: {
+      enabled: { type: Boolean, default: false },
+      destination: { type: geoPointSchema, default: null },
+      label: { type: String, default: '', trim: true },
+      isHome: { type: Boolean, default: false },
+      routePolyline: { type: String, default: '' },
+      routeDistanceMeters: { type: Number, default: 0 },
+      routeUpdatedAt: { type: Date, default: null },
+      startedAt: { type: Date, default: null },
+      expiresAt: { type: Date, default: null },
+    },
+    // Times destination mode was turned on, per local (IST) day.
+    destinationModeUsage: {
+      day: { type: String, default: '' },
+      count: { type: Number, default: 0 },
+    },
     documents: {
       type: mongoose.Schema.Types.Mixed,
       default: {},

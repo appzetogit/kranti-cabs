@@ -7,6 +7,7 @@ import { Zone } from '../driver/models/Zone.js';
 import { DriverSubscription } from '../driver/models/DriverSubscription.js';
 import { resolveDriverSubscriptionSettings } from '../driver/services/driverSubscriptionService.js';
 import { getDriverIdsBlockedByUpcomingScheduledRides } from './rideService.js';
+import { filterDriversOnRoute } from './destinationModeService.js';
 
 const EARTH_RADIUS_METERS = 6371000;
 
@@ -388,7 +389,7 @@ const findDriversForZone = async ({
     ...(driverId ? { $and: [{ _id: driverId }] } : {}),
   };
   const selectedFields =
-    'name phone socketId vehicleTypeId vehicleTypeIds vehicleType vehicleIconType vehicleNumber vehicleColor vehicleMake vehicleModel rating location zoneId service_location_id isOnline isOnRide routeBooking';
+    'name phone socketId vehicleTypeId vehicleTypeIds vehicleType vehicleIconType vehicleNumber vehicleColor vehicleMake vehicleModel rating location zoneId service_location_id isOnline isOnRide routeBooking destinationMode';
 
   const [liveLocationDrivers, routeBookingDrivers] = await Promise.all([
     Driver.find({
@@ -430,6 +431,9 @@ export const matchDrivers = async (pickupCoords, options = {}) => {
     // Only match this driver. The nearest-`limit` cut would otherwise hide a
     // qualifying driver whenever `limit` others are closer to the pickup.
     driverId = null,
+    // The ride's drop [lng, lat]. Drivers in destination mode are kept only
+    // when pickup and drop lie on their way; without a drop they are left out.
+    dropCoords = null,
   } = options;
   const normalizedVehicleTypeIds = normalizeVehicleTypeIds(vehicleTypeIds, vehicleTypeId);
   const allowedVehicles = normalizedVehicleTypeIds.length
@@ -465,6 +469,7 @@ export const matchDrivers = async (pickupCoords, options = {}) => {
     drivers.map((driver) => String(driver?._id || '')),
   );
   drivers = drivers.filter((driver) => !blockedDriverIds.has(String(driver?._id || '')));
+  drivers = await filterDriversOnRoute({ drivers, pickupCoords: coordinates, dropCoords });
 
   if (allowCrossZoneFallback && drivers.length === 0 && zone?._id) {
     drivers = await findDriversForZone({
@@ -489,6 +494,7 @@ export const matchDrivers = async (pickupCoords, options = {}) => {
       drivers.map((driver) => String(driver?._id || '')),
     );
     drivers = drivers.filter((driver) => !fallbackBlockedDriverIds.has(String(driver?._id || '')));
+    drivers = await filterDriversOnRoute({ drivers, pickupCoords: coordinates, dropCoords });
   }
 
   return {
