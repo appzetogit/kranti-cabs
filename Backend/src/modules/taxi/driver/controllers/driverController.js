@@ -6245,6 +6245,18 @@ export const createDriverWithdrawalRequest = async (req, res) => {
     throw new ApiError(400, `amount must be at least ${minimumTransferAmount}`);
   }
 
+  // A wallet at or below zero owes commission (it can run negative down to
+  // the admin's credit limit), so there is nothing to withdraw.
+  if (Number(wallet.balance || 0) <= 0) {
+    throw new ApiError(
+      400,
+      Number(wallet.balance) < 0
+        ? `You owe Rs ${Math.abs(Number(wallet.balance)).toFixed(2)} in commission. Clear it before withdrawing.`
+        : "Your wallet has nothing to withdraw",
+      { code: 'WALLET_NOTHING_TO_WITHDRAW', balance: Number(wallet.balance || 0) },
+    );
+  }
+
   if (amount > Number(wallet.balance || 0)) {
     throw new ApiError(400, "Withdrawal amount cannot exceed current balance");
   }

@@ -7,7 +7,7 @@ import { UserWallet } from '../user/models/UserWallet.js';
 import { Driver } from '../driver/models/Driver.js';
 import { Vehicle } from '../admin/models/Vehicle.js';
 import { WalletTransaction } from '../driver/models/WalletTransaction.js';
-import { applyDriverWalletAdjustment } from '../driver/services/walletService.js';
+import { applyDriverWalletAdjustment, filterDriversWalletAllowsRide } from '../driver/services/walletService.js';
 import { matchDrivers } from './matchingService.js';
 import {
   RIDE_LIVE_STATUS,
@@ -267,16 +267,24 @@ const matchDispatchDrivers = async ({
     driverId,
   };
 
-  let result = await matchDrivers(ride.pickupLocation.coordinates, {
-    ...sharedOptions,
-    serviceLocationId: ride.service_location_id || null,
+  // Only drivers whose wallet lets them take this ride: a cash ride whose
+  // commission would take a driver past the admin's credit limit is not
+  // offered to them, rather than offered and refused at accept.
+  const affordable = async (result) => ({
+    ...result,
+    drivers: await filterDriversWalletAllowsRide(ride, result.drivers).catch(() => result.drivers),
   });
 
+  let result = await affordable(await matchDrivers(ride.pickupLocation.coordinates, {
+    ...sharedOptions,
+    serviceLocationId: ride.service_location_id || null,
+  }));
+
   if (!result.drivers.length && ride.service_location_id) {
-    result = await matchDrivers(ride.pickupLocation.coordinates, {
+    result = await affordable(await matchDrivers(ride.pickupLocation.coordinates, {
       ...sharedOptions,
       serviceLocationId: null,
-    });
+    }));
   }
 
   return result;

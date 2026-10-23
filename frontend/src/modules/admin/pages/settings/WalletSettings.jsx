@@ -13,7 +13,7 @@ const AMOUNT_FIELDS = [
   {
     name: 'driver_wallet_minimum_amount_to_get_an_order',
     label: 'Driver minimum balance to get orders',
-    help: 'Driver app blocks new orders when wallet balance is below this amount. Use a negative value to allow cash debt.',
+    help: 'Drivers get ride requests while their wallet is at or above this amount. A negative value is a credit limit: -500 lets drivers owe up to Rs 500 of cash-ride commission. A cash ride whose commission would take a driver past it is not offered to them.',
     placeholder: '-500',
   },
   {

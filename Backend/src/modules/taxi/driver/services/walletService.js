@@ -237,6 +237,76 @@ const estimateCashRideWalletDeduction = async (ride, driverId, { session } = {})
 };
 
 /**
+ * Tells the driver when a settled ride moves their wallet across a line that
+ * changes what they can do: below zero (they now owe commission) or past the
+ * admin's credit limit (no more rides until they top up). Best effort.
+ */
+const notifyDriverWalletThresholds = async ({ driverId, balanceBefore, balanceAfter }) => {
+  const { minimumBalanceForOrders: limit } = await resolveWalletRules();
+  let notice = null;
+
+  if (balanceAfter < limit && balanceBefore >= limit) {
+    const subscriptionSettings = await resolveDriverSubscriptionSettings();
+    if (subscriptionSettings.waiveWalletMinimum && (await getActiveDriverSubscription(driverId))) return;
+    notice = {
+      title: 'Top up to get rides again',
+      body: `Your wallet is ${formatRupees(balanceAfter)}, past the ${formatRupees(limit)} limit. Top up ${formatRupees(Math.ceil(limit - balanceAfter))} to get ride requests again.`,
+      data: { type: 'wallet_limit_reached', balance: String(balanceAfter), limit: String(limit) },
+    };
+  } else if (balanceAfter < 0 && balanceBefore >= 0) {
+    notice = {
+      title: 'You owe commission',
+      body: `Your wallet is ${formatRupees(balanceAfter)}. You can keep taking rides down to ${formatRupees(limit)}; top up or complete online rides to clear it.`,
+      data: { type: 'wallet_negative', balance: String(balanceAfter), limit: String(limit) },
+    };
+  }
+
+  if (!notice) return;
+  const { sendPushNotificationToEntities } = await import('../../services/pushNotificationService.js');
+  await sendPushNotificationToEntities({ driverIds: [String(driverId)], ...notice });
+};
+
+/**
+ * Of these dispatch candidates, the ones whose wallet lets them take this
+ * ride - the same test accept applies, run before the offer goes out so a
+ * driver is never offered a cash ride whose commission their wallet would
+ * then refuse. Drivers already below the limit are flagged blocked and never
+ * matched, so this only weighs this ride's commission.
+ */
+export const filterDriversWalletAllowsRide = async (ride, drivers = []) => {
+  if (!drivers.length || normalizePaymentMethod(ride?.paymentMethod) !== 'cash') return drivers;
+
+  // The commission without any pass, the same for every candidate.
+  const deduction = await estimateCashRideWalletDeduction(ride, null);
+  if (deduction <= 0) return drivers;
+
+  const rules = await resolveWalletRules();
+  const rows = await Driver.find({ _id: { $in: drivers.map((driver) => driver._id) } })
+    .select('wallet.balance')
+    .lean();
+  const balanceById = new Map(rows.map((row) => [String(row._id), Number(row.wallet?.balance || 0)]));
+  const fitsLimit = (driverId, amount) =>
+    roundMoney((balanceById.get(String(driverId)) ?? 0) - amount) >= rules.minimumBalanceForOrders;
+
+  const shortDrivers = drivers.filter((driver) => !fitsLimit(driver._id, deduction));
+  if (!shortDrivers.length) return drivers;
+
+  // A daily pass may waive the minimum, or the commission; either can still
+  // let a short driver take it.
+  const subscriptionSettings = await resolveDriverSubscriptionSettings();
+  const passMatters = subscriptionSettings.waiveWalletMinimum || subscriptionSettings.waiveCommission;
+  const excluded = new Set();
+  await Promise.all(shortDrivers.map(async (driver) => {
+    const pass = passMatters ? await getActiveDriverSubscription(driver._id) : null;
+    if (pass && subscriptionSettings.waiveWalletMinimum) return;
+    if (pass && fitsLimit(driver._id, await estimateCashRideWalletDeduction(ride, driver._id))) return;
+    excluded.add(String(driver._id));
+  }));
+
+  return drivers.filter((driver) => !excluded.has(String(driver._id)));
+};
+
+/**
  * Whether the driver's wallet lets them take rides - and, with `ride`,
  * whether it lets them take this one.
  *
@@ -594,6 +664,14 @@ export const settleCompletedRideWallet = async ({ rideId }) => {
       return null;
     }
 
+    // An online ride's earning pays off any dues first (the credit lands on
+    // a negative balance); said so on the transaction so the driver sees why
+    // their wallet moved less than the earning.
+    const balanceBefore = Number(
+      (await Driver.findById(ride.driverId).select('wallet.balance').session(session).lean())?.wallet?.balance || 0,
+    );
+    const duesCleared = amount > 0 && balanceBefore < 0 ? roundMoney(Math.min(-balanceBefore, amount)) : 0;
+
     const result = await applyDriverWalletAdjustment({
       driverId: ride.driverId,
       rideId: ride._id,
@@ -601,8 +679,11 @@ export const settleCompletedRideWallet = async ({ rideId }) => {
       type,
       description: paymentMethod === 'cash'
         ? (platformFee > 0 ? 'Commission and platform fee deducted for cash ride' : 'Commission deducted for cash ride')
-        : 'Driver earning credited for online ride',
+        : duesCleared > 0
+          ? `Driver earning credited for online ride - ${formatRupees(duesCleared)} of it cleared your dues`
+          : 'Driver earning credited for online ride',
       metadata: {
+        duesCleared,
         fare,
         commissionAmount,
         driverEarnings,
@@ -622,6 +703,11 @@ export const settleCompletedRideWallet = async ({ rideId }) => {
     });
 
     await session.commitTransaction();
+    notifyDriverWalletThresholds({
+      driverId: ride.driverId,
+      balanceBefore,
+      balanceAfter: roundMoney(balanceBefore + amount),
+    }).catch(() => null);
     return {
       ...result,
       ride,

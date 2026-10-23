@@ -789,7 +789,14 @@ const DriverWallet = () => {
                             <div className="flex items-start justify-between gap-4">
                                 <div>
                                     <p className="text-xs font-black uppercase tracking-[0.18em] text-white/45">Current balance</p>
-                                    <h2 className="mt-2 text-4xl font-black tracking-tight">{money(wallet.balance)}</h2>
+                                    <h2 className={`mt-2 text-4xl font-black tracking-tight ${Number(wallet.balance) < 0 ? 'text-rose-300' : ''}`}>
+                                        {money(wallet.balance)}
+                                    </h2>
+                                    {Number(wallet.balance) < 0 && (
+                                        <p className="mt-1 max-w-xs text-xs font-bold text-rose-200/90">
+                                            You owe {money(Math.abs(Number(wallet.balance)))} in commission. Top up, or take online rides, to clear it.
+                                        </p>
+                                    )}
                                     <span className={`mt-3 inline-flex rounded-full px-3 py-1 text-xs font-black ${rules.canReceiveOrders ? 'bg-emerald-400/15 text-emerald-200' : 'bg-amber-400/15 text-amber-200'}`}>
                                         {statusCopy}
                                     </span>
@@ -818,7 +825,9 @@ const DriverWallet = () => {
 
                             <div className={`mt-5 grid gap-3 ${driverProfile.isOwnerManagedDriver ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-2'}`}>
                                 <div className="rounded-2xl bg-white/10 p-3">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-white/45">Minimum needed</p>
+                                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-white/45">
+                                        {rules.minimumBalance < 0 ? 'Credit limit' : 'Minimum needed'}
+                                    </p>
                                     <p className="mt-1 text-lg font-black">{money(rules.minimumBalance)}</p>
                                 </div>
                                 <div className="rounded-2xl bg-white/10 p-3">
