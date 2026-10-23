@@ -119,6 +119,9 @@ const onAsync = (socket, handler) => async (payload = {}) => {
   } catch (error) {
     socket.emit('errorMessage', {
       message: error.message || 'Socket operation failed',
+      // e.g. RIDE_UNAVAILABLE / RIDE_NOT_OFFERED / RIDE_ACCEPT_RATE_LIMITED,
+      // so the app can tell refusals apart without matching message text.
+      ...(error.details?.code ? { code: error.details.code } : {}),
     });
   }
 };
