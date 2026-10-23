@@ -203,6 +203,8 @@ export const adminService = {
   createCancellationReason: (data) => api.post('/admin/cancellation-reasons', data),
   updateCancellationReason: (id, data) => api.patch(`/admin/cancellation-reasons/${id}`, data),
   deleteCancellationReason: (id) => api.delete(`/admin/cancellation-reasons/${id}`),
+  getAcceptSpeedReview: (params = {}) => api.get('/admin/drivers/accept-review', { params }),
+  getDriverAcceptAttempts: (driverId) => api.get(`/admin/drivers/accept-review/${driverId}`),
   getStateTaxes: () => api.get('/admin/state-taxes'),
   createStateTax: (data) => api.post('/admin/state-taxes', data),
   updateStateTax: (id, data) => api.patch(`/admin/state-taxes/${id}`, data),

@@ -96,6 +96,12 @@ const rideSchema = new mongoose.Schema(
         type: Date,
         default: null,
       },
+      // driverId -> when the offer was sent to them.
+      offeredAt: {
+        type: Map,
+        of: Date,
+        default: undefined,
+      },
     },
     vehicleIconType: {
       type: String,

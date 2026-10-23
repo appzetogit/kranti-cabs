@@ -35,6 +35,8 @@ import { resolveBiddingPolicy } from './biddingPolicyService.js';
 import { resolveRideRoute } from './routeService.js';
 import { applyHourlyRentalCharges, resolveHourlyRentalQuote, serializeRideRental } from './rentalPackageService.js';
 import { assertUserKycForBooking } from './userKycService.js';
+import { RideAcceptAttempt } from '../driver/models/RideAcceptAttempt.js';
+import { consumeScopedRateLimit } from '../middlewares/rateLimitMiddleware.js';
 
 const clearUserActiveRideIfPresent = async (user) => {
   if (!user?.currentRideId) {
@@ -2014,7 +2016,63 @@ export const listRideHistoryForIdentity = async ({ role, entityId, limit = 50, p
   };
 };
 
-export const acceptRideAssignment = async ({ rideId, driverId }) => {
+// Per driver, across the socket and REST accept. A person never gets near it;
+// a script or auto clicker hammering accept does.
+const RIDE_ACCEPT_RATE_LIMIT_MAX = 10;
+const RIDE_ACCEPT_RATE_LIMIT_WINDOW_MS = 10 * 1000;
+
+const RIDE_UNAVAILABLE_MESSAGE = 'Ride is no longer available for acceptance';
+
+/// Best effort: a failed log write never fails the accept.
+const logRideAcceptAttempt = ({ driverId, rideId, channel, result, offeredAt = null, at = Date.now() }) => {
+  if (!mongoose.isValidObjectId(driverId)) return;
+  RideAcceptAttempt.create({
+    driverId,
+    rideId: mongoose.isValidObjectId(rideId) ? rideId : null,
+    channel,
+    result,
+    offeredAt,
+    reactionMs: offeredAt ? Math.max(0, at - offeredAt.getTime()) : null,
+  }).catch(() => null);
+};
+
+/**
+ * A driver accepting a ride, from the socket `acceptRide` event or the REST
+ * accept on the native offer card (`channel` says which, for the log).
+ *
+ * Guards against automated accepting (auto clickers) on the server, where the
+ * app cannot be bypassed:
+ *   - only a driver the ride was offered to, and who has not declined it, may
+ *     accept it;
+ *   - accepts are rate limited per driver;
+ *   - a repeat accept by the driver who already won returns the ride again
+ *     with `$locals.alreadyAccepted`, so a retry after a lost response is
+ *     safe and callers skip the accept side effects;
+ *   - every attempt is logged with its reaction time for admin review.
+ */
+export const acceptRideAssignment = async ({ rideId, driverId, channel = 'socket' }) => {
+  const receivedAt = Date.now();
+  let logged = false;
+  const log = (result, offeredAt = null) => {
+    logged = true;
+    logRideAcceptAttempt({ driverId, rideId, channel, result, offeredAt, at: receivedAt });
+  };
+
+  const limit = await consumeScopedRateLimit({
+    scope: 'ride_accept',
+    max: RIDE_ACCEPT_RATE_LIMIT_MAX,
+    windowMs: RIDE_ACCEPT_RATE_LIMIT_WINDOW_MS,
+    mode: 'custom',
+    parts: [String(driverId)],
+  });
+  if (!limit.allowed) {
+    log('rate_limited');
+    throw new ApiError(429, 'Too many accept attempts. Wait a few seconds and try again.', {
+      code: 'RIDE_ACCEPT_RATE_LIMITED',
+      retryAfterSeconds: limit.retryAfterSeconds,
+    });
+  }
+
   // Written without a transaction on purpose.
   //
   // This deployment runs a standalone mongod, which rejects transactions
@@ -2034,13 +2092,49 @@ export const acceptRideAssignment = async ({ rideId, driverId }) => {
   });
 
   if (!ride) {
-    throw new ApiError(409, 'Ride is no longer available for acceptance');
+    // The same driver accepting again - a retry after the first response was
+    // lost - gets their ride back rather than a confusing "not available".
+    const ownRide = await Ride.findOne({
+      _id: rideId,
+      driverId,
+      status: RIDE_STATUS.ACCEPTED,
+    });
+    if (ownRide) {
+      log('retry');
+      ownRide.$locals.alreadyAccepted = true;
+      return ownRide;
+    }
+    log('lost');
+    throw new ApiError(409, RIDE_UNAVAILABLE_MESSAGE, { code: 'RIDE_UNAVAILABLE' });
   }
 
   if (ride.bookingMode === 'bidding') {
+    log('refused');
     throw new ApiError(409, 'Bidding rides must be won through bid acceptance');
   }
 
+  // Only a driver this ride was actually offered to, and who has not declined
+  // it. Told apart by `code`; the message is the ordinary "not available" one
+  // so the app needs no new handling.
+  const { getDriverOfferStatus } = await import('./dispatchService.js');
+  const offer = getDriverOfferStatus(ride, driverId);
+  if (!offer.offered || offer.rejected) {
+    log('not_offered', offer.offeredAt);
+    throw new ApiError(409, RIDE_UNAVAILABLE_MESSAGE, { code: 'RIDE_NOT_OFFERED' });
+  }
+
+  try {
+    const acceptedRide = await claimRideForDriver({ ride, rideId, driverId });
+    log('accepted', offer.offeredAt);
+    return acceptedRide;
+  } catch (error) {
+    if (!logged) log(error?.details?.code === 'RIDE_UNAVAILABLE' ? 'lost' : 'refused', offer.offeredAt);
+    throw error;
+  }
+};
+
+/// The eligibility checks and the two atomic claims behind an accept.
+const claimRideForDriver = async ({ ride, rideId, driverId }) => {
   const driverVehicleFilter = await buildDriverVehicleAcceptFilter(ride);
   const driverFilter = {
     _id: driverId,
@@ -2121,7 +2215,7 @@ export const acceptRideAssignment = async ({ rideId, driverId }) => {
         { $set: { isOnRide: false } },
       ).catch(() => null);
     }
-    throw new ApiError(409, 'Ride is no longer available for acceptance');
+    throw new ApiError(409, RIDE_UNAVAILABLE_MESSAGE, { code: 'RIDE_UNAVAILABLE' });
   }
 
   await syncDeliveryWithRide(acceptedRide);

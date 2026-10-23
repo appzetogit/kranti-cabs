@@ -161,6 +161,7 @@ export const ADMIN_SIDEBAR_SECTIONS = [
           { label: 'Active Drivers', path: '/admin/drivers/active', permission: 'drivers.view' },
           //cd front{ label: 'Subscription', path: '/admin/drivers/subscription', permission: 'drivers.view' },
           { label: 'Drivers Ratings', path: '/admin/drivers/ratings', permission: 'drivers.view' },
+          { label: 'Accept Speed Review', path: '/admin/drivers/accept-review', permission: 'drivers.view' },
           {
             label: 'Driver Wallet',
             subItems: [

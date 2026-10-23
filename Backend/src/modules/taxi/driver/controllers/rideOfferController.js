@@ -138,8 +138,9 @@ export const getPendingRideOffers = asyncHandler(async (req, res) => {
 // `rejectRide` events, so the first successful accept still wins. The driver
 // joins the ride room itself when it opens the trip.
 export const acceptRideOffer = asyncHandler(async (req, res) => {
-  const ride = await acceptRideAssignment({ rideId: req.params.rideId, driverId: req.auth.sub });
-  await notifyRideAccepted(ride);
+  const ride = await acceptRideAssignment({ rideId: req.params.rideId, driverId: req.auth.sub, channel: 'rest' });
+  // A retry by the driver who already won: same answer, no second notify.
+  if (!ride.$locals.alreadyAccepted) await notifyRideAccepted(ride);
   ok(res, {
     rideId: String(ride._id),
     status: ride.status,

@@ -39,6 +39,7 @@ import {
   AdminDriverList,
   AdminDriverRatingDetail,
   AdminDriverRatings,
+  AdminAcceptSpeedReview,
   AdminDriverReferralSettings,
   AdminDriverReport,
   AdminDriverSubscriptionCreate,
@@ -252,6 +253,7 @@ const adminRoutes = (
       <Route path="drivers/subscription" element={<AdminDriverSubscriptions />} />
       <Route path="drivers/subscription/create" element={<AdminDriverSubscriptionCreate />} />
       <Route path="drivers/ratings" element={<AdminDriverRatings />} />
+      <Route path="drivers/accept-review" element={<AdminAcceptSpeedReview />} />
       <Route path="drivers/ratings/:id" element={<AdminDriverRatingDetail />} />
       <Route path="drivers/wallet" element={<AdminDriverWallet />} />
       <Route path="drivers/wallet/negative" element={<AdminNegativeBalanceDrivers />} />

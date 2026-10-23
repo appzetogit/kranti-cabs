@@ -154,6 +154,7 @@ export const AdminPendingDrivers = lazy(() => import('../modules/admin/pages/dri
 export const AdminDriverSubscriptions = lazy(() => import('../modules/admin/pages/drivers/DriverSubscriptions'));
 export const AdminDriverSubscriptionCreate = lazy(() => import('../modules/admin/pages/drivers/DriverSubscriptionCreate'));
 export const AdminDriverRatings = lazy(() => import('../modules/admin/pages/drivers/DriverRatings'));
+export const AdminAcceptSpeedReview = lazy(() => import('../modules/admin/pages/drivers/AcceptSpeedReview'));
 export const AdminDriverRatingDetail = lazy(() => import('../modules/admin/pages/drivers/DriverRatingDetail'));
 export const AdminDriverWallet = lazy(() => import('../modules/admin/pages/drivers/DriverWallet'));
 export const AdminNegativeBalanceDrivers = lazy(() => import('../modules/admin/pages/drivers/NegativeBalanceDrivers'));

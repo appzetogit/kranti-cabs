@@ -462,9 +462,10 @@ export const configureTaxiSocketServer = async (httpServer) => {
         }
 
         // First successful transaction wins; later accepts are rejected by the service layer.
-        const ride = await acceptRideAssignment({ rideId, driverId: identity.sub });
+        const ride = await acceptRideAssignment({ rideId, driverId: identity.sub, channel: 'socket' });
         joinRideRoom(socket, ride._id);
-        await notifyRideAccepted(ride);
+        // A retry by the driver who already won: re-confirm, no second notify.
+        if (!ride.$locals.alreadyAccepted) await notifyRideAccepted(ride);
 
         const acceptedPayload = {
           rideId: String(ride._id),

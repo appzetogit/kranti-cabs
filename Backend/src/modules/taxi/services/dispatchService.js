@@ -590,11 +590,17 @@ const persistDispatchTrackingProgress = async ({
           'dispatchTracking.notifiedDriverIds': [],
           'dispatchTracking.rejectedDriverIds': [],
           'dispatchTracking.lastDispatchAttemptAt': null,
+          'dispatchTracking.offeredAt': {},
         },
       }
     : {
         $set: {
           'dispatchTracking.lastDispatchAttemptAt': new Date(),
+          // When each driver was offered, so a restart keeps the accept's
+          // reaction time. Ids are Mongo ObjectIds, safe as field names.
+          ...Object.fromEntries(
+            safeNotifiedDriverIds.map((id) => [`dispatchTracking.offeredAt.${id}`, new Date()]),
+          ),
         },
       };
 
@@ -704,6 +710,38 @@ const getDispatchState = (rideId) => {
     driverIds: Array.isArray(state.driverIds) ? state.driverIds : [],
     notifiedDriverIds: Array.isArray(state.notifiedDriverIds) ? state.notifiedDriverIds : [],
     rejectedDriverIds: Array.isArray(state.rejectedDriverIds) ? state.rejectedDriverIds : [],
+    // driverId -> ms the offer was sent, for the accept's reaction time.
+    offeredAt: state.offeredAt && typeof state.offeredAt === 'object' ? state.offeredAt : {},
+  };
+};
+
+const stampOffers = (offeredAt, driverIds, at = Date.now()) => ({
+  ...offeredAt,
+  ...Object.fromEntries(driverIds.map((id) => [String(id), at])),
+});
+
+/**
+ * Whether this ride was offered to this driver and is still theirs to answer,
+ * and when it was offered.
+ *
+ * The in-memory state is written before the offer goes out and the ride
+ * document only after, so both are read: an instant accept must not be
+ * refused because the database write is still in flight. The document covers
+ * a restart, when memory is empty.
+ */
+export const getDriverOfferStatus = (ride, driverId) => {
+  const key = String(driverId);
+  const state = getDispatchState(ride?._id);
+  const tracking = ride?.dispatchTracking || {};
+  const persistedOfferedAt = tracking.offeredAt instanceof Map
+    ? tracking.offeredAt.get(key)
+    : tracking.offeredAt?.[key];
+  const offeredAtMs = Number(state.offeredAt[key]) || (persistedOfferedAt ? new Date(persistedOfferedAt).getTime() : 0);
+
+  return {
+    offered: state.notifiedDriverIds.includes(key) || normalizeDispatchDriverIds(tracking.notifiedDriverIds).includes(key),
+    rejected: state.rejectedDriverIds.includes(key) || normalizeDispatchDriverIds(tracking.rejectedDriverIds).includes(key),
+    offeredAt: offeredAtMs ? new Date(offeredAtMs) : null,
   };
 };
 
@@ -1415,6 +1453,7 @@ const dispatchAttempt = async (rideId, attemptIndex = 0) => {
       radiusIndex: attemptIndex,
       driverIds: targetDrivers.map((driver) => String(driver._id)),
       notifiedDriverIds: nextNotifiedDriverIds,
+      offeredAt: stampOffers(dispatchState.offeredAt, targetDrivers.map((driver) => driver._id)),
       timer: null,
     });
 
@@ -1682,6 +1721,7 @@ export const notifyLateAvailableDriver = async (driverId) => {
       saveDispatchState(rideId, {
         driverIds: nextDriverIds,
         notifiedDriverIds: nextNotifiedDriverIds,
+        offeredAt: stampOffers(latestState.offeredAt, [driverKey]),
       });
       // Persisted so a restart's recovery sweep does not offer it again.
       persistDispatchTrackingProgress({
