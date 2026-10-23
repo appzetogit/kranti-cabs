@@ -2169,7 +2169,9 @@ const claimRideForDriver = async ({ ride, rideId, driverId }) => {
     throw new ApiError(409, 'Driver already has another scheduled trip in a similar time range');
   }
 
-  await ensureDriverWalletCanAcceptRide(driver);
+  // With the ride, so a cash trip whose commission would take the wallet
+  // past the admin's limit is refused rather than overshooting it.
+  await ensureDriverWalletCanAcceptRide(driver, { ride });
 
   // A trip booked for later does not occupy the driver now — they keep taking
   // rides until it is due.

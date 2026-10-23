@@ -11,6 +11,7 @@ import { getWalletSettings } from '../../services/appSettingsService.js';
 import {
   getActiveDriverSubscription,
   getDriverVehicleClasses,
+  isSubscriptionEnabled,
   resolveDriverSubscriptionSettings,
 } from './driverSubscriptionService.js';
 
@@ -194,7 +195,57 @@ export const serializeDriverWallet = async (driver) => {
   };
 };
 
-export const ensureDriverWalletCanAcceptRide = async (driverOrId, { session } = {}) => {
+const roundMoney = (value) => Math.round(Number(value || 0) * 100) / 100;
+
+/// "₹120" / "-₹500", for wallet messages.
+const formatRupees = (value) => {
+  const amount = roundMoney(value);
+  const text = `₹${Math.abs(amount).toLocaleString('en-IN')}`;
+  return amount < 0 ? `-${text}` : text;
+};
+
+/**
+ * What a cash ride will take from the driver's wallet at settlement, worked
+ * out at accept time with settlement's own rules: commission on the fare less
+ * the station entry fee and state / MCD tax (parking is not known yet and is
+ * never commissioned anyway), plus the rider platform fee, with the
+ * commission waived under a daily pass that waives it. Online-paid rides add
+ * to the wallet instead, so they never count against the limit.
+ */
+const estimateCashRideWalletDeduction = async (ride, driverId, { session } = {}) => {
+  if (normalizePaymentMethod(ride?.paymentMethod) !== 'cash') return 0;
+
+  const fare = Math.max(0, Number(ride.fare) || 0);
+  const passThroughFee = Math.min(
+    fare,
+    Math.max(0, Number(ride.trip_category?.station_fee) || 0) + Math.max(0, Number(ride.trip_category?.tax_fee) || 0),
+  );
+  const commissionConfig = await resolveCommissionConfigForRide(ride, session);
+  const tripCommission = computeCommissionAmount({
+    fare: roundMoney(fare - passThroughFee),
+    type: commissionConfig.type,
+    value: commissionConfig.value,
+  });
+  const platformFee = Math.min(Math.max(0, Number(ride.pricingSnapshot?.rider_platform_fee) || 0), fare);
+
+  const subscriptionSettings = await resolveDriverSubscriptionSettings();
+  const covered = subscriptionSettings.waiveCommission
+    ? Boolean(await getActiveDriverSubscription(driverId, { session }))
+    : false;
+
+  return Math.min(roundMoney((covered ? 0 : tripCommission) + platformFee), roundMoney(fare - passThroughFee));
+};
+
+/**
+ * Whether the driver's wallet lets them take rides - and, with `ride`,
+ * whether it lets them take this one.
+ *
+ * The admin's "minimum wallet balance to get an order" may be negative: a
+ * credit limit (-500 lets a driver owe up to Rs 500 of cash-ride commission).
+ * With `ride`, a cash ride whose commission would take the wallet past that
+ * limit is refused too, so the limit is never overshot by one big trip.
+ */
+export const ensureDriverWalletCanAcceptRide = async (driverOrId, { session, ride = null } = {}) => {
   const driver =
     typeof driverOrId === 'object' && driverOrId?._id
       ? driverOrId
@@ -223,11 +274,34 @@ export const ensureDriverWalletCanAcceptRide = async (driverOrId, { session } = 
       'wallet.cashLimit': wallet.cashLimit,
       'wallet.isBlocked': true,
     });
-    // A pass waives the minimum, so buying today's pass is the way back to
-    // work - not a top-up of the minimum.
-    throw new ApiError(403, wallet.rules.isWalletEnabled
-      ? "Buy today's pass to go online and get rides."
-      : 'Driver wallet is disabled by admin.');
+    if (!wallet.rules.isWalletEnabled) {
+      throw new ApiError(403, 'Driver wallet is disabled by admin.', { code: 'WALLET_DISABLED' });
+    }
+    // With passes on and waiving the minimum, buying today's pass is the way
+    // back to work. Otherwise it is a top-up: this used to say "buy today's
+    // pass" even with passes switched off.
+    if (isSubscriptionEnabled(subscriptionSettings) && subscriptionSettings.waiveWalletMinimum) {
+      throw new ApiError(403, "Buy today's pass to go online and get rides.", { code: 'WALLET_PASS_REQUIRED' });
+    }
+    const topUpAmount = Math.max(1, Math.ceil(wallet.minimumBalanceForOrders - wallet.balance));
+    throw new ApiError(
+      403,
+      `Top up ${formatRupees(topUpAmount)} to get rides again. Your wallet is ${formatRupees(wallet.balance)} and the limit is ${formatRupees(wallet.minimumBalanceForOrders)}.`,
+      { code: 'WALLET_BELOW_LIMIT', topUpAmount, balance: wallet.balance, limit: wallet.minimumBalanceForOrders },
+    );
+  }
+
+  if (ride && !balanceWaived) {
+    const deduction = await estimateCashRideWalletDeduction(ride, driver._id, { session });
+    const balanceAfter = roundMoney(wallet.balance - deduction);
+    if (deduction > 0 && balanceAfter < wallet.minimumBalanceForOrders) {
+      const topUpAmount = Math.max(1, Math.ceil(wallet.minimumBalanceForOrders - balanceAfter));
+      throw new ApiError(
+        403,
+        `Top up ${formatRupees(topUpAmount)} to take this ride. Its ${formatRupees(deduction)} commission would take your wallet below ${formatRupees(wallet.minimumBalanceForOrders)}.`,
+        { code: 'WALLET_LIMIT_FOR_RIDE', topUpAmount, commission: deduction, balance: wallet.balance, limit: wallet.minimumBalanceForOrders },
+      );
+    }
   }
 
   if (Number(driver?.wallet?.cashLimit) !== wallet.cashLimit || driver?.wallet?.isBlocked) {
