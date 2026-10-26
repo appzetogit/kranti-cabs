@@ -3156,6 +3156,8 @@ export const getDriverScheduledRides = async (req, res) => {
     status: RIDE_STATUS.SEARCHING,
     liveStatus: RIDE_LIVE_STATUS.SEARCHING,
     ...(driver.service_location_id ? { service_location_id: driver.service_location_id } : {}),
+    // Not one this driver gave back.
+    "dispatchTracking.rejectedDriverIds": { $ne: String(req.auth.sub) },
     // Rentals only for a driver who takes them; accepting one is refused anyway.
     ...(driverTakesRentals(driver) ? {} : { serviceType: { $ne: "hourly_rental" } }),
   };
@@ -3257,11 +3259,11 @@ export const cancelDriverScheduledRide = async (req, res) => {
 
   res.json({
     success: true,
-    message: "Scheduled ride cancelled successfully",
+    message: "Scheduled ride given back - it goes to other drivers",
     data: {
       rideId: String(ride._id || ""),
-      status: ride.status || RIDE_STATUS.CANCELLED,
-      liveStatus: ride.liveStatus || RIDE_LIVE_STATUS.CANCELLED,
+      status: ride.status,
+      liveStatus: ride.liveStatus,
     },
   });
 };

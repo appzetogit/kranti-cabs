@@ -467,7 +467,7 @@ const settleDriverCancellationFee = async (ride, session) => {
     return { feeAmount: 0, driverDebitStatus: 'none', userCreditStatus: 'none', driverWalletResult: null };
   }
 
-  const feeReferenceBase = `ride-cancel:driver:${String(ride._id)}`;
+  const feeReferenceBase = `ride-cancel:driver:${String(ride._id)}:${String(ride.driverId)}`;
   const driverDebit = await applyDriverWalletAdjustmentByReference({
     driverId: ride.driverId,
     amount: -feeAmount,
@@ -1195,6 +1195,17 @@ export const cancelRideByUser = async ({ rideId, userId, cancellation = null }) 
     });
     // Their trip is gone; they may be next to another ride still searching.
     notifyLateAvailableDriver(ride.driverId).catch(() => null);
+
+    // A ride they took in advance: the socket event only reaches an open app,
+    // and this one may be days out - tell them by push too.
+    if (ride.scheduledAt && new Date(ride.scheduledAt).getTime() > Date.now()) {
+      sendPushNotificationToEntities({
+        driverIds: [String(ride.driverId)],
+        title: 'Scheduled ride cancelled',
+        body: `The rider cancelled the ride ${scheduleLabel(ride.scheduledAt)}.`,
+        data: { type: 'scheduled_ride_cancelled', scheduledRideId: String(ride._id) },
+      }).catch(() => null);
+    }
   }
 
   for (const driverId of dispatchState.notifiedDriverIds) {
@@ -1282,81 +1293,57 @@ export const cancelScheduledRideByDriver = async ({ rideId, driverId }) => {
     return existing;
   }
 
-  const cancelUpdate = {
-    status: RIDE_STATUS.CANCELLED,
-    liveStatus: RIDE_LIVE_STATUS.CANCELLED,
+  // Given back, not cancelled (as on Ola / Uber): the rider keeps the booking
+  // and it goes to other drivers - in Scheduled Rides, and as a request near
+  // pickup if nobody takes it. This driver is kept out of it from now on.
+  const reopenUpdate = {
+    driverId: null,
+    status: RIDE_STATUS.SEARCHING,
+    liveStatus: RIDE_LIVE_STATUS.SEARCHING,
+    acceptedAt: null,
+    'scheduleReminders.leadSentAt': null,
+    'scheduleReminders.dueSentAt': null,
   };
-  if (existing.bookingMode === 'bidding') {
-    cancelUpdate.biddingStatus = 'cancelled';
-  }
 
-  let ride = await Ride.findOneAndUpdate(
+  const ride = await Ride.findOneAndUpdate(
     {
       _id: rideId,
       driverId,
-      status: { $nin: [RIDE_STATUS.CANCELLED, RIDE_STATUS.COMPLETED] },
-      liveStatus: { $nin: [RIDE_LIVE_STATUS.CANCELLED, RIDE_LIVE_STATUS.COMPLETED] },
+      status: { $in: [RIDE_STATUS.SEARCHING, RIDE_STATUS.ACCEPTED] },
+      liveStatus: { $nin: [RIDE_LIVE_STATUS.CANCELLED, RIDE_LIVE_STATUS.COMPLETED, RIDE_LIVE_STATUS.STARTED] },
     },
-    { $set: cancelUpdate },
+    { $set: reopenUpdate },
     { new: true },
   );
 
   if (!ride) {
     stopDispatchFlow(rideId);
-    return Ride.findOne({ _id: rideId, driverId });
+    return Ride.findOne({ _id: rideId });
   }
 
   let cancellationSettlement = null;
   try {
-    cancellationSettlement = await settleDriverCancellationFee(ride);
+    // The fee is the giving-back driver's, so it is settled against them.
+    cancellationSettlement = await settleDriverCancellationFee({ ...ride.toObject(), driverId });
   } catch (error) {
     console.error('Could not settle the driver cancellation fee', error);
   }
 
-  await Promise.all([
-    ride.deliveryId
-      ? Delivery.findByIdAndUpdate(ride.deliveryId, {
-        driverId: ride.driverId || null,
-        status: ride.status,
-        liveStatus: ride.liveStatus,
-      })
-      : Promise.resolve(),
-    User.updateOne({ _id: ride.userId, currentRideId: ride._id }, { currentRideId: null }),
-    ride.driverId ? Driver.findByIdAndUpdate(ride.driverId, { isOnRide: false }) : Promise.resolve(),
-  ]);
-
+  await Driver.findByIdAndUpdate(driverId, { isOnRide: false });
   await persistDispatchTrackingProgress({ rideId, reset: true }).catch(() => null);
+  await Ride.updateOne({ _id: rideId }, { $addToSet: { 'dispatchTracking.rejectedDriverIds': String(driverId) } });
 
-  const cancelReason = 'Your scheduled ride was cancelled by the driver.';
-
-  emitToRoom(getUserRoom(ride.userId), 'rideCancelled', {
-    rideId: String(ride._id),
-    room: getRideRoom(ride._id),
-    reason: cancelReason,
-  });
-
-  emitToRoom(getRideRoom(ride._id), 'rideRequestClosed', {
+  emitToRoom(getDriverRoom(driverId), 'rideRequestClosed', {
     rideId: String(ride._id),
     reason: 'driver-cancelled',
-    message: cancelReason,
+    message: 'Scheduled ride given back.',
   });
-
-  if (ride.driverId) {
-    emitToRoom(getDriverRoom(ride.driverId), 'rideRequestClosed', {
-      rideId: String(ride._id),
-      reason: 'driver-cancelled',
-      message: 'Scheduled ride cancelled.',
-    });
-  }
-
   for (const notifiedDriverId of dispatchState.notifiedDriverIds) {
     emitToDriver(notifiedDriverId, 'rideRequestClosed', {
       rideId: String(ride._id),
       reason: 'driver-cancelled',
-      message: cancelReason,
     });
   }
-
   emitToRoom(getRideRoom(ride._id), SOCKET_EVENTS.RIDE_STATUS_UPDATED, {
     rideId: String(ride._id),
     status: ride.status,
@@ -1364,13 +1351,13 @@ export const cancelScheduledRideByDriver = async ({ rideId, driverId }) => {
   });
 
   if (cancellationSettlement?.driverWalletResult?.transaction) {
-    emitToDriver(ride.driverId, 'driver:wallet:updated', {
+    emitToDriver(driverId, 'driver:wallet:updated', {
       wallet: cancellationSettlement.driverWalletResult.wallet,
       transaction: cancellationSettlement.driverWalletResult.transaction,
       notification: {
-        id: `ride-cancel-debit-${String(ride._id)}`,
+        id: `ride-cancel-debit-${String(ride._id)}-${String(driverId)}`,
         title: 'Cancellation fee charged',
-        body: `Rs ${Number(cancellationSettlement.feeAmount || 0).toFixed(2)} deducted for scheduled ride cancellation.`,
+        body: `Rs ${Number(cancellationSettlement.feeAmount || 0).toFixed(2)} deducted for giving back a scheduled ride.`,
         sentAt: new Date().toISOString(),
       },
     });
@@ -1378,19 +1365,25 @@ export const cancelScheduledRideByDriver = async ({ rideId, driverId }) => {
 
   sendPushNotificationToEntities({
     userIds: [String(ride.userId)],
-    title: 'Scheduled ride cancelled',
-    body: cancelReason,
+    title: 'Finding you another driver',
+    body: `Your driver had to cancel. Your ride ${scheduleLabel(ride.scheduledAt)} is still booked - we are finding another driver.`,
+    // `scheduledRideId`: the rider app opens the ride's details, not tracking.
     data: {
-      type: 'ride_cancelled_by_driver',
-      rideId: String(ride._id),
+      type: 'scheduled_ride_driver_changed',
+      scheduledRideId: String(ride._id),
       serviceType: ride.serviceType || 'ride',
     },
   }).catch((error) => {
-    console.error('Failed to send user scheduled-ride cancellation push notification', error);
+    console.error('Failed to send scheduled-ride driver-changed push', error);
   });
 
+  // Back to other drivers: the dispatch timer (or straight away, if pickup is
+  // close) and, for a ride still well ahead, the Scheduled Rides notice.
   stopDispatchFlow(rideId);
-  return ride;
+  const reopened = await Ride.findById(rideId);
+  await startDispatchFlow(reopened);
+  announceScheduledRide(reopened).catch(() => null);
+  return reopened;
 };
 
 const scheduleNextAttempt = (rideId, nextAttemptIndex, retryDelayMs) => {
