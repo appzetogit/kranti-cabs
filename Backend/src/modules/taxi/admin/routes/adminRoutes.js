@@ -278,6 +278,7 @@ import {
   updateStateTax,
 } from '../controllers/stateTaxController.js';
 import { getAcceptSpeedReview, getDriverAcceptAttempts } from '../controllers/acceptReviewController.js';
+import { getDriverRentalAccess, updateDriverRentalAccess } from '../../driver/controllers/rentalPreferenceController.js';
 import { promotionsRouter } from '../promotions/routes/index.js';
 import { listSafetyAlerts, resolveSafetyAlert } from '../../safety/controllers/safetyController.js';
 import {
@@ -339,6 +340,8 @@ adminRouter.get('/admin/drivers/deleted', authenticate(['admin']), getDeletedDri
 // Above /admin/drivers/:id, which would otherwise take "accept-review" as an id.
 adminRouter.get('/admin/drivers/accept-review', getAcceptSpeedReview);
 adminRouter.get('/admin/drivers/accept-review/:driverId', getDriverAcceptAttempts);
+adminRouter.get('/admin/drivers/:id/rental-access', getDriverRentalAccess);
+adminRouter.patch('/admin/drivers/:id/rental-access', updateDriverRentalAccess);
 adminRouter.get('/admin/drivers/delete-requests', authenticate(['admin']), getDriverDeletionRequests);
 adminRouter.patch('/admin/drivers/delete-requests/:id/approve', authenticate(['admin']), approveDriverDeletionRequest);
 adminRouter.patch('/admin/drivers/delete-requests/:id/reject', authenticate(['admin']), rejectDriverDeletionRequest);

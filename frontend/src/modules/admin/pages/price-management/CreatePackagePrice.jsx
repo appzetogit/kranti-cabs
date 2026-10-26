@@ -447,6 +447,8 @@ const CreatePackagePrice = ({ mode = 'create' }) => {
                         {vehicleTypes.map((item) => (
                           <option key={item._id || item.id} value={item._id || item.id}>
                             {item.name}
+                            {/* Switched off in Vehicle Types: this row is not offered to riders. */}
+                            {item.rental_enabled === false ? ' (rental off)' : ''}
                           </option>
                         ))}
                       </select>

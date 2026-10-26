@@ -168,6 +168,7 @@ const buildVehicleFormData = (selectedVehicle = {}) => ({
   description: selectedVehicle.description || '',
   transport_type: resolveVehicleTransportType(selectedVehicle),
   dispatch_type: selectedVehicle.dispatch_type || selectedVehicle.trip_dispatch_type || 'normal',
+  rental_enabled: selectedVehicle.rental_enabled !== false,
   icon_types: normalizeIconType(selectedVehicle.icon_types || selectedVehicle.icon_types_for),
   category: String(selectedVehicle.category || ''),
   image: selectedVehicle.image || '',
@@ -215,6 +216,7 @@ const defaultFormData = {
   description: '',
   transport_type: 'taxi',
   dispatch_type: 'normal',
+  rental_enabled: true,
   icon_types: 'car',
   category: '',
   image: '',
@@ -608,6 +610,7 @@ const VehicleType = ({ mode: propMode }) => {
         description: formData.description.trim(),
         transport_type: normalizeTransportType(formData.transport_type),
         dispatch_type: formData.dispatch_type,
+        rental_enabled: formData.rental_enabled !== false,
         icon_types: normalizeIconType(formData.icon_types),
         category: formData.category,
         image: formData.image || '',
@@ -834,7 +837,12 @@ const VehicleType = ({ mode: propMode }) => {
                         {vehicle.transport_type}
                       </span>
                     </td>
-                    <td className="px-6 py-5 text-sm font-medium text-slate-700">{vehicle.trip_dispatch_type || vehicle.dispatch_type || 'normal'}</td>
+                    <td className="px-6 py-5 text-sm font-medium text-slate-700">
+                      {vehicle.trip_dispatch_type || vehicle.dispatch_type || 'normal'}
+                      {vehicle.rental_enabled !== false && (
+                        <span className="ml-2 inline-flex rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-600">Rental</span>
+                      )}
+                    </td>
                     <td className="px-6 py-5">
                       {moduleNamesFor(vehicle).length === 0 ? (
                         <span className="text-xs font-medium text-slate-400">Every section</span>
@@ -1423,6 +1431,18 @@ const VehicleType = ({ mode: propMode }) => {
               <option value="normal">Normal</option>
               <option value="bidding">Bidding</option>
               <option value="both">Both</option>
+            </select>
+          </div>
+
+          <div>
+            <label className={labelClass}>Available for Hourly Rental</label>
+            <select
+              value={formData.rental_enabled === false ? '0' : '1'}
+              onChange={(e) => updateForm('rental_enabled', e.target.value === '1')}
+              className={inputClass}
+            >
+              <option value="1">Yes - in rental packages, drivers get rental requests</option>
+              <option value="0">No - not offered for rentals</option>
             </select>
           </div>
 

@@ -12,6 +12,7 @@ import {
   updateMyDestinationMode,
   updateMyHomeLocation,
 } from "../controllers/destinationModeController.js";
+import { getMyRentalPreference, updateMyRentalPreference } from "../controllers/rentalPreferenceController.js";
 import { getDriverBanners } from "../../admin/promotions/controllers/promotionsController.js";
 import {
   getDriverKycStatus,
@@ -195,6 +196,9 @@ driverRouter.post("/ride-offers/:rideId/reject", authenticate(["driver"]), rejec
 driverRouter.get("/me/destination", authenticate(["driver"]), getMyDestinationMode);
 driverRouter.put("/me/destination", authenticate(["driver"]), updateMyDestinationMode);
 driverRouter.put("/me/home-location", authenticate(["driver"]), updateMyHomeLocation);
+// Hourly rentals: the driver's "Accept rental trips" toggle.
+driverRouter.get("/me/rental-preference", authenticate(["driver"]), getMyRentalPreference);
+driverRouter.put("/me/rental-preference", authenticate(["driver"]), updateMyRentalPreference);
 // Home-screen promo banners for the driver's zone (`lat`, `lng`).
 driverRouter.get("/banners", asyncHandler(getDriverBanners));
 driverRouter.get(

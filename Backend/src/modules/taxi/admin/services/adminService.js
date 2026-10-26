@@ -7337,6 +7337,7 @@ export const createVehicleType = async (payload) => {
     description: payload.description ?? '',
     transport_type: transportType,
     dispatch_type: payload.dispatch_type || 'normal',
+    rental_enabled: !['false', '0', 0, false].includes(payload.rental_enabled),
     icon_types: payload.icon_types || 'car',
     category: String(payload.category || '').trim().toLowerCase(),
     capacity: Number(payload.capacity || 0),
@@ -7395,6 +7396,9 @@ export const updateVehicleType = async (id, payload) => {
   }
   if (payload.dispatch_type !== undefined) {
     vehicle.dispatch_type = payload.dispatch_type || 'normal';
+  }
+  if (payload.rental_enabled !== undefined) {
+    vehicle.rental_enabled = !['false', '0', 0, false].includes(payload.rental_enabled);
   }
   if (payload.icon_types !== undefined) {
     vehicle.icon_types = payload.icon_types || 'car';

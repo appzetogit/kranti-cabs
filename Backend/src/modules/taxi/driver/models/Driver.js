@@ -475,6 +475,12 @@ const driverSchema = new mongoose.Schema(
         default: null,
       },
     },
+    // Hourly rentals: the driver's own choice to take them, and the admin's
+    // override. Either off, and dispatch sends them no rental requests.
+    rental: {
+      accepts: { type: Boolean, default: true },
+      blockedByAdmin: { type: Boolean, default: false },
+    },
     // The driver's saved home, for one-tap "Go Home" destination mode. Kept
     // apart from destinationMode so turning that off never forgets it.
     homeLocation: {

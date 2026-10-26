@@ -19,6 +19,7 @@
 import mongoose from 'mongoose';
 import { ApiError } from '../../../utils/ApiError.js';
 import { SetPrice } from '../admin/models/SetPrice.js';
+import { Vehicle } from '../admin/models/Vehicle.js';
 import { DriverLocationHistory } from '../driver/models/DriverLocationHistory.js';
 
 export const HOURLY_RENTAL_PACKAGE_KIND = 'hourly_rental';
@@ -75,7 +76,7 @@ export const listHourlyRentalPackages = async ({ serviceLocationId } = {}) => {
     service_location_id: { $in: locationIds },
   })
     .populate('package_type_id', 'name short_description description status active')
-    .populate('package_vehicle_prices.vehicle_type', 'name category capacity icon map_icon image icon_types active status')
+    .populate('package_vehicle_prices.vehicle_type', 'name category capacity icon map_icon image icon_types active status rental_enabled')
     .lean();
 
   const byPackageType = new Map();
@@ -89,7 +90,9 @@ export const listHourlyRentalPackages = async ({ serviceLocationId } = {}) => {
     if (existing && (existing.isCitySpecific || !isCitySpecific)) continue;
 
     const vehicles = (item.package_vehicle_prices || [])
-      .filter((row) => row?.vehicle_type && Number(row.active ?? 1) === 1 && row.vehicle_type.active !== false)
+      // Vehicle types switched off for rentals are left out of every package.
+      .filter((row) => row?.vehicle_type && Number(row.active ?? 1) === 1
+        && row.vehicle_type.active !== false && row.vehicle_type.rental_enabled !== false)
       .map(serializeVehicleRow)
       .filter((row) => row.vehicleTypeId)
       .sort((a, b) => a.price - b.price);
@@ -137,6 +140,10 @@ export const resolveHourlyRentalQuote = async ({ packagePriceId, vehicleTypeId }
   );
   if (!row) {
     throw new ApiError(400, 'This vehicle is not offered for the selected rental package');
+  }
+  const vehicle = await Vehicle.findById(row.vehicle_type).select('rental_enabled').lean();
+  if (vehicle?.rental_enabled === false) {
+    throw new ApiError(400, 'This vehicle is not offered for rentals right now', { code: 'RENTAL_VEHICLE_DISABLED' });
   }
 
   const includedMinutes = Math.max(0, toNumber(row.free_time));
@@ -237,6 +244,12 @@ export const applyHourlyRentalCharges = async (ride) => {
   ride.rental.settledAt = new Date();
   ride.fare = roundMoney(Number(ride.fare || 0) + extraKmCharge + extraTimeCharge);
 };
+
+/// Whether a driver may be sent and take hourly rentals: they accept them
+/// (their app toggle) and admin has not blocked them. Their vehicle type
+/// being rental-enabled is enforced by the package itself.
+export const driverTakesRentals = (driver) =>
+  driver?.rental?.accepts !== false && driver?.rental?.blockedByAdmin !== true;
 
 export const serializeRideRental = (rental) => {
   if (!rental || !rental.packagePriceId) return null;

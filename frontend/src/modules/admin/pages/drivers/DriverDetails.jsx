@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import UserKycPanel from '../users/UserKycPanel';
+import RentalAccessPanel from './RentalAccessPanel';
 import { adminService } from '../../services/adminService';
 import { uploadService } from '../../../../shared/services/uploadService';
 import { DELHI_CENTER, HAS_VALID_GOOGLE_MAPS_KEY, useBaseGoogleMapsLoader } from '../../utils/googleMaps';
@@ -890,6 +891,8 @@ const DriverDetails = () => {
           </button>
         ))}
       </div>
+
+      {activeTab === 'Driver Profile' && <RentalAccessPanel driverId={id} />}
 
       {activeTab !== 'Driver Profile' ? (
         <>

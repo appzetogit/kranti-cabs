@@ -68,6 +68,13 @@ const vehicleSchema = new mongoose.Schema(
       default: 'normal',
       trim: true,
     },
+    // Offered for hourly rentals. Off: left out of every rental package and
+    // its drivers get no rental requests. Rows from before this field count
+    // as on (`!== false`), so existing packages keep working.
+    rental_enabled: {
+      type: Boolean,
+      default: true,
+    },
     icon_types: {
       type: String,
       enum: VEHICLE_ICON_TYPES,

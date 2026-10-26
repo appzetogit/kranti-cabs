@@ -34,7 +34,7 @@ import { getTipSettings } from './appSettingsService.js';
 import { getBidRideSettings } from './transportSettingsService.js';
 import { resolveBiddingPolicy } from './biddingPolicyService.js';
 import { resolveRideRoute } from './routeService.js';
-import { applyHourlyRentalCharges, resolveHourlyRentalQuote, serializeRideRental } from './rentalPackageService.js';
+import { applyHourlyRentalCharges, driverTakesRentals, resolveHourlyRentalQuote, serializeRideRental } from './rentalPackageService.js';
 import { assertUserKycForBooking } from './userKycService.js';
 import { RideAcceptAttempt } from '../driver/models/RideAcceptAttempt.js';
 import { consumeScopedRateLimit } from '../middlewares/rateLimitMiddleware.js';
@@ -2166,6 +2166,18 @@ export const acceptRideAssignment = async ({ rideId, driverId, channel = 'socket
   if (!takenFromScheduledList && (!offer.offered || offer.rejected)) {
     log('not_offered', offer.offeredAt);
     throw new ApiError(409, RIDE_UNAVAILABLE_MESSAGE, { code: 'RIDE_NOT_OFFERED' });
+  }
+
+  // Hourly rentals only for drivers who take them - also from the Scheduled
+  // Rides list, which dispatch's filter does not cover.
+  if (ride.serviceType === 'hourly_rental') {
+    const rentalDriver = await Driver.findById(driverId).select('rental').lean();
+    if (!driverTakesRentals(rentalDriver)) {
+      log('refused', offer.offeredAt);
+      throw new ApiError(403, rentalDriver?.rental?.blockedByAdmin
+        ? 'You are not allowed to take rental trips. Contact support.'
+        : 'Turn on "Accept rental trips" in your profile to take rentals.', { code: 'RENTAL_NOT_ENABLED' });
+    }
   }
 
   try {
