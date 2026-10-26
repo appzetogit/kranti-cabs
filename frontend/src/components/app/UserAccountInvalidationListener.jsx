@@ -14,14 +14,18 @@ const UserAccountInvalidationListener = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    const isAdminRoute = location.pathname.startsWith('/admin');
     const isUserRoute =
-      !location.pathname.startsWith('/admin') &&
+      !isAdminRoute &&
       !location.pathname.startsWith('/user-import') &&
       !location.pathname.startsWith('/driver-import') &&
       !location.pathname.startsWith('/owner') &&
       !location.pathname.startsWith('/taxi/driver');
 
-    if (!isUserRoute) {
+    // Admin pages listen too: an expired admin login used to leave the panel
+    // on "Communication Gateway Offline" with every figure at 0, because the
+    // admin branch below was never reached on an /admin route.
+    if (!isUserRoute && !isAdminRoute) {
       return undefined;
     }
 
@@ -38,6 +42,7 @@ const UserAccountInvalidationListener = () => {
       const currentAdminToken = localStorage.getItem('adminToken') || '';
 
       if (
+        isUserRoute &&
         event.detail?.role === 'user' &&
         (!staleToken || staleToken === currentUserToken)
       ) {
@@ -45,12 +50,15 @@ const UserAccountInvalidationListener = () => {
         return;
       }
 
+      // The token may already have been cleared by the time this runs, so a
+      // missing admin token counts as stale too.
       if (
         event.detail?.role === 'admin' &&
-        (!staleToken || staleToken === currentAdminToken)
+        (!staleToken || !currentAdminToken || staleToken === currentAdminToken) &&
+        !location.pathname.startsWith('/admin/login')
       ) {
         socketService.disconnect();
-        navigate('/admin/login');
+        navigate('/admin/login', { replace: true });
       }
     };
 
