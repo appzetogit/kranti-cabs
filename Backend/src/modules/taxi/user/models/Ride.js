@@ -296,6 +296,13 @@ const rideSchema = new mongoose.Schema(
       default: null,
       index: true,
     },
+    // When the assigned driver was reminded about this scheduled ride: "head
+    // out now" (30 minutes before pickup) and "pickup time". Each is sent
+    // once. See services/scheduledRideReminderService.js.
+    scheduleReminders: {
+      leadSentAt: { type: Date, default: null },
+      dueSentAt: { type: Date, default: null },
+    },
     status: {
       type: String,
       enum: Object.values(RIDE_STATUS),

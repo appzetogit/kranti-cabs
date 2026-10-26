@@ -451,6 +451,10 @@ const normalizeScheduledAt = (value) => {
 };
 
 export const DRIVER_SCHEDULE_LOCK_WINDOW_MS = 30 * 60 * 1000;
+/// How long before pickup an accepted scheduled ride becomes the driver's
+/// active trip (and they get the "head out now" reminder). Same as the window
+/// in which they stop being offered other rides.
+export const SCHEDULED_RIDE_ACTIVE_LEAD_MS = DRIVER_SCHEDULE_LOCK_WINDOW_MS;
 const DRIVER_SCHEDULE_MIN_DURATION_MINUTES = 30;
 const DRIVER_SCHEDULE_TURNOVER_BUFFER_MS = 15 * 60 * 1000;
 
@@ -1858,7 +1862,11 @@ export const getActiveRideForIdentity = async ({ role, entityId }) => {
       .populate('userId', 'name phone profileImage')
       .populate('driverId', 'name phone profileImage vehicleType vehicleIconType vehicleNumber vehicleColor vehicleMake vehicleModel vehicleImage rating bankDetails.upiId bankDetails.qrCodeImage bankDetails.upiVerificationStatus bankDetails.upiVerifiedName');
 
-    return rides.find((ride) => !isRideScheduledForFuture(ride)) || null;
+    // A scheduled ride becomes the driver's live trip this long before pickup,
+    // so they can drive there and the app opens it; earlier it waits in their
+    // Scheduled Rides list.
+    const activeFrom = new Date(Date.now() + SCHEDULED_RIDE_ACTIVE_LEAD_MS);
+    return rides.find((ride) => !isRideScheduledForFuture(ride, activeFrom)) || null;
   }
 
   return null;
@@ -2116,9 +2124,15 @@ export const acceptRideAssignment = async ({ rideId, driverId, channel = 'socket
   // Only a driver this ride was actually offered to, and who has not declined
   // it. Told apart by `code`; the message is the ordinary "not available" one
   // so the app needs no new handling.
+  //
+  // A ride booked for later is the exception: drivers see open scheduled rides
+  // in their Scheduled Rides list and may take one in advance, long before
+  // dispatch would offer it (15 minutes before pickup). The vehicle, wallet
+  // and schedule-clash checks below still apply.
   const { getDriverOfferStatus } = await import('./dispatchService.js');
   const offer = getDriverOfferStatus(ride, driverId);
-  if (!offer.offered || offer.rejected) {
+  const takenFromScheduledList = isRideScheduledForFuture(ride) && !offer.rejected;
+  if (!takenFromScheduledList && (!offer.offered || offer.rejected)) {
     log('not_offered', offer.offeredAt);
     throw new ApiError(409, RIDE_UNAVAILABLE_MESSAGE, { code: 'RIDE_NOT_OFFERED' });
   }
