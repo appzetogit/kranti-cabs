@@ -14,7 +14,7 @@ import {
   RIDE_STATUS,
 } from '../constants/index.js';
 import { Delivery } from '../user/models/Delivery.js';
-import { getRideRoom, resolveSetPriceForRide } from './rideService.js';
+import { getRideRoom, isReservation, resolveSetPriceForRide } from './rideService.js';
 import { SOCKET_EVENTS } from '../socket/events.js';
 import { resolveTransportDispatchConfig } from './transportSettingsService.js';
 import { serializeRideRental } from './rentalPackageService.js';
@@ -996,7 +996,7 @@ const closeRideAsUnmatched = async (rideId) => {
     });
   }
 
-  await User.findByIdAndUpdate(ride.userId, { currentRideId: null });
+  await User.updateOne({ _id: ride.userId, currentRideId: ride._id }, { currentRideId: null });
   await persistDispatchTrackingProgress({ rideId, reset: true }).catch(() => null);
 
   emitToRoom(getUserRoom(ride.userId), 'rideCancelled', {
@@ -1052,7 +1052,7 @@ export const cancelRideByAdmin = async (rideId) => {
   }
 
   await Promise.all([
-    User.findByIdAndUpdate(ride.userId, { currentRideId: null }),
+    User.updateOne({ _id: ride.userId, currentRideId: ride._id }, { currentRideId: null }),
     ride.driverId ? Driver.findByIdAndUpdate(ride.driverId, { isOnRide: false }) : Promise.resolve(),
   ]);
   await persistDispatchTrackingProgress({ rideId, reset: true }).catch(() => null);
@@ -1174,7 +1174,7 @@ export const cancelRideByUser = async ({ rideId, userId, cancellation = null }) 
         liveStatus: ride.liveStatus,
       })
       : Promise.resolve(),
-    User.findByIdAndUpdate(ride.userId, { currentRideId: null }),
+    User.updateOne({ _id: ride.userId, currentRideId: ride._id }, { currentRideId: null }),
     ride.driverId ? Driver.findByIdAndUpdate(ride.driverId, { isOnRide: false }) : Promise.resolve(),
   ]);
 
@@ -1321,7 +1321,7 @@ export const cancelScheduledRideByDriver = async ({ rideId, driverId }) => {
         liveStatus: ride.liveStatus,
       })
       : Promise.resolve(),
-    User.findByIdAndUpdate(ride.userId, { currentRideId: null }),
+    User.updateOne({ _id: ride.userId, currentRideId: ride._id }, { currentRideId: null }),
     ride.driverId ? Driver.findByIdAndUpdate(ride.driverId, { isOnRide: false }) : Promise.resolve(),
   ]);
 
@@ -1545,7 +1545,9 @@ export const startDispatchFlow = async (ride, { forceRestart = false } = {}) => 
     ? scheduledAt.getTime() - SCHEDULED_DISPATCH_LEAD_MS - Date.now()
     : 0;
   const bookingMode = String(ride?.bookingMode || 'normal').trim().toLowerCase();
-  const shouldDispatchImmediately = bookingMode === 'bidding';
+  // Bidding opens straight away for a ride now. A scheduled one waits like
+  // any other, or drivers got it as a ride-now request days ahead.
+  const shouldDispatchImmediately = bookingMode === 'bidding' && !(scheduledAt && delayMs > 0);
 
   if (!shouldDispatchImmediately && scheduledAt && Number.isFinite(delayMs) && delayMs > 0) {
     const rideId = String(ride._id);
@@ -1763,6 +1765,60 @@ export const notifyLateAvailableDriver = async (driverId) => {
   return notifyPromise;
 };
 
+const scheduleLabel = (date) => {
+  const at = new Date(date);
+  const day = at.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' });
+  const time = at.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
+  return `on ${day}, ${time}`;
+};
+
+/// Within this distance of the pickup, drivers hear about a new reservation.
+const SCHEDULED_ANNOUNCE_RADIUS_METERS = 15000;
+
+/**
+ * Tells nearby drivers of the vehicle type that a ride was booked for later,
+ * so they can take it in advance from Scheduled Rides (as on Ola / Uber). It
+ * is a notice, not an offer: the ride is offered as a request only shortly
+ * before pickup if nobody has taken it. Called once, when the ride is booked.
+ */
+export const announceScheduledRide = async (ride) => {
+  if (!ride?.scheduledAt || !isReservation(ride.scheduledAt) || ride.driverId) {
+    return;
+  }
+  const coords = ride.pickupLocation?.coordinates;
+  if (!Array.isArray(coords) || coords.length !== 2) {
+    return;
+  }
+
+  const { drivers = [] } = await matchDrivers(coords, {
+    vehicleTypeId: ride.vehicleTypeId ? String(ride.vehicleTypeId) : undefined,
+    serviceType: ride.serviceType || '',
+    maxDistance: SCHEDULED_ANNOUNCE_RADIUS_METERS,
+    allowCrossZoneFallback: false,
+  });
+  const driverIds = drivers.map((driver) => String(driver._id || driver.id || '')).filter(Boolean);
+  if (driverIds.length === 0) {
+    return;
+  }
+
+  const kind = ride.serviceType === 'intercity'
+    ? 'outstation ride'
+    : ride.serviceType === 'hourly_rental' ? 'rental' : 'ride';
+  const toPlace = String(ride.dropAddress || '').split(',')[0].trim();
+  await sendPushNotificationToEntities({
+    driverIds,
+    title: `New scheduled ${kind}`,
+    body: `Pickup ${scheduleLabel(ride.scheduledAt)}${toPlace ? ` to ${toPlace}` : ''}. Open Scheduled Rides to take it.`,
+    // `scheduledRideId`, not `rideId`: the driver app treats a push with a
+    // `rideId` as a ride offer.
+    data: {
+      type: 'scheduled_ride_available',
+      scheduledRideId: String(ride._id),
+      scheduledAt: new Date(ride.scheduledAt).toISOString(),
+    },
+  });
+};
+
 export const notifyRideAccepted = async (ride) => {
   const state = getDispatchState(ride._id);
   stopDispatchFlow(ride._id);
@@ -1778,57 +1834,64 @@ export const notifyRideAccepted = async (ride) => {
     return;
   }
 
-  emitToRoom(getUserRoom(populatedRide.userId), 'rideAccepted', {
-    rideId: String(populatedRide._id),
-    room: getRideRoom(populatedRide._id),
-    type: populatedRide.serviceType || 'ride',
-    serviceType: populatedRide.serviceType || 'ride',
-    status: populatedRide.status,
-    liveStatus: populatedRide.liveStatus,
-    otp: populatedRide.otp || '',
-    vehicleIconType: populatedRide.vehicleIconType || '',
-    vehicleIconUrl: populatedRide.vehicleIconUrl || '',
-    driver: populatedRide.driverId,
-    parcel: populatedRide.parcel || null,
-  });
+  // Taken in advance: not the rider's live trip yet, so their app is not sent
+  // into tracking - they get a "driver assigned" notice, and the trip opens
+  // when it is due.
+  const reserved = isReservation(populatedRide.scheduledAt);
 
-  emitToRoom(getUserRoom(populatedRide.userId), SOCKET_EVENTS.RIDE_STATE, {
-    rideId: String(populatedRide._id),
-    room: getRideRoom(populatedRide._id),
-    type: populatedRide.serviceType || 'ride',
-    serviceType: populatedRide.serviceType || 'ride',
-    status: populatedRide.status,
-    liveStatus: populatedRide.liveStatus,
-    fare: populatedRide.fare,
-    estimatedDistanceMeters: populatedRide.estimatedDistanceMeters || 0,
-    estimatedDurationMinutes: populatedRide.estimatedDurationMinutes || 0,
-    paymentMethod: populatedRide.paymentMethod,
-    otp: populatedRide.otp || '',
-    vehicleIconType: populatedRide.vehicleIconType || '',
-    vehicleIconUrl: populatedRide.vehicleIconUrl || '',
-    parcel: populatedRide.parcel || null,
-    intercity: populatedRide.intercity || null,
-    rental: serializeRideRental(populatedRide.rental),
-    commissionAmount: populatedRide.commissionAmount,
-    driverEarnings: populatedRide.driverEarnings,
-    pickupLocation: populatedRide.pickupLocation,
-    pickupAddress: populatedRide.pickupAddress || '',
-    dropLocation: populatedRide.dropLocation,
-    dropAddress: populatedRide.dropAddress || '',
-    acceptedAt: populatedRide.acceptedAt,
-    startedAt: populatedRide.startedAt,
-    completedAt: populatedRide.completedAt,
-    lastDriverLocation: populatedRide.lastDriverLocation?.coordinates?.length
-      ? {
-          type: populatedRide.lastDriverLocation.type,
-          coordinates: populatedRide.lastDriverLocation.coordinates,
-          heading: populatedRide.lastDriverLocation.heading,
-          speed: populatedRide.lastDriverLocation.speed,
-          updatedAt: populatedRide.lastDriverLocation.updatedAt,
-        }
-      : null,
-    driver: populatedRide.driverId,
-  });
+  if (!reserved) {
+    emitToRoom(getUserRoom(populatedRide.userId), 'rideAccepted', {
+      rideId: String(populatedRide._id),
+      room: getRideRoom(populatedRide._id),
+      type: populatedRide.serviceType || 'ride',
+      serviceType: populatedRide.serviceType || 'ride',
+      status: populatedRide.status,
+      liveStatus: populatedRide.liveStatus,
+      otp: populatedRide.otp || '',
+      vehicleIconType: populatedRide.vehicleIconType || '',
+      vehicleIconUrl: populatedRide.vehicleIconUrl || '',
+      driver: populatedRide.driverId,
+      parcel: populatedRide.parcel || null,
+    });
+  
+    emitToRoom(getUserRoom(populatedRide.userId), SOCKET_EVENTS.RIDE_STATE, {
+      rideId: String(populatedRide._id),
+      room: getRideRoom(populatedRide._id),
+      type: populatedRide.serviceType || 'ride',
+      serviceType: populatedRide.serviceType || 'ride',
+      status: populatedRide.status,
+      liveStatus: populatedRide.liveStatus,
+      fare: populatedRide.fare,
+      estimatedDistanceMeters: populatedRide.estimatedDistanceMeters || 0,
+      estimatedDurationMinutes: populatedRide.estimatedDurationMinutes || 0,
+      paymentMethod: populatedRide.paymentMethod,
+      otp: populatedRide.otp || '',
+      vehicleIconType: populatedRide.vehicleIconType || '',
+      vehicleIconUrl: populatedRide.vehicleIconUrl || '',
+      parcel: populatedRide.parcel || null,
+      intercity: populatedRide.intercity || null,
+      rental: serializeRideRental(populatedRide.rental),
+      commissionAmount: populatedRide.commissionAmount,
+      driverEarnings: populatedRide.driverEarnings,
+      pickupLocation: populatedRide.pickupLocation,
+      pickupAddress: populatedRide.pickupAddress || '',
+      dropLocation: populatedRide.dropLocation,
+      dropAddress: populatedRide.dropAddress || '',
+      acceptedAt: populatedRide.acceptedAt,
+      startedAt: populatedRide.startedAt,
+      completedAt: populatedRide.completedAt,
+      lastDriverLocation: populatedRide.lastDriverLocation?.coordinates?.length
+        ? {
+            type: populatedRide.lastDriverLocation.type,
+            coordinates: populatedRide.lastDriverLocation.coordinates,
+            heading: populatedRide.lastDriverLocation.heading,
+            speed: populatedRide.lastDriverLocation.speed,
+            updatedAt: populatedRide.lastDriverLocation.updatedAt,
+          }
+        : null,
+      driver: populatedRide.driverId,
+    });
+  }
 
   emitToRoom(getRideRoom(populatedRide._id), SOCKET_EVENTS.RIDE_STATUS_UPDATED, {
     rideId: String(populatedRide._id),
@@ -1861,18 +1924,31 @@ export const notifyRideAccepted = async (ride) => {
     });
   }
 
+  const driverName = populatedRide.driverId?.name || '';
   sendPushNotificationToEntities({
     userIds: [String(populatedRide.userId)],
-    title: 'Ride accepted',
-    body: populatedRide.driverId?.name
-      ? `${populatedRide.driverId.name} accepted your request.`
-      : 'A driver accepted your request.',
-    data: {
-      type: 'ride_accepted',
-      rideId: String(populatedRide._id),
-      serviceType: populatedRide.serviceType || 'ride',
-      driverId: String(populatedRide.driverId?._id || ''),
-    },
+    ...(reserved
+      ? {
+          title: 'Driver assigned',
+          body: `${driverName || 'A driver'} will pick you up ${scheduleLabel(populatedRide.scheduledAt)}.`,
+          // `scheduledRideId`, not `rideId`: the rider app opens a push with a
+          // `rideId` as the live trip.
+          data: {
+            type: 'scheduled_ride_assigned',
+            scheduledRideId: String(populatedRide._id),
+            serviceType: populatedRide.serviceType || 'ride',
+          },
+        }
+      : {
+          title: 'Ride accepted',
+          body: driverName ? `${driverName} accepted your request.` : 'A driver accepted your request.',
+          data: {
+            type: 'ride_accepted',
+            rideId: String(populatedRide._id),
+            serviceType: populatedRide.serviceType || 'ride',
+            driverId: String(populatedRide.driverId?._id || ''),
+          },
+        }),
   }).catch((error) => {
     console.error('Failed to send user ride-accepted push notification', error);
   });

@@ -1,6 +1,7 @@
 import { RIDE_LIVE_STATUS, RIDE_STATUS } from '../constants/index.js';
 import { Driver } from '../driver/models/Driver.js';
 import { Ride } from '../user/models/Ride.js';
+import { User } from '../user/models/User.js';
 import { emitToDriver } from './dispatchService.js';
 import { sendPushNotificationToEntities } from './pushNotificationService.js';
 import {
@@ -62,7 +63,7 @@ const claimNext = (stage, now) => {
     { $set: { [`scheduleReminders.${stage === 'lead' ? 'leadSentAt' : 'dueSentAt'}`]: now } },
     { returnDocument: 'after' },
   )
-    .select('driverId scheduledAt pickupAddress liveStatus scheduleReminders')
+    .select('driverId userId scheduledAt pickupAddress liveStatus scheduleReminders')
     .lean();
 };
 
@@ -93,6 +94,19 @@ const remind = async (ride, stage) => {
   const active = await getActiveRideForIdentity({ role: 'driver', entityId: driverId }).catch(() => null);
   if (active && String(active._id) === String(ride._id)) {
     emitToDriver(driverId, 'ride:state', serializeRideRealtime(active));
+  }
+
+  // And the rider's: it takes their active-ride slot now (unless they are on
+  // another trip), and the push carries `rideId` so it opens live tracking.
+  if (stage === 'lead' && ride.userId) {
+    const userId = String(ride.userId);
+    await User.updateOne({ _id: userId, currentRideId: null }, { $set: { currentRideId: ride._id } }).catch(() => null);
+    await sendPushNotificationToEntities({
+      userIds: [userId],
+      title: `Your ${at} ride`,
+      body: 'Your driver is heading to the pickup now. Tap to track.',
+      data: { type: 'scheduled_ride_starting', rideId: String(ride._id) },
+    }).catch(() => null);
   }
 };
 
