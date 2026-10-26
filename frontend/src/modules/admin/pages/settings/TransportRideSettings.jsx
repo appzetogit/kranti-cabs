@@ -267,7 +267,7 @@ const TransportRideSettings = () => {
                    rides whose pickup and drop both lie within the corridor of their road route, that
                    carry them forward, and that add at most the allowed detour. It switches off on
                    arrival or after the time limit. Drivers save home in their app and can move it
-                   only every few days.
+                   any time, unless a waiting period is set below.
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6">
@@ -326,12 +326,12 @@ const TransportRideSettings = () => {
                          placeholder="500"
                       />
                       <InputField
-                         label="Driver Can Move Home Once Every (Days, 0 = any time)"
+                         label="Days Before a Driver Can Move Home Again (0 = any time)"
                          name="destination_mode_home_change_days"
                          value={settings.destination_mode_home_change_days}
                          onChange={handleChange}
                          type="number"
-                         placeholder="7"
+                         placeholder="0"
                       />
                    </div>
                 </div>

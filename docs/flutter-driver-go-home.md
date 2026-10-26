@@ -35,7 +35,8 @@ It **turns off by itself**:
 
 In both cases the driver gets a push notification (section 4). If the driver leaves
 the route, the server plans a new one from where they are. **Limits:** Go Home can
-be turned on **once a day**, and home can be moved **once every 7 days**.
+be turned on **once a day**. Home can be moved **any time** (the admin can set a
+waiting period; it's 0 live).
 
 All the numbers are admin settings (Admin → Transport Ride Settings → Destination
 mode). Always use what the API returns; never hard-code them.
@@ -124,23 +125,28 @@ want to branch on it.
 In the app this is `GoHomeCard`, placed under the subscription card. It's hidden
 when `featureEnabled` is false.
 
-| State | Shows | Button |
-|---|---|---|
-| No home saved | "Going home? Save your home to get rides on the way there." | **Set home**, which opens the Home Location screen |
-| Home saved, off | "Get only rides towards home · *n* left today" | **Go Home** (disabled when no uses are left) |
-| On | "Heading to Vijay Nagar. Only rides on your way. Turns off when you arrive." | **Turn off** |
+The card has an **on/off switch** for "On the way home rides":
 
-Disable the button while a request is in flight. On an error, show `message`.
+| State | Shows | Control |
+|---|---|---|
+| No home saved | "On the way home rides. Save your home to get rides on the way there." | **Set home** link, which opens the Home Location screen |
+| Home saved, off | "Turn on to get only rides towards home · *n* left today" | Switch **off**. Greyed out when no uses are left today |
+| On | "Heading to Vijay Nagar. Only rides on your way. Turns off when you arrive." | Switch **on**. Turning it off calls `{ enabled: false }` |
+
+Turning the switch on calls `PUT /drivers/me/destination { enabled: true, useHome: true }`.
+Show a spinner in place of the switch while the request is in flight. On an error,
+show `message` and leave the switch as it was.
 
 ### Profile → Home Location
 In the app this is `HomeLocationScreen`, route `/home-location`.
-- Shows the saved home, and "You can move home again from *date*" while
-  `canChangeHomeAt` is in the future. Both buttons are disabled until then.
+- Shows the saved home. Home can be changed any time. Only if the admin sets a
+  waiting period does the screen show "You can move home again from *date*" (while
+  `canChangeHomeAt` is in the future) and disable both buttons until then.
 - **Use where I am now:** asks for location permission, takes a GPS fix, looks up a
   readable address (`placemarkFromCoordinates`), then confirms.
 - **Type an address:** looks it up with `locationFromAddress` and confirms.
-- The confirm dialog shows the address and warns that home can only be moved every
-  few days. Then it calls `PUT /drivers/me/home-location`.
+- The confirm dialog shows the address (and the home it replaces, if any). Then it
+  calls `PUT /drivers/me/home-location`.
 
 ---
 
@@ -186,9 +192,9 @@ Admin first: **Transport Ride Settings → Destination mode: On**, 1 use per day
 
 - [ ] No home saved: the card says "Set home", and Go Home isn't offered
 - [ ] Save home from GPS: the address is shown and confirmed, and Profile shows it
-- [ ] Try to move home again the same day: "Home can be changed once every 7 days…"
-- [ ] Online, tap Go Home: the card shows "Heading to …"
+- [ ] Move home again straight away: saves fine, and the dialog names the home it replaces
+- [ ] Online, switch "On the way home rides" on: the card shows "Heading to …"
 - [ ] A test ride along the way home reaches this driver; a ride going the other way does not
-- [ ] Tap Turn off, then try Go Home again the same day: "You've used destination mode 1/1 times today."
-- [ ] Drive to within 500 m of home with no rider: within about a minute the card goes back to "Going home?", and a push arrives
+- [ ] Switch it off, then try to switch it on again the same day: "You've used destination mode 1/1 times today." (the switch is greyed out)
+- [ ] Drive to within 500 m of home with no rider: within about a minute the switch goes back to off, and a push arrives
 - [ ] Admin switches the feature off: the card disappears after a refresh

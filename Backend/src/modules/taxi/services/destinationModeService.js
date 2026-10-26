@@ -46,7 +46,8 @@ export const resolveDestinationModeSettings = async () => {
     maxDetour: Math.max(0, number(settings.destination_mode_max_detour_percent, 30)) / 100,
     maxHours: Math.max(0.5, number(settings.destination_mode_max_hours, 3)),
     arrivalMeters: Math.max(100, number(settings.destination_mode_arrival_meters, 500)),
-    homeChangeDays: Math.max(0, number(settings.destination_mode_home_change_days, 7)),
+    // 0 (the default) = home can be moved any time.
+    homeChangeDays: Math.max(0, number(settings.destination_mode_home_change_days, 0)),
   };
 };
 

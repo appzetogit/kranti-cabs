@@ -100,7 +100,8 @@ export const createDefaultBusinessSettings = () => ({
     destination_mode_max_detour_percent: '30',
     destination_mode_max_hours: '3',
     destination_mode_arrival_meters: '500',
-    destination_mode_home_change_days: '7',
+    // 0 = home can be moved any time.
+    destination_mode_home_change_days: '0',
   },
   bid_ride: {
     // The master switch, and which services may be bid on at all. Both are

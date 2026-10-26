@@ -312,7 +312,7 @@ Processing Time: Refunds are typically credited back to the original payment met
             return;
         }
         const moveNote = destination?.home
-            ? '\n\nYou can only move home once every few days.'
+            ? `\n\nThis replaces your current home${destination.home.address ? ` (${destination.home.address})` : ''}.`
             : '';
         if (!window.confirm(`Save where you are now as your home?${moveNote}`)) return;
 
