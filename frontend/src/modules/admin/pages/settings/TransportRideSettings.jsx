@@ -151,8 +151,17 @@ const TransportRideSettings = () => {
                       type="number" 
                    />
 
-                   <InputField 
-                      label="Driver Markers Shown On The Rider's Map (Kilometer)" 
+                   <InputField
+                      label="Outstation When the Drop Is Further Than (Kilometer, 0 = off)"
+                      name="outstation_min_distance_km"
+                      value={settings.outstation_min_distance_km}
+                      onChange={handleChange}
+                      type="number"
+                      placeholder="40"
+                   />
+
+                   <InputField
+                      label="Driver Markers Shown On The Rider's Map (Kilometer)"
                       name="nearby_driver_marker_radius" 
                       value={settings.nearby_driver_marker_radius} 
                       onChange={handleChange} 

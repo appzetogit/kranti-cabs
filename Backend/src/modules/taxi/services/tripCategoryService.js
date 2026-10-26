@@ -1,8 +1,9 @@
 import { Airport } from '../admin/models/Airport.js';
 import { TaxiAppModule } from '../admin/models/TaxiAppModule.js';
 import { findZoneByPickup } from './matchingService.js';
-import { estimateHubParking, hubAt, hubTypeOf } from './hubParkingService.js';
+import { distanceKm, estimateHubParking, hubAt, hubTypeOf } from './hubParkingService.js';
 import { stateTaxFees } from './stateTaxService.js';
+import { getTransportRideSettings } from './transportSettingsService.js';
 
 /**
  * What kind of trip a pickup and drop make, which decides the vehicles a rider
@@ -150,10 +151,20 @@ export const classifyTrip = async ({ pickup, drop, vehicleClass = '' }) => {
   const pickupHub = hubAt(hubs, pickup);
   const dropHub = hubAt(hubs, drop);
 
+  // One zone can cover a whole country ("India"), so another zone or city is
+  // not the only sign of an outstation trip: a drop further than the admin's
+  // outstation distance (straight line) is one too.
+  const outstationMinKm = Math.max(0, Number((await getTransportRideSettings())?.outstation_min_distance_km ?? 40) || 0);
+  const tripKm = distanceKm(pickup, drop);
+
   let category = 'city';
   if (airport) {
     category = 'airport';
-  } else if (!dropZone || serviceLocationOf(dropZone) !== serviceLocationOf(pickupZone)) {
+  } else if (
+    !dropZone
+    || serviceLocationOf(dropZone) !== serviceLocationOf(pickupZone)
+    || (outstationMinKm > 0 && tripKm > outstationMinKm)
+  ) {
     category = 'outstation';
   }
 

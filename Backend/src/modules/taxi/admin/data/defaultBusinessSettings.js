@@ -93,6 +93,9 @@ export const createDefaultBusinessSettings = () => ({
     enable_eta_price_on_complete: '1',
     enable_secondary_ride: '0',
     max_dist_secondary_ride: '2',
+    // A drop further than this (straight line, km) makes a trip outstation,
+    // even inside one zone. 0 = only a different zone / city does.
+    outstation_min_distance_km: '40',
     // Destination mode ("Go Home"); see services/destinationModeService.js.
     enable_my_route_booking_feature: '0',
     how_many_times_a_driver_can_enable_the_my_route_booking_per_day: '1',

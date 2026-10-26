@@ -207,6 +207,13 @@ const rideSchema = new mongoose.Schema(
         default: '',
         trim: true,
       },
+      // Server-side outstation price: tripType, days, chargeableKm,
+      // ratePerKm, driverAllowance, serviceTax, total... See
+      // services/outstationFareService.js. Absent for non-outstation rides.
+      pricing: {
+        type: mongoose.Schema.Types.Mixed,
+        default: undefined,
+      },
     },
     parcel: {
       category: {

@@ -2105,6 +2105,9 @@ const serializeSetPrice = (item) => ({
   outstation_base_distance: item.outstation_base_distance ?? 0,
   outstation_price_per_distance: item.outstation_price_per_distance ?? 0,
   outstation_time_price: item.outstation_time_price ?? 0,
+  outstation_round_trip_price_per_distance: item.outstation_round_trip_price_per_distance ?? 0,
+  outstation_min_km_per_day: item.outstation_min_km_per_day ?? 0,
+  outstation_driver_allowance_per_day: item.outstation_driver_allowance_per_day ?? 0,
   free_waiting_before: item.free_waiting_before,
   free_waiting_after: item.free_waiting_after,
 
@@ -7546,6 +7549,9 @@ export const listSetPrices = async (queryArgs = {}, currentAdmin = null, options
       'outstation_base_distance',
       'outstation_price_per_distance',
       'outstation_time_price',
+      'outstation_round_trip_price_per_distance',
+      'outstation_min_km_per_day',
+      'outstation_driver_allowance_per_day',
       'createdAt',
       'updatedAt',
     ].join(' '))
@@ -7633,6 +7639,9 @@ export const listSetPrices = async (queryArgs = {}, currentAdmin = null, options
       outstation_base_distance: Number(item.outstation_base_distance ?? 0),
       outstation_price_per_distance: Number(item.outstation_price_per_distance ?? 0),
       outstation_time_price: Number(item.outstation_time_price ?? 0),
+      outstation_round_trip_price_per_distance: Number(item.outstation_round_trip_price_per_distance ?? 0),
+      outstation_min_km_per_day: Number(item.outstation_min_km_per_day ?? 0),
+      outstation_driver_allowance_per_day: Number(item.outstation_driver_allowance_per_day ?? 0),
       updatedAt: item.updatedAt,
     };
   });
@@ -7962,6 +7971,9 @@ export const createSetPrice = async (payload, currentAdmin = null) => {
     outstation_base_distance: Number(payload.outstation_base_distance ?? 0),
     outstation_price_per_distance: Number(payload.outstation_price_per_distance ?? 0),
     outstation_time_price: Number(payload.outstation_time_price ?? 0),
+    outstation_round_trip_price_per_distance: Number(payload.outstation_round_trip_price_per_distance ?? 0),
+    outstation_min_km_per_day: Number(payload.outstation_min_km_per_day ?? 0),
+    outstation_driver_allowance_per_day: Number(payload.outstation_driver_allowance_per_day ?? 0),
     free_waiting_before: Number(payload.free_waiting_before ?? 0),
     free_waiting_after: Number(payload.free_waiting_after ?? 0),
 
@@ -8009,6 +8021,7 @@ export const updateSetPrice = async (id, payload, currentAdmin = null) => {
     'base_price', 'base_distance', 'price_per_distance', 'time_price',
     'waiting_charge', 'outstation_base_price', 'outstation_base_distance',
     'outstation_price_per_distance', 'outstation_time_price',
+    'outstation_round_trip_price_per_distance', 'outstation_min_km_per_day', 'outstation_driver_allowance_per_day',
     'free_waiting_before', 'free_waiting_after',
     'enable_shared_ride', 'enable_ride_sharing', 'price_per_seat',
     'shared_price_per_distance', 'shared_cancel_fee',
@@ -8034,6 +8047,9 @@ export const updateSetPrice = async (id, payload, currentAdmin = null) => {
     'outstation_base_distance',
     'outstation_price_per_distance',
     'outstation_time_price',
+    'outstation_round_trip_price_per_distance',
+    'outstation_min_km_per_day',
+    'outstation_driver_allowance_per_day',
     'free_waiting_before',
     'free_waiting_after',
     'price_per_seat',

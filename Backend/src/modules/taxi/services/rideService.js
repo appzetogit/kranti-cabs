@@ -22,6 +22,7 @@ import { applyPromoToRideInTransaction } from './promoService.js';
 import { ABSOLUTE_MAX_MULTIPLIER, getSurgeAt, getSurgeProfiles, surgeForVehicle } from './surgeService.js';
 import { classifyTrip, resolveTripHubs } from './tripCategoryService.js';
 import { stateTaxFees } from './stateTaxService.js';
+import { computeOutstationFare } from './outstationFareService.js';
 import {
   applyHubParkingCharge,
   buildRideHubParking,
@@ -1190,7 +1191,9 @@ export const createRideRecord = async ({
   }).catch(() => null);
   tripCategory.tax_fee = Math.max(0, Number(taxFee?.total_fee) || 0);
   tripCategory.tax_fee_lines = taxFee?.lines || [];
-  const safeFare = Math.round((quotedFare + airportFee + tripCategory.station_fee + tripCategory.tax_fee) * 100) / 100;
+  const locationFees = airportFee + tripCategory.station_fee + tripCategory.tax_fee;
+  // `let`: an outstation trip is re-priced from the tariff below, once it is known.
+  let safeFare = Math.round((quotedFare + locationFees) * 100) / 100;
 
   const normalizedTransportType = normalizeRideTransportType(transport_type);
   // The rider app sends neither id, so every ride was stored without a zone
@@ -1223,6 +1226,26 @@ export const createRideRecord = async ({
     : (allowedPaymentMethods[0] || 'cash');
   const requestedBookingMode = String(bookingMode || '').trim().toLowerCase();
   const normalizedServiceType = normalizeServiceType(serviceType);
+
+  // Outstation (one way / round trip) is priced here from the vehicle's
+  // tariff, not taken from the app: the app sends the trip fare plus its
+  // platform fee, so that fee is kept and the trip part replaced. A tariff
+  // with no outstation pricing leaves the app's fare as it was.
+  const outstationQuote = normalizedServiceType === 'intercity' && !rentalQuote
+    ? computeOutstationFare({
+        setPrice: pricingRule,
+        distanceMeters: safeEstimatedDistanceMeters,
+        durationMinutes: safeEstimatedDurationMinutes,
+        tripType: intercity?.tripType,
+        travelDate: intercity?.travelDate || scheduledAt || null,
+        returnDate: intercity?.returnDate || intercity?.returnAt || null,
+      })
+    : null;
+  if (outstationQuote) {
+    const appPlatformFee = Math.max(0, Number(platformFee) || 0);
+    safeFare = Math.round((outstationQuote.total + appPlatformFee + locationFees) * 100) / 100;
+  }
+
   const bidRideSettings = await getBidRideSettings();
   // Bidding wait window: 0 = instant (no cool-off between rider fare raises).
   // toPositiveNumber would reject a configured 0 and fall back, so read it as a
@@ -1520,7 +1543,11 @@ export const createRideRecord = async ({
       trip_category: tripCategory,
       ...(hubParking ? { hub_parking: hubParking } : {}),
       parcel: normalizeParcelPayload(parcel),
-      intercity: normalizeIntercityPayload(intercity),
+      intercity: {
+        ...normalizeIntercityPayload(intercity),
+        // How the server priced an outstation trip, for the apps and invoice.
+        ...(outstationQuote ? { pricing: outstationQuote } : {}),
+      },
       rental: rentalSnapshot,
       scheduledAt: normalizedScheduledAt,
       status: RIDE_STATUS.SEARCHING,
@@ -1586,7 +1613,11 @@ export const createRideRecord = async ({
             trip_category: tripCategory,
             ...(hubParking ? { hub_parking: hubParking } : {}),
             parcel: normalizeParcelPayload(parcel),
-            intercity: normalizeIntercityPayload(intercity),
+            intercity: {
+        ...normalizeIntercityPayload(intercity),
+        // How the server priced an outstation trip, for the apps and invoice.
+        ...(outstationQuote ? { pricing: outstationQuote } : {}),
+      },
             rental: rentalSnapshot,
             scheduledAt: normalizedScheduledAt,
             status: RIDE_STATUS.SEARCHING,
