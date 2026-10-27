@@ -9,6 +9,42 @@ Base URL: `https://kranticabs.com/api/v1`. Socket: `https://kranticabs.com`.
 
 ---
 
+## Update – 27 Oct 2026: point the Rental button here
+
+**The rider app's "Rental" tile opens the wrong feature.** `home_screen.dart`
+pushes `/rental`, which is the old *vehicle rental* (`/users/rental-vehicles`,
+`/users/rental-bookings`, advance from wallet). Its catalogue is empty, so the
+screen says "no vehicle available", and those bookings go to admin, not drivers.
+
+Point the tile at the hourly rental **with a driver** described in this guide.
+The old screens can stay in the code, unlinked.
+
+**What changed on the server since this guide was written (all live):**
+
+- `GET /users/hourly-rental-packages?lat=&lng=` returns 5 packages × 14 vehicles,
+  each vehicle with its own price (Indore and Chandigarh). Only vehicle types
+  admin marked **"Available for hourly rental"** are listed.
+- Booking: `POST /rides` with `serviceType: "hourly_rental"`,
+  `rental: { packagePriceId }`, `drop` = pickup, and optional `scheduledAt` for
+  Ride later (see `flutter-scheduled-rides.md`). Add a `rental` param to
+  `ride_repository.createRide`. New error: `RENTAL_VEHICLE_DISABLED` → reload
+  the packages.
+- Rentals go **only** to drivers whose vehicle type is rental-enabled, who have
+  **"Accept rental trips"** on, and whom admin has not blocked. A driver without
+  rentals is refused on accept with `RENTAL_NOT_ENABLED`.
+- Driver app (already on `main`, `e8f6588`): Profile → "Accept rental trips"
+  switch (`GET/PUT /drivers/me/rental-preference`), the in-trip timer counts down
+  and turns red with the extra-time charge in overtime, and `RENTAL_NOT_ENABLED`
+  closes the offer with the server's message.
+- Rentals take no stops.
+
+**Test:** Rental → 2 Hours / 20 KM → Maruti Suzuki Dzire (₹600) → Book now: a
+driver with "Accept rental trips" **on** gets the popup, one with it **off** does
+not. Complete it after running over time: final fare = ₹600 + extra minutes × ₹2
+(+ extra km × ₹25).
+
+---
+
 ## 0. Do this first: check the current driver app
 
 Rental rides are already being dispatched with `type` / `serviceType` =
