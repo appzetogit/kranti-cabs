@@ -4,7 +4,7 @@ import { Vehicle } from '../../admin/models/Vehicle.js';
 import { RIDE_STATUS } from '../../constants/index.js';
 import { resolveTransportDispatchConfig } from '../../services/transportSettingsService.js';
 import { serializeRideRental } from '../../services/rentalPackageService.js';
-import { acceptRideAssignment } from '../../services/rideService.js';
+import { acceptRideAssignment, serializeRideStops } from '../../services/rideService.js';
 import { markDriverRejectedFromDispatch, notifyRideAccepted } from '../../services/dispatchService.js';
 
 /**
@@ -102,7 +102,7 @@ export const getPendingRideOffers = asyncHandler(async (req, res) => {
         pickupAddress: ride.pickupAddress || '',
         dropLocation: ride.dropLocation,
         dropAddress: ride.dropAddress || '',
-        stops: ride.stops || [],
+        stops: serializeRideStops(ride.stops),
         scheduledAt: ride.scheduledAt || null,
         estimatedDistanceMeters: ride.estimatedDistanceMeters || 0,
         estimatedDurationMinutes: ride.estimatedDurationMinutes || 0,

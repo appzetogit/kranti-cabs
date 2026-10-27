@@ -453,6 +453,63 @@ const normalizeScheduledAt = (value) => {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 };
 
+/// Stops a rider may add between pickup and drop, as on Ola / Uber.
+export const MAX_RIDE_STOPS = 3;
+
+/**
+ * The rider's stops as stored on the ride: `{ location: Point, address }`, in
+ * order. Takes what the apps send - `{ lat, lng, address }`, a GeoJSON
+ * `location`, or a bare `[lng, lat]` - and drops entries without a usable
+ * position. More than MAX_RIDE_STOPS is refused rather than cut, so a rider
+ * never travels a route they did not ask for.
+ */
+const normalizeRideStops = (value) => {
+  if (value == null || value === '') return [];
+  if (!Array.isArray(value)) {
+    throw new ApiError(400, 'stops must be a list');
+  }
+
+  const stops = value
+    .map((stop) => {
+      let lng;
+      let lat;
+      if (Array.isArray(stop)) {
+        [lng, lat] = stop;
+      } else if (Array.isArray(stop?.location?.coordinates)) {
+        [lng, lat] = stop.location.coordinates;
+      } else {
+        lat = stop?.lat ?? stop?.latitude;
+        lng = stop?.lng ?? stop?.lon ?? stop?.longitude;
+      }
+      lat = Number(lat);
+      lng = Number(lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180 || (lat === 0 && lng === 0)) {
+        return null;
+      }
+      return {
+        location: { type: 'Point', coordinates: [lng, lat] },
+        address: normalizeAddress(Array.isArray(stop) ? '' : stop?.address || stop?.name || ''),
+      };
+    })
+    .filter(Boolean);
+
+  if (stops.length > MAX_RIDE_STOPS) {
+    throw new ApiError(400, `You can add up to ${MAX_RIDE_STOPS} stops`, { code: 'TOO_MANY_STOPS' });
+  }
+  return stops;
+};
+
+/// Stops as the apps read them: `lat` / `lng` / `address`, plus the point.
+export const serializeRideStops = (stops) =>
+  (Array.isArray(stops) ? stops : [])
+    .filter((stop) => Array.isArray(stop?.location?.coordinates))
+    .map((stop) => ({
+      lat: stop.location.coordinates[1],
+      lng: stop.location.coordinates[0],
+      address: stop.address || '',
+      location: { type: 'Point', coordinates: stop.location.coordinates },
+    }));
+
 export const DRIVER_SCHEDULE_LOCK_WINDOW_MS = 30 * 60 * 1000;
 /// How long before pickup an accepted scheduled ride becomes the driver's
 /// active trip (and they get the "head out now" reminder). Same as the window
@@ -1118,6 +1175,7 @@ export const createRideRecord = async ({
   bidStepAmount,
   platformFee,
   surgeMultiplier,
+  stops,
 }) => {
   const user = await User.findById(userId);
 
@@ -1143,6 +1201,10 @@ export const createRideRecord = async ({
   // Under the tolerance (or in the past) it is a ride now.
   const normalizedScheduledAt = scheduleAhead >= SCHEDULE_NOW_TOLERANCE_MS ? requestedScheduledAt : null;
   const reservation = isReservation(normalizedScheduledAt);
+
+  // Checked before anything changes, so a bad stop list never costs the
+  // rider the ride they are on.
+  const requestedStops = normalizeRideStops(stops);
 
   // A ride now replaces whatever the rider was on; a reservation leaves it be.
   if (!reservation) {
@@ -1498,7 +1560,9 @@ export const createRideRecord = async ({
 
   // Never fatal: `resolveRideRoute` swallows its own failures and returns null,
   // so a routing outage costs a polyline rather than the booking.
-  const resolvedRoute = await resolveRideRoute({ pickupCoords, dropCoords });
+  // A rental has no drop to stop on the way to, so it takes none.
+  const rideStops = rentalQuote ? [] : requestedStops;
+  const resolvedRoute = await resolveRideRoute({ pickupCoords, dropCoords, stops: rideStops });
 
   // Deliveries send neither figure, and a rider's estimate is only ever a
   // guess, so the routed values win where we have them.
@@ -1549,6 +1613,7 @@ export const createRideRecord = async ({
       pickupAddress: normalizeAddress(pickupAddress),
       dropLocation: toPoint(dropCoords, 'drop'),
       dropAddress: normalizeAddress(dropAddress),
+      stops: rideStops,
       fare: effectiveStartingFare,
       baseFare: safeFare,
       bookingMode: effectiveBookingMode,
@@ -1619,6 +1684,7 @@ export const createRideRecord = async ({
             pickupAddress: normalizeAddress(pickupAddress),
             dropLocation: toPoint(dropCoords, 'drop'),
             dropAddress: normalizeAddress(dropAddress),
+            stops: rideStops,
             fare: effectiveStartingFare,
             baseFare: safeFare,
             bookingMode: effectiveBookingMode,
@@ -1858,6 +1924,7 @@ export const serializeRideRealtime = (ride) => ({
   pickupAddress: ride.pickupAddress || '',
   dropLocation: ride.dropLocation,
   dropAddress: ride.dropAddress || '',
+  stops: serializeRideStops(ride.stops),
   scheduledAt: ride.scheduledAt || null,
   acceptedAt: ride.acceptedAt,
   arrivedAt: ride.arrivedAt,
@@ -2024,6 +2091,7 @@ export const listRideHistoryForIdentity = async ({ role, entityId, limit = 50, p
       'pickupAddress',
       'dropLocation',
       'dropAddress',
+      'stops',
       'scheduledAt',
       'acceptedAt',
       'arrivedAt',
@@ -2084,6 +2152,7 @@ export const listRideHistoryForIdentity = async ({ role, entityId, limit = 50, p
     pickupAddress: ride.pickupAddress || '',
     dropLocation: ride.dropLocation,
     dropAddress: ride.dropAddress || '',
+    stops: serializeRideStops(ride.stops),
     scheduledAt: ride.scheduledAt || null,
     acceptedAt: ride.acceptedAt,
     arrivedAt: ride.arrivedAt,

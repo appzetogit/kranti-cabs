@@ -58,7 +58,7 @@ import {
   verifyPoolingDriverOnboardingOtp,
 } from "../services/poolingOnboardingService.js";
 import { verifyAccessToken } from "../../services/tokenService.js";
-import { clearDriverActiveRideIfStale } from "../../services/rideService.js";
+import { clearDriverActiveRideIfStale, serializeRideStops } from "../../services/rideService.js";
 import { getWalletSettings } from "../../services/appSettingsService.js";
 import { RIDE_LIVE_STATUS, RIDE_STATUS } from "../../constants/index.js";
 import {
@@ -2729,6 +2729,7 @@ const serializeDriverScheduledRide = (ride = {}, currentDriverId = "") => ({
   pickupAddress: ride.pickupAddress || "",
   dropLocation: ride.dropLocation || null,
   dropAddress: ride.dropAddress || "",
+  stops: serializeRideStops(ride.stops),
   scheduledAt: ride.scheduledAt || null,
   parcel: ride.parcel || null,
   intercity: ride.intercity || null,
@@ -3206,6 +3207,7 @@ export const getDriverScheduledRides = async (req, res) => {
         "pickupAddress",
         "dropLocation",
         "dropAddress",
+        "stops",
         "scheduledAt",
         "driverId",
         "parcel",
@@ -8885,6 +8887,7 @@ export const getOwnerFleetDashboard = async (req, res) => {
       id: String(ride._id),
       pickupAddress: ride.pickupAddress || "",
       dropAddress: ride.dropAddress || "",
+      stops: serializeRideStops(ride.stops),
       status: ride.status || "",
       fare: Number(ride.fare || 0),
       earnings: Number(ride.driverEarnings || 0),

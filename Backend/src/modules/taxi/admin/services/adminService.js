@@ -35,6 +35,7 @@ import { RentalVehicleType } from '../models/RentalVehicleType.js';
 import { RentalQuoteRequest } from '../models/RentalQuoteRequest.js';
 import { SetPrice } from '../models/SetPrice.js';
 import { describeRidePayment } from '../../services/paymentLedgerService.js';
+import { serializeRideStops } from '../../services/rideService.js';
 import { ServiceLocation } from '../models/ServiceLocation.js';
 import { ServiceCenterStaff } from '../models/ServiceCenterStaff.js';
 import { ServiceStore } from '../models/ServiceStore.js';
@@ -6347,6 +6348,7 @@ const toAdminRideRow = (ride) => {
     dropLabel: ride.dropAddress || formatRidePointLabel(ride.dropLocation, 'Drop'),
     pickupAddress: ride.pickupAddress || '',
     dropAddress: ride.dropAddress || '',
+    stops: serializeRideStops(ride.stops),
     scheduledAt: ride.scheduledAt || null,
     bookingSource: ride.bookingSource || 'app',
     pickupLocation: ride.pickupLocation,

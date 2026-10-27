@@ -14,7 +14,7 @@ import {
   RIDE_STATUS,
 } from '../constants/index.js';
 import { Delivery } from '../user/models/Delivery.js';
-import { getRideRoom, isReservation, resolveSetPriceForRide } from './rideService.js';
+import { getRideRoom, isReservation, resolveSetPriceForRide, serializeRideStops } from './rideService.js';
 import { SOCKET_EVENTS } from '../socket/events.js';
 import { resolveTransportDispatchConfig } from './transportSettingsService.js';
 import { serializeRideRental } from './rentalPackageService.js';
@@ -842,6 +842,7 @@ const emitRideRequestToDrivers = async ({
       pickupAddress: ride.pickupAddress || '',
       dropLocation: ride.dropLocation,
       dropAddress: ride.dropAddress || '',
+      stops: serializeRideStops(ride.stops),
       scheduledAt: ride.scheduledAt || null,
       estimatedDistanceMeters: ride.estimatedDistanceMeters || 0,
       estimatedDurationMinutes: ride.estimatedDurationMinutes || 0,
@@ -914,6 +915,10 @@ const emitRideRequestToDrivers = async ({
         riderImage: ride.userId?.profileImage || '',
         pickupAddress: ride.pickupAddress || '',
         dropAddress: ride.dropAddress || '',
+        // Push data is strings only: the count, and the stops' addresses in
+        // order ("Rajwada, Indore | C21 Mall") for the card's "via" line.
+        stopsCount: String(serializeRideStops(ride.stops).length),
+        stopsSummary: serializeRideStops(ride.stops).map((stop) => stop.address).filter(Boolean).join(' | '),
         pickupDistanceKm: formatOfferKm(
           distanceBetweenCoordsMeters(
             driver?.location?.coordinates,
@@ -1870,6 +1875,7 @@ export const notifyRideAccepted = async (ride) => {
       pickupAddress: populatedRide.pickupAddress || '',
       dropLocation: populatedRide.dropLocation,
       dropAddress: populatedRide.dropAddress || '',
+      stops: serializeRideStops(populatedRide.stops),
       acceptedAt: populatedRide.acceptedAt,
       startedAt: populatedRide.startedAt,
       completedAt: populatedRide.completedAt,

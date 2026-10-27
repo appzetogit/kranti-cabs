@@ -352,6 +352,23 @@ const rideSchema = new mongoose.Schema(
       default: '',
       trim: true,
     },
+    // Stops between pickup and drop, in order (up to 3). Routed through and
+    // shown to the driver; the fare the rider was quoted already covers them.
+    stops: {
+      type: [
+        new mongoose.Schema(
+          {
+            location: {
+              type: { type: String, enum: ['Point'], default: 'Point' },
+              coordinates: { type: [Number], default: undefined },
+            },
+            address: { type: String, default: '', trim: true },
+          },
+          { _id: false },
+        ),
+      ],
+      default: [],
+    },
     fare: {
       type: Number,
       required: true,
