@@ -79,6 +79,10 @@ export const authenticate = (allowedRoles = [], options = {}) => async (req, _re
       throw new ApiError(401, 'User account is not active');
     }
 
+    if (entity.deletedAt) {
+      throw new ApiError(401, 'This account has been deleted');
+    }
+
     if (
       normalizedRole === 'driver' &&
       !allowPending &&

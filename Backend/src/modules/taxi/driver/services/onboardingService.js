@@ -692,6 +692,7 @@ export const startDriverOnboarding = async ({ phone, role }) => {
     if (normalizedRole === 'owner') {
       roleSpecificExistingAccount = await Owner.findOne({
         $or: [{ mobile: normalizedPhone }, { phone: normalizedPhone }],
+        deletedAt: null,
       }).lean();
     } else if (normalizedRole === 'bus_driver') {
       roleSpecificExistingAccount = await BusDriver.findOne({ phone: normalizedPhone }).lean();
@@ -700,7 +701,7 @@ export const startDriverOnboarding = async ({ phone, role }) => {
     } else if (normalizedRole === 'service_center_staff') {
       roleSpecificExistingAccount = await ServiceCenterStaff.findOne({ phone: normalizedPhone }).lean();
     } else {
-      roleSpecificExistingAccount = await Driver.findOne({ phone: normalizedPhone }).lean();
+      roleSpecificExistingAccount = await Driver.findOne({ phone: normalizedPhone, deletedAt: null }).lean();
     }
   }
 
@@ -1643,6 +1644,7 @@ export const completeDriverOnboarding = async ({ registrationId, phone, document
         { email: normalizedEmail },
         { mobile: normalizedMobile },
       ],
+      deletedAt: null,
     }).lean();
 
     if (duplicateOwner) {

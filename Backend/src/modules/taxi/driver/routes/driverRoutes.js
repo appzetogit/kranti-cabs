@@ -268,7 +268,8 @@ driverRouter.patch(
 );
 driverRouter.delete(
   "/me",
-  authenticate(["driver", "owner"]),
+  // Drivers still waiting for approval must be able to delete too.
+  authenticate(["driver", "owner"], { allowPending: true }),
   asyncHandler(deleteCurrentDriverAccount),
 );
 driverRouter.post(

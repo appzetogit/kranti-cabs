@@ -270,6 +270,13 @@ const driverSchema = new mongoose.Schema(
       default: '',
       trim: true,
     },
+    // The real number of a deleted account; `phone` is renamed so the
+    // number can register again.
+    deletedPhone: {
+      type: String,
+      default: '',
+      trim: true,
+    },
     deletionRequest: {
       status: {
         type: String,
@@ -613,6 +620,11 @@ driverSchema.index({ acquiredByEmployeeCode: 1 });
 
 driverSchema.index({ location: '2dsphere' });
 driverSchema.index({ 'routeBooking.anchorLocation': '2dsphere' });
+
+// A deleted account's phone (or email) is stored under this tag, so the unique
+// index lets the same number sign up again.
+export const tagDeletedContact = (value, at = new Date()) =>
+  value ? `${value}__deleted__${new Date(at).getTime()}` : value;
 
 export const Driver = mongoose.models.TaxiDriver || mongoose.model('TaxiDriver', driverSchema);
 

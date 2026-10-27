@@ -147,6 +147,18 @@ const ownerSchema = new mongoose.Schema(
       default: '',
       trim: true,
     },
+    // The real mobile / email of a deleted account; the stored ones are
+    // renamed so the number can register again.
+    deletedMobile: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    deletedEmail: {
+      type: String,
+      default: '',
+      trim: true,
+    },
     deletionRequest: {
       status: {
         type: String,

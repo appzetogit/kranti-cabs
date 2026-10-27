@@ -5,7 +5,7 @@ import { Env, StandardCheckoutClient, StandardCheckoutPayRequest, PrefillUserLog
 import { env } from "../../../../config/env.js";
 import { ApiError } from "../../../../utils/ApiError.js";
 import { normalizePoint, toPoint } from "../../../../utils/geo.js";
-import { Driver } from "../models/Driver.js";
+import { Driver, tagDeletedContact } from "../models/Driver.js";
 import { BusDriver } from "../models/BusDriver.js";
 import { DriverLoginSession } from "../models/DriverLoginSession.js";
 import { WalletTransaction } from "../models/WalletTransaction.js";
@@ -4328,8 +4328,15 @@ export const deleteCurrentDriverAccount = async (req, res) => {
       "Deleted by account owner";
     const now = new Date();
 
+    const ownerPhones = [owner.mobile, owner.phone].filter(Boolean);
+
     owner.deletedAt = now;
     owner.deletion_reason = deletionReason.slice(0, 300);
+    // Free the mobile / email so the same person can sign up again.
+    owner.deletedMobile = owner.mobile || "";
+    owner.deletedEmail = owner.email || "";
+    owner.mobile = tagDeletedContact(owner.mobile, now);
+    owner.email = tagDeletedContact(owner.email, now);
     owner.active = false;
     owner.approve = false;
     owner.status = "inactive";
@@ -4346,7 +4353,7 @@ export const deleteCurrentDriverAccount = async (req, res) => {
     await owner.save();
 
     await DriverLoginSession.deleteMany({
-      $or: [{ driverId: owner._id }, { phone: owner.mobile }, { phone: owner.phone }],
+      $or: [{ driverId: owner._id }, { phone: { $in: ownerPhones } }],
     });
 
     res.json({
@@ -4392,8 +4399,13 @@ export const deleteCurrentDriverAccount = async (req, res) => {
   const deletionReason = reason || driver.deletionRequest?.reason || driver.deletion_reason || "Deleted by account owner";
   const now = new Date();
 
+  const driverPhone = driver.phone;
+
   driver.deletedAt = now;
   driver.deletion_reason = deletionReason.slice(0, 300);
+  // Free the number so it can register again as a new driver.
+  driver.deletedPhone = driverPhone;
+  driver.phone = tagDeletedContact(driverPhone, now);
   driver.approve = false;
   driver.status = "inactive";
   driver.isOnline = false;
@@ -4414,7 +4426,7 @@ export const deleteCurrentDriverAccount = async (req, res) => {
   await DriverLoginSession.deleteMany({
     $or: [
       { driverId: driver._id },
-      { phone: driver.phone },
+      { phone: driverPhone },
     ],
   });
 

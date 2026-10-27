@@ -2669,8 +2669,9 @@ const serializeFleetVehicle = (item) => ({
 const serializeDriver = (driver) => ({
   _id: driver._id,
   name: driver.name || '',
-  phone: driver.phone || '',
-  mobile: driver.phone || '',
+  // A deleted driver's phone is renamed; show the real number.
+  phone: driver.deletedPhone || driver.phone || '',
+  mobile: driver.deletedPhone || driver.phone || '',
   email: driver.email || '',
   driver_code: driver.referralCode || (driver.phone ? `DRV${String(driver.phone).slice(-4)}${String(driver._id || '').slice(-6).toUpperCase()}`.replace(/\W/g, '') : ''),
   referralCode: driver.referralCode || '',
@@ -2774,8 +2775,9 @@ const serializeDriverListItem = (driver) => ({
   _id: driver._id,
   id: driver._id,
   name: driver.name || '',
-  phone: driver.phone || '',
-  mobile: driver.phone || '',
+  // A deleted driver's phone is renamed; show the real number.
+  phone: driver.deletedPhone || driver.phone || '',
+  mobile: driver.deletedPhone || driver.phone || '',
   email: driver.email || '',
   driver_code: driver.referralCode || (driver.phone ? `DRV${String(driver.phone).slice(-4)}${String(driver._id || '').slice(-6).toUpperCase()}`.replace(/\W/g, '') : ''),
   referralCode: driver.referralCode || '',
@@ -5317,9 +5319,27 @@ export const rejectDriverDeletionRequest = async (id, payload = {}, adminId) => 
 };
 
 export const restoreDeletedDriver = async (id) => {
+  const deleted = await Driver.findOne({ _id: id, deletedAt: { $ne: null } }).select('phone deletedPhone').lean();
+
+  if (!deleted) {
+    throw new ApiError(404, 'Deleted driver not found');
+  }
+
+  // Deleting renamed the phone; give the real number back unless someone
+  // has registered with it since.
+  const update = { deletedAt: null };
+  if (deleted.deletedPhone) {
+    const taken = await Driver.exists({ _id: { $ne: deleted._id }, phone: deleted.deletedPhone });
+    if (taken) {
+      throw new ApiError(409, 'Another driver has registered with this phone number since it was deleted');
+    }
+    update.phone = deleted.deletedPhone;
+    update.deletedPhone = '';
+  }
+
   const driver = await Driver.findOneAndUpdate(
     { _id: id, deletedAt: { $ne: null } },
-    { $set: { deletedAt: null } },
+    { $set: update },
     { returnDocument: 'after' },
   );
 

@@ -263,6 +263,7 @@ export const findDriverPortalAccountByPhone = async ({ phone, role } = {}) => {
     normalizedRole === 'owner'
       ? await Owner.findOne({
           $or: [{ mobile: { $in: phoneCandidates } }, { phone: { $in: phoneCandidates } }],
+          deletedAt: null,
         })
       : normalizedRole === 'service_center'
         ? await ServiceStore.findOne({ owner_phone: { $in: phoneCandidates } })
@@ -272,7 +273,7 @@ export const findDriverPortalAccountByPhone = async ({ phone, role } = {}) => {
         ? await BusDriver.findOne({ phone: { $in: phoneCandidates } })
       : normalizedRole === 'pooling_driver'
         ? await PoolingVehicle.findOne({ driverPhone: { $in: phoneCandidates } })
-        : await Driver.findOne({ phone: { $in: phoneCandidates } });
+        : await Driver.findOne({ phone: { $in: phoneCandidates }, deletedAt: null });
 
   return account ? { role: normalizedRole, account } : null;
 };
@@ -281,6 +282,7 @@ const buildDriverPortalExistenceQuery = (role, phoneCandidates) => {
   if (role === 'owner') {
     return Owner.findOne({
       $or: [{ mobile: { $in: phoneCandidates } }, { phone: { $in: phoneCandidates } }],
+      deletedAt: null,
     }).select('_id').lean();
   }
 
@@ -300,7 +302,7 @@ const buildDriverPortalExistenceQuery = (role, phoneCandidates) => {
     return PoolingVehicle.findOne({ driverPhone: { $in: phoneCandidates } }).select('_id').lean();
   }
 
-  return Driver.findOne({ phone: { $in: phoneCandidates } }).select('_id').lean();
+  return Driver.findOne({ phone: { $in: phoneCandidates }, deletedAt: null }).select('_id').lean();
 };
 
 export const findPreferredDriverPortalAccountByPhone = async (phone) => {
@@ -492,6 +494,11 @@ export const verifyDriverLoginOtp = async ({ phone, otp, role }) => {
         : normalizedRole === 'pooling_driver'
           ? await PoolingVehicle.findById(session.driverId)
           : await Driver.findById(session.driverId);
+  }
+
+  // A deleted account is gone: never log back into it.
+  if (account?.deletedAt) {
+    account = null;
   }
 
   if (!account) {
