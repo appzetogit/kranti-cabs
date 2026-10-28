@@ -66,7 +66,7 @@ export const LANDING_FALLBACK = {
   ],
 
   contact: {
-    email: 'zicabofficial@gmail.com',
+    email: 'kranticabs@gmail.com',
     whatsapp: '918904343123',
     whatsappDisplay: '+91 8904343123',
     // No toll-free line yet. Every "call us" link dials this field, so it holds
