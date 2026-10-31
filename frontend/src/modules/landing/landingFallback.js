@@ -115,19 +115,25 @@ export const LANDING_FALLBACK = {
     description:
       'Kranti Cabs is a premium cab booking platform providing safe, transparent, and 24x7 verified rides — now live in Bengaluru, Mangaluru and Hubballi.',
     servicesHeading: 'Cab Services',
+    // `service` names the Services page card the link scrolls to
     cabServices: [
-      { label: 'City Ride (Local Cabs)' },
-      { label: 'Airport Pickup & Drop' },
-      { label: 'Outstation One-Way & Roundtrip' },
-      { label: 'Premium Executive Sedans' },
-      { label: 'SUV & Innova Crysta' },
-      { label: 'Hotel & Mall Pickup' },
+      { label: 'City Ride (Local Cabs)', service: 'city' },
+      { label: 'Airport Pickup & Drop', service: 'airport' },
+      { label: 'Outstation One-Way & Roundtrip', service: 'outstation' },
+      { label: 'Premium Executive Sedans', service: 'sedan' },
+      { label: 'SUV & Innova Crysta', service: 'suv' },
+      { label: 'Hotel & Mall Pickup', service: 'hotel' },
     ],
     trustPills: [
       { label: 'Verified Drivers' },
       { label: '24x7 Live SOS' },
     ],
-    copyright: '© 2026 Kranti Cabs. All Rights Reserved.',
+    copyright: '© 2026 Kranti Cabs Private Limited. All Rights Reserved.',
+    // From the certificate of incorporation (23 Oct 2026) and GST REG-06 (27 Oct 2026).
+    legalName: 'Kranti Cabs Private Limited',
+    cin: 'U49224CH2026PTC047269',
+    gstin: '04AANCK3549G1ZF',
+    registeredOffice: '84, Block 136-140, Industrial Area Phase 1, Chandigarh - 160002',
   },
 
   seo: {

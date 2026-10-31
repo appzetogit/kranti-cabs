@@ -1,14 +1,38 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Phone, Mail, MapPin, ShieldCheck, Clock, MessageCircle } from 'lucide-react';
 import { scrollToTop } from '../hooks/useSmoothScroll';
+import { pathForTab } from '../landingTabs';
 import { useLanding } from '../landingContentContext';
+import useAppModules from '../useAppModules';
 
 const Footer = ({ setActiveTab }) => {
   const { contact: CONTACT, launchCities: LAUNCH_CITIES, waLink, brand, footer } = useLanding();
+  const navigate = useNavigate();
+  // The Services page lists the app's real modules, so the footer lists the
+  // same ones — the hand-written CMS labels (SUV, Hotel & Mall…) had no card
+  // to land on. The CMS list is only the fallback while/if modules don't load.
+  const appModules = useAppModules();
+  const cabServices = appModules.length
+    ? appModules.map((m) => ({ label: m.title, service: m.title, fromModules: true }))
+    : footer.cabServices || [];
   const handleNavClick = (id) => {
     setActiveTab(id);
     scrollToTop();
   };
+  // Every service used to land on the top of /services, which looked like a
+  // dead click — and was one when already on that page. The Services page
+  // scrolls to and highlights the card named in `focus`.
+  const handleServiceClick = (item) => {
+    navigate(pathForTab('services'), {
+      state: { focus: item.service || item.label, fromModules: Boolean(item.fromModules) },
+    });
+  };
+  const legalLine = [
+    footer.legalName,
+    footer.cin && `CIN: ${footer.cin}`,
+    footer.gstin && `GSTIN: ${footer.gstin}`,
+  ].filter(Boolean);
 
   return (
     <footer className="footer-container">
@@ -32,7 +56,10 @@ const Footer = ({ setActiveTab }) => {
               <div className="contact-item">
                 <Phone size={16} color="#F5B400" />
                 <span>
-                  Call us: <strong>{CONTACT.tollFree}</strong>
+                  Call us:{' '}
+                  <a href={`tel:${String(CONTACT.tollFree).replace(/[^\d+]/g, '')}`} className="footer-inline-link">
+                    <strong>{CONTACT.tollFree}</strong>
+                  </a>
                 </span>
               </div>
               <div className="contact-item">
@@ -55,8 +82,23 @@ const Footer = ({ setActiveTab }) => {
               </div>
               <div className="contact-item">
                 <MapPin size={16} color="#F5B400" />
-                <span>Office: {CONTACT.address}</span>
+                <span>
+                  Office:{' '}
+                  {CONTACT.mapsUrl ? (
+                    <a href={CONTACT.mapsUrl} target="_blank" rel="noreferrer" className="footer-inline-link">
+                      {CONTACT.address}
+                    </a>
+                  ) : (
+                    CONTACT.address
+                  )}
+                </span>
               </div>
+              {footer.registeredOffice && (
+                <div className="contact-item">
+                  <MapPin size={16} color="#F5B400" />
+                  <span>Registered Office: {footer.registeredOffice}</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -79,9 +121,9 @@ const Footer = ({ setActiveTab }) => {
           <div className="footer-col">
             <h4 className="footer-heading">{footer.servicesHeading}</h4>
             <ul className="footer-links">
-              {(footer.cabServices || []).map((item, index) => (
+              {cabServices.map((item, index) => (
                 <li key={index}>
-                  <button onClick={() => handleNavClick('services')}>{item.label}</button>
+                  <button onClick={() => handleServiceClick(item)}>{item.label}</button>
                 </li>
               ))}
             </ul>
@@ -131,6 +173,10 @@ const Footer = ({ setActiveTab }) => {
             </span>
           ))}
         </div>
+
+        {legalLine.length > 0 && (
+          <p className="footer-legal">{legalLine.join('  •  ')}</p>
+        )}
 
         <div className="footer-bottom">
           <p>{footer.copyright}</p>
@@ -361,6 +407,14 @@ const Footer = ({ setActiveTab }) => {
             border-radius: 20px;
             font-size: 11.5px;
             color: #D6D6D3;
+          }
+
+          .footer-legal {
+            font-size: 12px;
+            color: #8A8A87;
+            letter-spacing: 0.2px;
+            padding-bottom: 16px;
+            word-break: break-word;
           }
 
           .footer-bottom {

@@ -21,6 +21,16 @@ export function scrollToTop() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+/** Same, for a target element; offset clears the fixed navbar. */
+export function scrollToElement(el, offset = -110) {
+  if (!el) return;
+  if (lenisInstance) {
+    lenisInstance.scrollTo(el, { offset });
+    return;
+  }
+  window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY + offset, behavior: 'smooth' });
+}
+
 /**
  * Inertial scrolling, wired into GSAP's ticker so ScrollTrigger stays in sync
  * with Lenis' virtual position instead of fighting it.

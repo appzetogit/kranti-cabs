@@ -1,12 +1,14 @@
 import { useLanding } from '../landingContentContext';
 import { LANDING_ICONS } from '../useLandingContent';
 import useAppModules from '../useAppModules';
-import React, { useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   Car, Plane, Compass, Briefcase, Building2, ShoppingBag,
   CheckCircle, ArrowRight, Bike
 } from 'lucide-react';
 import useReveal from '../hooks/useReveal';
+import { scrollToElement } from '../hooks/useSmoothScroll';
 
 const Services = ({ openBookingModal }) => {
   const pageRef = useRef(null);
@@ -42,6 +44,7 @@ const Services = ({ openBookingModal }) => {
         const match = findCmsMatch(module.title) || {};
         return {
           ...match,
+          cmsId: match.id,
           id: module.id,
           title: module.title,
           description: match.description || module.desc,
@@ -51,7 +54,44 @@ const Services = ({ openBookingModal }) => {
           icon: LANDING_ICONS[match.icon] || Car,
         };
       })
-    : cmsItems.map((item) => ({ ...item, icon: LANDING_ICONS[item.icon] || Car }));
+    : cmsItems.map((item) => ({ ...item, cmsId: item.id, icon: LANDING_ICONS[item.icon] || Car }));
+
+  // A footer link arrives with `focus` — a service key ("airport") or its label
+  // ("Airport Pickup & Drop"). Try the key, then each word of the label, against
+  // card titles and write-up ids, so CMS-edited footer labels still find a card.
+  const location = useLocation();
+  const cardRefs = useRef({});
+  const [focusedId, setFocusedId] = useState(null);
+  const focus = location.state?.focus;
+  // a module name: wait for the module cards, or it would first match (and
+  // scroll to) a look-alike CMS card that is about to be replaced
+  const waitForModules = location.state?.fromModules && !appModules.length;
+
+  useEffect(() => {
+    if (!focus || !allServices.length || waitForModules) return undefined;
+    const words = [focus, ...String(focus).split(/[^A-Za-z0-9]+/)]
+      .map(normalise)
+      .filter((w) => w.length >= 3);
+    // not s.id: for app modules that is a database id, not a word
+    const keysOf = (s) => [normalise(s.title), normalise(s.cmsId)].filter(Boolean);
+    let target;
+    for (const w of words) {
+      target = allServices.find((s) => keysOf(s).some((k) => k.startsWith(w) || w.startsWith(k)));
+      if (target) break;
+    }
+    if (!target) return undefined;
+
+    setFocusedId(target.id);
+    // after the route change has painted, so the card has its final position
+    const scrollTimer = setTimeout(() => scrollToElement(cardRefs.current[target.id]), 120);
+    const clearTimer = setTimeout(() => setFocusedId(null), 2600);
+    return () => {
+      clearTimeout(scrollTimer);
+      clearTimeout(clearTimer);
+    };
+    // location.key: clicking a second footer service while on this page
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.key, appModules.length, cmsItems.length, waitForModules]);
 
 
   return (
@@ -70,7 +110,11 @@ const Services = ({ openBookingModal }) => {
             {allServices.map((s) => {
               const IconComp = s.icon;
               return (
-                <div key={s.id} className="service-detail-card">
+                <div
+                  key={s.id}
+                  ref={(el) => { cardRefs.current[s.id] = el; }}
+                  className={`service-detail-card${focusedId === s.id ? ' is-focused' : ''}`}
+                >
                   <div className="s-card-img-box">
                     <img src={s.image} alt={s.title} className="s-card-img" />
                     <span className="s-badge">{s.tag}</span>
@@ -127,6 +171,11 @@ const Services = ({ openBookingModal }) => {
             transition: var(--transition);
             display: flex;
             flex-direction: column;
+          }
+
+          .service-detail-card.is-focused {
+            border-color: #F5B400;
+            box-shadow: 0 0 0 3px rgba(245, 180, 0, 0.35), var(--shadow-lg);
           }
 
           .service-detail-card:hover {
