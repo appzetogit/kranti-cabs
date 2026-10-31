@@ -1,5 +1,5 @@
 import React from 'react';
-import { Mail, MapPin, MessageCircle, Phone, UserRound } from 'lucide-react';
+import { Building2, FileText, Mail, MapPin, MessageCircle, Phone, UserRound } from 'lucide-react';
 import { useSupportInfo } from '../content/supportInfo';
 
 /**
@@ -21,7 +21,12 @@ export const OwnerContactCard = () => {
     info.phone && { Icon: Phone, label: 'Phone', value: info.phone, href: `tel:${info.phoneHref}` },
     info.whatsapp && { Icon: MessageCircle, label: 'WhatsApp', value: info.whatsappDisplay, href: `https://wa.me/${info.whatsapp}` },
     info.email && { Icon: Mail, label: 'Email', value: info.email, href: `mailto:${info.email}` },
-    info.officeAddress && { Icon: MapPin, label: 'Registered office', value: info.officeAddress },
+    // The Bengaluru office is where the business operates; the registered
+    // office is the address on the incorporation and GST certificates.
+    info.officeAddress && { Icon: MapPin, label: 'Office', value: info.officeAddress },
+    info.registeredOffice && { Icon: Building2, label: 'Registered office', value: info.registeredOffice },
+    info.cin && { Icon: FileText, label: 'CIN', value: info.cin },
+    info.gstin && { Icon: FileText, label: 'GSTIN', value: info.gstin },
   ].filter(Boolean);
 
   return (

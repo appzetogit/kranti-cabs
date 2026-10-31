@@ -15,7 +15,6 @@ import useLandingContent from '../../landing/useLandingContent';
  */
 
 const STATIC_DETAILS = {
-  companyName: 'Kranti Cabs',
   supportLabel: '24x7 customer support',
   responseTime: 'Replies typically within 2 hours',
   serviceArea: 'Taxi rides, parcels, bookings, payments, and account help',
@@ -25,13 +24,18 @@ const STATIC_DETAILS = {
 const toDialable = (value = '') => String(value).replace(/[^\d+]/g, '');
 
 export function useSupportInfo() {
-  const { contact, about } = useLandingContent();
+  const { contact, about, footer } = useLandingContent();
 
   const phone = contact?.tollFree || contact?.whatsappDisplay || '';
   const owner = (about?.founders || []).find((f) => f?.name) || {};
 
   return {
     ...STATIC_DETAILS,
+    // registration details live with the footer's (CMS footer section)
+    companyName: footer?.legalName || 'Kranti Cabs',
+    registeredOffice: footer?.registeredOffice || '',
+    cin: footer?.cin || '',
+    gstin: footer?.gstin || '',
     ownerName: owner.name || '',
     ownerRole: owner.role || '',
     whatsappDisplay: contact?.whatsappDisplay || phone,
