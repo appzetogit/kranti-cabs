@@ -4,6 +4,7 @@ import {
   getVehicleMapIcons,
 } from '../controllers/vehicleMapIconController.js';
 import { getPublicBanners } from '../../admin/promotions/controllers/promotionsController.js';
+import { ApiError } from '../../../../utils/ApiError.js';
 import { asyncHandler } from '../../../../utils/asyncHandler.js';
 import { authenticate } from '../../middlewares/authMiddleware.js';
 import {
@@ -94,7 +95,18 @@ export const userRouter = Router();
 
 userRouter.get('/bootstrap', asyncHandler(getAppBootstrap));
 userRouter.get('/app-modules', asyncHandler(getAppModules));
-userRouter.get('/settings/:category', asyncHandler(getGeneralSettingsCategory));
+// Public, so branding only: the other categories hold wallet, bidding and
+// dispatch rules, which are the admin's to read.
+const PUBLIC_SETTINGS_CATEGORIES = new Set(['general', 'customize', 'customization']);
+userRouter.get(
+  '/settings/:category',
+  (req, _res, next) => next(
+    PUBLIC_SETTINGS_CATEGORIES.has(String(req.params.category || '').trim().toLowerCase())
+      ? undefined
+      : new ApiError(404, 'Settings not found'),
+  ),
+  asyncHandler(getGeneralSettingsCategory),
+);
 // Admin-managed reasons the rider picks from when cancelling a trip.
 userRouter.get('/cancellation-reasons', getPublicCancellationReasons);
 userRouter.get('/intercity-packages', asyncHandler(getIntercityPackageCatalog));

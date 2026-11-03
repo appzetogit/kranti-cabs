@@ -298,9 +298,6 @@ adminRouter.post('/admin/forgot-password', otpSendRateLimit, forgotPassword);
 adminRouter.post('/admin/verify-reset-otp', otpVerifyRateLimit, verifyResetOtp);
 adminRouter.post('/admin/reset-password', otpVerifyRateLimit, resetPassword);
 
-// Public route for app branding/settings
-adminRouter.get('/admin/general-settings/:category', getGeneralSettingsCategory);
-
 adminRouter.use('/admin', authenticate(['admin']));
 
 // After the login check: the status carries live user and driver counts.
