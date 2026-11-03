@@ -21,7 +21,7 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.4.1",
     "morgan": "^1.10.0",
-    "nodemailer": "^8.0.6",
+    "nodemailer": "^10.3.1",
     "pdfkit": "^0.20.1",
     "qrcode": "^1.5.4",
     "razorpay": "^2.9.6",
@@ -32,5 +32,10 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.4"
+  },
+  "overrides": {
+    "@types/request": {
+      "form-data": "^2.5.6"
+    }
   }
 }
