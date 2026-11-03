@@ -30,23 +30,23 @@ export const LANDING_FALLBACK = {
   drivers: [
     {
       name: 'Ramesh Kumar', photo: '/drivers/driver-1.jpg', rating: 4.9, trips: '3,200+ trips',
-      experience: '8 years experience', vehicle: 'Maruti Suzuki Dzire · KA 01 AB 1234',
-      badge: 'Top Driver', city: 'Bengaluru',
+      experience: '8 years experience', vehicle: 'Maruti Suzuki Dzire · PB 65 AB 1234',
+      badge: 'Top Driver', city: 'Mohali',
     },
     {
       name: 'Suresh Naik', photo: '/drivers/driver-2.jpg', rating: 4.8, trips: '2,100+ trips',
-      experience: '6 years experience', vehicle: 'Toyota Innova Crysta · KA 19 CD 5678',
-      badge: 'Verified', city: 'Mangaluru',
+      experience: '6 years experience', vehicle: 'Toyota Innova Crysta · PB 65 CD 5678',
+      badge: 'Verified', city: 'Mohali',
     },
     {
       name: 'Mahesh Patil', photo: '/drivers/driver-3.jpg', rating: 5.0, trips: '1,450+ trips',
-      experience: '5 years experience', vehicle: 'Maruti Suzuki Ertiga · KA 25 EF 9012',
-      badge: 'Top Driver', city: 'Hubballi',
+      experience: '5 years experience', vehicle: 'Maruti Suzuki Ertiga · PB 65 EF 9012',
+      badge: 'Top Driver', city: 'Mohali',
     },
     {
       name: 'Imran Shaikh', photo: '/drivers/driver-4.jpg', rating: 4.9, trips: '2,800+ trips',
-      experience: '10 years experience', vehicle: 'Toyota Fortuner · KA 03 GH 3456',
-      badge: 'Verified', city: 'Bengaluru',
+      experience: '10 years experience', vehicle: 'Toyota Fortuner · PB 65 GH 3456',
+      badge: 'Verified', city: 'Mohali',
     },
   ],
 
@@ -56,13 +56,11 @@ export const LANDING_FALLBACK = {
     { name: 'NOVOTEL', subtitle: 'HOTELS & RESORTS' },
     { name: 'HYATT REGENCY', subtitle: '' },
     { name: 'LuLu MALL', subtitle: 'World of Happiness' },
-    { name: 'Kempegowda Int. Airport', subtitle: 'BENGALURU' },
+    { name: 'Chandigarh Int. Airport', subtitle: 'MOHALI' },
   ],
 
   launchCities: [
-    { name: 'Bengaluru', note: 'Head Office & Launch City' },
-    { name: 'Mangaluru', note: 'Coastal Karnataka Operations' },
-    { name: 'Hubballi', note: 'North Karnataka Operations' },
+    { name: 'Mohali', note: 'Launch City' },
   ],
 
   contact: {
@@ -74,10 +72,10 @@ export const LANDING_FALLBACK = {
     // IVR banner on the contact page hidden until a real line exists.
     tollFree: '+91 8904343123',
     tollFreeLive: false,
-    address: 'Office No 13, Grand Majestic Mall, Gandhinagar, Bengaluru - 560009',
-    addressShort: 'Office No 13, Grand Majestic Mall, Gandhinagar, Bengaluru',
+    address: '84, Block 136-140, Industrial Area Phase 1, Chandigarh - 160002',
+    addressShort: '84, Block 136-140, Industrial Area Phase 1, Chandigarh',
     mapsUrl:
-      'https://www.google.com/maps/search/?api=1&query=Grand+Majestic+Mall+Gandhinagar+Bengaluru',
+      'https://www.google.com/maps/search/?api=1&query=84+Block+136-140+Industrial+Area+Phase+1+Chandigarh+160002',
   },
 
   // Logo, wordmark and app-store links. The store badges were non-clickable
@@ -113,7 +111,7 @@ export const LANDING_FALLBACK = {
 
   footer: {
     description:
-      'Kranti Cabs is a premium cab booking platform providing safe, transparent, and 24x7 verified rides — now live in Bengaluru, Mangaluru and Hubballi.',
+      'Kranti Cabs is a premium cab booking platform providing safe, transparent, and 24x7 verified rides — now live in Mohali.',
     servicesHeading: 'Cab Services',
     // `service` names the Services page card the link scrolls to
     cabServices: [
@@ -139,14 +137,14 @@ export const LANDING_FALLBACK = {
   seo: {
     title: 'Kranti Cabs - Ride the Revolution.',
     description:
-      'Kranti Cabs - city, outstation and airport cabs with verified drivers and 24x7 support. Now live in Bengaluru, Mangaluru and Hubballi.',
+      'Kranti Cabs - city, outstation and airport cabs with verified drivers and 24x7 support. Now live in Mohali.',
   },
 
   about: {
     tag: 'About Kranti Cabs',
-    title: 'Redefining Premium Cab Services Across Karnataka',
+    title: 'Redefining Premium Cab Services in Mohali',
     subtitle:
-      'Built on trust, safety, and reliability. Seamless city, outstation and airport rides — now live in Bengaluru, Mangaluru and Hubballi.',
+      'Built on trust, safety, and reliability. Seamless city, outstation and airport rides — now live in Mohali.',
     stats: [
       { label: 'Successful Rides', count: 100000, suffix: '+' },
       { label: 'Customer Rating', value: '4.9 ★' },

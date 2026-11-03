@@ -83,7 +83,7 @@ const Footer = ({ setActiveTab }) => {
               <div className="contact-item">
                 <MapPin size={16} color="#F5B400" />
                 <span>
-                  Office:{' '}
+                  Registered Office:{' '}
                   {CONTACT.mapsUrl ? (
                     <a href={CONTACT.mapsUrl} target="_blank" rel="noreferrer" className="footer-inline-link">
                       {CONTACT.address}
@@ -93,12 +93,6 @@ const Footer = ({ setActiveTab }) => {
                   )}
                 </span>
               </div>
-              {footer.registeredOffice && (
-                <div className="contact-item">
-                  <MapPin size={16} color="#F5B400" />
-                  <span>Registered Office: {footer.registeredOffice}</span>
-                </div>
-              )}
             </div>
           </div>
 

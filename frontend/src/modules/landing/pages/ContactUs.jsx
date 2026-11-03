@@ -73,7 +73,7 @@ const ContactUs = () => {
               <div className="c-icon-wrap">
                 <MapPin size={24} color="#F5B400" />
               </div>
-              <h3>Head Office</h3>
+              <h3>Registered Office</h3>
               <p>{CONTACT.addressShort}</p>
               <span>Open in Google Maps</span>
             </a>

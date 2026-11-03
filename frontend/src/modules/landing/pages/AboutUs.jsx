@@ -59,10 +59,10 @@ const AboutUs = ({ openBookingModal }) => {
           <div className="story-content" data-reveal>
             <h2 className="section-title">Our Story & Mission</h2>
             <p className="body-text">
-              Kranti Cabs was founded with a clear mission: to eliminate ride cancellations, surge pricing shocks, and unverified driver risks for travelers in Karnataka.
+              Kranti Cabs was founded with a clear mission: to eliminate ride cancellations, surge pricing shocks, and unverified driver risks for travelers in Mohali.
             </p>
             <p className="body-text">
-              Whether you need an early morning 4 AM airport cab in Bengaluru, an executive sedan for corporate travel, or a family SUV for an outstation weekend trip to Coorg, Kranti Cabs ensures guaranteed on-time pickup with professional drivers.
+              Whether you need an early morning 4 AM cab to Chandigarh airport, an executive sedan for corporate travel, or a family SUV for an outstation weekend trip to Shimla, Kranti Cabs ensures guaranteed on-time pickup with professional drivers.
             </p>
             
             <div className="mission-list">
@@ -150,7 +150,7 @@ const AboutUs = ({ openBookingModal }) => {
 
           <div className="presence-grid">
             <div className="presence-office" data-reveal>
-              <h3 className="presence-heading"><MapPin size={18} color="#F5B400" /> Head Office</h3>
+              <h3 className="presence-heading"><MapPin size={18} color="#F5B400" /> Registered Office</h3>
               <p className="presence-addr">{CONTACT.address}</p>
               <a className="btn btn-brand" href={CONTACT.mapsUrl} target="_blank" rel="noreferrer">
                 <Navigation size={16} /> View on Google Maps

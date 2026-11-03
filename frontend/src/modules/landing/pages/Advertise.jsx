@@ -53,7 +53,7 @@ const Advertise = () => {
           <h1 className="page-title">{advertisePage.title}</h1>
           <p className="page-subtitle">
             Every Kranti Cabs trip is a captive screen moment. Put your brand in front of riders and
-            driver-partners across our app, website and driver network in Bengaluru, Mangaluru and Hubballi.
+            driver-partners across our app, website and driver network in Mohali.
           </p>
         </div>
       </div>

@@ -82,7 +82,7 @@ const loadCompany = async () => {
       address: String(contact.address || '').trim(),
       phone: String(contact.whatsappDisplay || general.contact_phone_1 || '').trim(),
       email: String(contact.email || '').trim(),
-      city: String(contact.city || 'Bengaluru').trim(),
+      city: String(contact.city || 'Mohali').trim(),
     },
   };
 };
@@ -146,7 +146,7 @@ export const buildInvoiceModel = async ({ rideId }) => {
       address: String(contact.address || '').trim(),
       phone: String(contact.whatsappDisplay || general.contact_phone_1 || '').trim(),
       email: String(contact.email || '').trim(),
-      city: String(contact.city || 'Bengaluru').trim(),
+      city: String(contact.city || 'Mohali').trim(),
     },
     trip: {
       customerName: String(ride.userId?.name || 'Customer').trim(),
