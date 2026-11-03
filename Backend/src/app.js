@@ -5,18 +5,25 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { env } from './config/env.js';
 import { errorHandler, notFoundHandler } from './modules/taxi/middlewares/errorMiddleware.js';
+import { securityHeaders } from './modules/taxi/middlewares/securityHeadersMiddleware.js';
 import { taxiRouter } from './modules/taxi/routes/index.js';
 
 export const createApp = () => {
   const app = express();
 
-app.use(
-  cors({
-    origin: '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-  })
-);
+  app.disable('x-powered-by');
+  app.use(securityHeaders);
+
+  // Only our own websites may read API responses from a browser (CORS_ORIGIN,
+  // the same list the socket uses). The mobile apps send no Origin and are not
+  // affected. '*' remains only when nothing is configured, i.e. local dev.
+  app.use(
+    cors({
+      origin: env.corsOrigin === '*' ? '*' : env.corsOrigin.split(',').map((origin) => origin.trim()).filter(Boolean),
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
+    }),
+  );
   app.use(express.json({ limit: '25mb' }));
   app.use(express.urlencoded({ extended: true })); 
   app.use(morgan(env.nodeEnv === 'production' ? 'combined' : 'dev'));
@@ -34,17 +41,7 @@ app.use(
   app.use('/api/v1', taxiRouter);
 
   app.get(['/api', '/api/v1'], (_req, res) => {
-    res.json({
-      success: true,
-      message: 'Taxi API is mounted',
-      routes: {
-        admins: ['/api/admin', '/api/v1/admin'],
-        users: ['/api/users', '/api/v1/users'],
-        drivers: ['/api/drivers', '/api/v1/drivers'],
-        rides: ['/api/rides', '/api/v1/rides'],
-        deliveries: ['/api/deliveries', '/api/v1/deliveries'],
-      },
-    });
+    res.json({ success: true, message: 'API is running' });
   });
 
   app.use(notFoundHandler);

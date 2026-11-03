@@ -293,8 +293,6 @@ import {
 
 export const adminRouter = Router();
 
-adminRouter.get('/admin', getAdminStatus);
-adminRouter.get('/admin/status', getAdminStatus);
 adminRouter.post('/admin/login', loginRateLimit, loginAdmin);
 adminRouter.post('/admin/forgot-password', otpSendRateLimit, forgotPassword);
 adminRouter.post('/admin/verify-reset-otp', otpVerifyRateLimit, verifyResetOtp);
@@ -305,6 +303,9 @@ adminRouter.get('/admin/general-settings/:category', getGeneralSettingsCategory)
 
 adminRouter.use('/admin', authenticate(['admin']));
 
+// After the login check: the status carries live user and driver counts.
+adminRouter.get('/admin', getAdminStatus);
+adminRouter.get('/admin/status', getAdminStatus);
 adminRouter.get('/admin/permissions', getAdminPermissions);
 adminRouter.get('/admin/admin-management/admins', getAdmins);
 adminRouter.get('/admin/admin-management/activity-summary', getAdminActivitySummary);
