@@ -849,11 +849,13 @@ const calculateEstimatedFare = ({ vehicle, pricingRule, distanceMeters, duration
   const pricePerDistance = toFiniteNumber(pricingRule.price_per_distance, 0);
   const timePrice = toFiniteNumber(pricingRule.time_price, 0);
   const serviceTax = toFiniteNumber(pricingRule.service_tax, 0);
-  const isWithinBaseDistance = baseDistance > 0 && distanceKm <= baseDistance;
-  const extraDistanceKm = Math.max(0, distanceKm - baseDistance);
-  const subtotal = isWithinBaseDistance
+  // Base price up to the base distance. Beyond it the whole trip is per km with
+  // no base price on top, never less than the base price itself.
+  const perKmFare = distanceKm * pricePerDistance;
+  const paysBasePrice = (baseDistance > 0 && distanceKm <= baseDistance) || perKmFare < basePrice;
+  const subtotal = paysBasePrice
     ? basePrice
-    : basePrice + (extraDistanceKm * pricePerDistance) + (Math.max(0, Number(durationMinutes || 0)) * timePrice);
+    : perKmFare + (Math.max(0, Number(durationMinutes || 0)) * timePrice);
 
   if (subtotal <= 0) {
     return fallbackFare;

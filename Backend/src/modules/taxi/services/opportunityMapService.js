@@ -36,14 +36,15 @@ const distanceKm = (aLat, aLng, bLat, bLng) => {
 
 /**
  * What a trip of `km` costs on a tariff row, by the rider app's own formula:
- * base fare for the first base_distance, then per km, then the platform fee.
+ * base fare up to base_distance; beyond it the whole trip per km with no base
+ * fare on top, never less than the base fare; then the platform fee.
  * No time component - the per-minute charge is not used.
  */
 const fareFor = (row, km) => {
   const base = Number(row.base_price) || 0;
   const freeKm = Number(row.base_distance) || 0;
   const perKm = Number(row.price_per_distance) || 0;
-  const subtotal = base + Math.max(0, km - freeKm) * perKm;
+  const subtotal = freeKm > 0 && km <= freeKm ? base : Math.max(base, km * perKm);
   const fee = Number(row.rider_platform_fee) || 0;
   const feeAmount = row.rider_platform_fee_type === 'percentage' ? (subtotal * fee) / 100 : fee;
   return Math.round(subtotal + feeAmount);
