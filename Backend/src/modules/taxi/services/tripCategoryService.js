@@ -1,7 +1,7 @@
 import { Airport } from '../admin/models/Airport.js';
 import { TaxiAppModule } from '../admin/models/TaxiAppModule.js';
 import { findZoneByPickup } from './matchingService.js';
-import { distanceKm, estimateHubParking, hubAt, hubTypeOf } from './hubParkingService.js';
+import { distanceKm, estimateHubParking, hubAt, hubGeofence, hubTypeOf } from './hubParkingService.js';
 import { stateTaxFees } from './stateTaxService.js';
 import { getTransportRideSettings } from './transportSettingsService.js';
 
@@ -34,7 +34,7 @@ let moduleCache = { rows: null, at: 0 };
 const activeHubs = async () => {
   if (hubCache.rows && Date.now() - hubCache.at < CACHE_MS) return hubCache.rows;
   const rows = await Airport.find({ active: true, status: 'active' })
-    .select('hub_type parking name code location boundary latitude longitude pickup_availability drop_availability airport_surge support_airport_fee station_entry_fee')
+    .select('hub_type parking name code address location boundary latitude longitude pickup_availability drop_availability airport_surge support_airport_fee station_entry_fee')
     .lean();
   hubCache = { rows, at: Date.now() };
   return rows;
@@ -96,6 +96,63 @@ export const stationEntryFees = (pickupHub, dropHub) => {
   return {
     lines,
     total_fee: Math.round(lines.reduce((sum, line) => sum + line.fee, 0) * 100) / 100,
+  };
+};
+
+const NEARBY_HUB_RADIUS_KM = 150;
+const NEARBY_HUB_LIMIT = 10;
+
+/// The box round a zone's polygon(s), for the app to keep address search inside.
+const zoneBounds = (zone) => {
+  const points = [];
+  const walk = (node) => {
+    if (!Array.isArray(node)) return;
+    if (typeof node[0] === 'number') points.push(node);
+    else node.forEach(walk);
+  };
+  walk(zone?.geometry?.coordinates);
+  if (!points.length) return null;
+  const lngs = points.map(([lng]) => lng);
+  const lats = points.map(([, lat]) => lat);
+  return { west: Math.min(...lngs), south: Math.min(...lats), east: Math.max(...lngs), north: Math.max(...lats) };
+};
+
+/**
+ * What address search should offer at a point: the admin's airports and railway
+ * stations nearest first, and the box of the zone the point is in. From our own
+ * data, so it works whatever the map provider is doing.
+ *
+ * @param point [lng, lat]
+ * @param hubType optional airport / railway_station
+ */
+export const nearbyPlaces = async ({ point, hubType = '' }) => {
+  const [zone, hubs] = await Promise.all([
+    findZoneByPickup(point).catch(() => null),
+    activeHubs(),
+  ]);
+
+  const results = hubs
+    .filter((row) => !hubType || hubTypeOf(row) === hubType)
+    .map((row) => {
+      const centre = hubGeofence(row).centre;
+      return centre ? { row, centre, km: distanceKm(point, centre) } : null;
+    })
+    .filter((hub) => hub && hub.km <= NEARBY_HUB_RADIUS_KM)
+    .sort((a, b) => a.km - b.km)
+    .slice(0, NEARBY_HUB_LIMIT)
+    .map(({ row, centre, km }) => ({
+      id: String(row._id),
+      name: row.name,
+      address: row.address || '',
+      hub_type: hubTypeOf(row),
+      lat: centre[1],
+      lng: centre[0],
+      distance_km: Math.round(km * 10) / 10,
+    }));
+
+  return {
+    zone: zone ? { id: String(zone._id), name: zone.name || '', bounds: zoneBounds(zone) } : null,
+    hubs: results,
   };
 };
 

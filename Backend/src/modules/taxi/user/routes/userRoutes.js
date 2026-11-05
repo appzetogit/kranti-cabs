@@ -76,6 +76,7 @@ import {
   buySubscription,
   getRoute,
   getSetPrices,
+  getNearbyPlaces,
   getTripCategory,
   getZones,
 } from '../controllers/userController.js';
@@ -142,6 +143,7 @@ userRouter.get('/legal-content', asyncHandler(getPublicLegalContent));
 userRouter.get('/set-prices', asyncHandler(getSetPrices));
 // City, airport or outstation for a pickup and drop - decides the vehicles offered.
 userRouter.get('/trip-category', getTripCategory);
+userRouter.get('/nearby-places', getNearbyPlaces);
 // Road routes for the maps. Authenticated and rate limited because every
 // cache miss is a billed Directions call.
 userRouter.get('/route', authenticate(['user', 'driver']), routeRateLimit, asyncHandler(getRoute));
