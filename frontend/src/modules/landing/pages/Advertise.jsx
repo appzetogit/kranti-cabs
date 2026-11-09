@@ -172,7 +172,7 @@ const Advertise = () => {
                     id="ad-company"
                     type="text"
                     required
-                    placeholder="e.g. Grand Majestic Mall"
+                    placeholder="e.g. Elante Mall"
                     value={company}
                     onChange={(e) => setCompany(e.target.value)}
                   />

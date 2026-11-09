@@ -68,12 +68,12 @@ export const defaultLandingContent = {
 
   contact: {
     email: 'kranticabs@gmail.com',
-    whatsapp: '918904343123',
-    whatsappDisplay: '+91 8904343123',
+    whatsapp: '917986196080',
+    whatsappDisplay: '+91 7986196080',
     // No toll-free line yet. Every "call us" link dials this field, so it holds
     // the business number; tollFreeLive stays false, which keeps the toll-free
     // IVR banner on the contact page hidden until a real line exists.
-    tollFree: '+91 8904343123',
+    tollFree: '+91 7986196080',
     tollFreeLive: false,
     address: '84, Block 136-140, Industrial Area Phase 1, Chandigarh - 160002',
     addressShort: '84, Block 136-140, Industrial Area Phase 1, Chandigarh',
@@ -157,7 +157,7 @@ export const defaultLandingContent = {
     foundersTag: 'Leadership',
     foundersHeading: 'Meet the Founder',
     founders: [
-      { name: 'Shamsher Mohammed', role: 'Founder & CEO', photo: '', bio: '', linkedin: '' },
+      { name: 'Navneet', role: 'Founder & CEO', photo: '', bio: '', linkedin: '' },
     ],
     pillarsHeading: 'The Pillars of Kranti Cabs',
     pillars: [

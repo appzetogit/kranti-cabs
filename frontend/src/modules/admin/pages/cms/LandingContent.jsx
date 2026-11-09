@@ -93,8 +93,8 @@ const CONTACT_FIELDS = [
   { name: 'whatsappDisplay', label: 'WhatsApp (displayed)', placeholder: '+91 98765 00000' },
   { name: 'whatsapp', label: 'WhatsApp (dial format)', placeholder: '919876500000', help: 'Country code, digits only — used to build the wa.me link.' },
   { name: 'email', label: 'Email', placeholder: 'support@kranticabs.com' },
-  { name: 'addressShort', label: 'Short Address', placeholder: 'Grand Majestic Mall, Gandhinagar, Bengaluru', wide: true },
-  { name: 'address', label: 'Full Address', placeholder: 'Grand Majestic Mall, Gandhinagar, Bengaluru, Karnataka 560009', wide: true },
+  { name: 'addressShort', label: 'Short Address', placeholder: '84, Block 136-140, Industrial Area Phase 1, Chandigarh', wide: true },
+  { name: 'address', label: 'Full Address', placeholder: '84, Block 136-140, Industrial Area Phase 1, Chandigarh - 160002', wide: true },
   { name: 'mapsUrl', label: 'Google Maps URL', placeholder: 'https://www.google.com/maps/search/?api=1&query=...', wide: true },
 ];
 
