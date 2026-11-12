@@ -1,6 +1,6 @@
 #!/bin/bash
 set -u
-API="https://kranticabs.buytogetherindia.com/api/v1"
+API="https://kranticabs.com/api/v1"
 PHONE="${1:-7470311228}"
 
 curl -s -X POST "$API/drivers/auth/send-otp" -H 'Content-Type: application/json' \
