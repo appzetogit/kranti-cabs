@@ -36,6 +36,11 @@ import { RentalQuoteRequest } from '../models/RentalQuoteRequest.js';
 import { SetPrice } from '../models/SetPrice.js';
 import { describeRidePayment } from '../../services/paymentLedgerService.js';
 import { serializeRideStops } from '../../services/rideService.js';
+import {
+  driverRegistrationState,
+  registrationStateFromPlate,
+  stateForPlateCode,
+} from '../../services/vehicleRegistrationState.js';
 import { ServiceLocation } from '../models/ServiceLocation.js';
 import { ServiceCenterStaff } from '../models/ServiceCenterStaff.js';
 import { ServiceStore } from '../models/ServiceStore.js';
@@ -2695,6 +2700,19 @@ const serializeDriver = (driver) => ({
   vehicle_make: driver.vehicleMake || '',
   vehicle_model: driver.vehicleModel || '',
   vehicle_number: driver.vehicleNumber || '',
+  // State tax: the state the car is registered in (read from the plate unless
+  // admin overrode it) and the permits that let it into others tax-free.
+  vehicle_registration_state: driverRegistrationState(driver),
+  vehicle_registration_state_from_plate: registrationStateFromPlate(driver.vehicleNumber)?.state || '',
+  vehicle_registration_state_override: driver.vehicleRegistrationState || '',
+  interstate_permits: (driver.interstatePermits || []).map((row) => ({
+    state: row.state || '',
+    valid_till: row.validTill || null,
+  })),
+  all_india_permit: {
+    enabled: Boolean(driver.allIndiaPermit?.enabled),
+    valid_till: driver.allIndiaPermit?.validTill || null,
+  },
   vehicle_color: driver.vehicleColor || '',
   rating:
     Number(driver.ratingCount || 0) > 0
@@ -5538,6 +5556,33 @@ export const updateDriver = async (id, payload, currentAdmin = null) => {
 
   if (payload.vehicle_number !== undefined || payload.vehicleNumber !== undefined || payload.car_number !== undefined) {
     update.vehicleNumber = String(payload.vehicle_number ?? payload.vehicleNumber ?? payload.car_number ?? '').trim();
+  }
+
+  // State tax: registration state override and permits.
+  if (payload.vehicle_registration_state_override !== undefined) {
+    const raw = String(payload.vehicle_registration_state_override || '').trim();
+    update.vehicleRegistrationState = stateForPlateCode(raw) || raw;
+  }
+  if (payload.interstate_permits !== undefined) {
+    const rows = Array.isArray(payload.interstate_permits) ? payload.interstate_permits : [];
+    update.interstatePermits = rows
+      .map((row) => {
+        const state = String(row?.state || '').trim();
+        const validTill = row?.valid_till ?? row?.validTill;
+        const date = validTill ? new Date(validTill) : null;
+        return { state: stateForPlateCode(state) || state, validTill: date && !Number.isNaN(date.getTime()) ? date : null };
+      })
+      .filter((row) => row.state)
+      .slice(0, 40);
+  }
+  if (payload.all_india_permit !== undefined) {
+    const raw = payload.all_india_permit || {};
+    const validTill = raw.valid_till ?? raw.validTill;
+    const date = validTill ? new Date(validTill) : null;
+    update.allIndiaPermit = {
+      enabled: raw.enabled === true || raw.enabled === 'true',
+      validTill: date && !Number.isNaN(date.getTime()) ? date : null,
+    };
   }
 
   const serviceLocationValue = payload.service_location_id ?? payload.area ?? payload.service_location;

@@ -746,6 +746,29 @@ const rideSchema = new mongoose.Schema(
         ],
         default: [],
       },
+      // State tax taken back off when the driver who accepted needs not pay
+      // it: the car is registered in that state, or holds its permit or an
+      // All India Tourist Permit. The fare was lowered by the same amount.
+      tax_fee_waived: {
+        type: Number,
+        default: 0,
+      },
+      tax_fee_waived_lines: {
+        type: [
+          new mongoose.Schema(
+            {
+              rule_id: { type: mongoose.Schema.Types.ObjectId, ref: 'TaxiStateTax' },
+              name: { type: String, default: '', trim: true },
+              tax_type: { type: String, enum: ['state_tax', 'mcd_tax'], default: 'state_tax' },
+              state: { type: String, default: '', trim: true },
+              fee: { type: Number, default: 0 },
+              reason: { type: String, enum: ['registered', 'state_permit', 'all_india_permit'], default: 'registered' },
+            },
+            { _id: false },
+          ),
+        ],
+        default: [],
+      },
     },
     // Surge the fare was quoted under; the fare already includes it.
     surge: {

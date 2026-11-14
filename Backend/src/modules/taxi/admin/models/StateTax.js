@@ -28,6 +28,12 @@ const stateTaxSchema = new mongoose.Schema(
       auto: { type: Number, default: 0, min: 0 },
       car: { type: Number, default: 0, min: 0 },
     },
+    // A vehicle with an All India Tourist Permit does not pay this rule.
+    // Never applies to MCD tax, which every non-Delhi vehicle pays.
+    waive_for_all_india_permit: {
+      type: Boolean,
+      default: true,
+    },
     active: {
       type: Boolean,
       default: true,

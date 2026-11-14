@@ -61,6 +61,7 @@ const emptyForm = {
   tax_type: 'state_tax',
   state: '',
   fees: { bike: '', auto: '', car: '' },
+  waive_for_all_india_permit: true,
   active: true,
 };
 
@@ -69,9 +70,11 @@ const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
 /**
  * State tax and MCD tax a vehicle pays to enter a state, or Delhi.
  *
- * A trip pays a rule when its drop is in the rule's state and its pickup is
- * not. The server adds it to the fare at booking and passes it to the driver
- * without commission, as it does the railway station entry fee.
+ * An outstation trip pays a rule when its drop is in the rule's state and its
+ * pickup is not. The server adds it to the fare at booking and passes it to
+ * the driver without commission, as it does the railway station entry fee.
+ * When a driver accepts, it is taken back off if their car is registered in
+ * that state or holds its permit (Drivers > Edit > State Tax & Permits).
  */
 const StateTax = () => {
   const [loading, setLoading] = useState(true);
@@ -112,6 +115,7 @@ const StateTax = () => {
         auto: String(rule.fees?.auto ?? ''),
         car: String(rule.fees?.car ?? ''),
       },
+      waive_for_all_india_permit: rule.waive_for_all_india_permit !== false,
       active: rule.active !== false,
     });
     setEditing(rule);
@@ -138,6 +142,7 @@ const StateTax = () => {
         tax_type: formData.tax_type,
         state,
         fees: Object.fromEntries(CLASSES.map(({ key }) => [key, Number(formData.fees[key]) || 0])),
+        waive_for_all_india_permit: formData.waive_for_all_india_permit,
         active: formData.active,
       };
 
@@ -361,6 +366,20 @@ const StateTax = () => {
                     ))}
                   </div>
                 </div>
+
+                {formData.tax_type !== 'mcd_tax' && (
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-sm font-medium text-gray-700">
+                      Free for All India Tourist Permit cars
+                    </span>
+                    <StatusToggle
+                      active={formData.waive_for_all_india_permit}
+                      onToggle={() =>
+                        setFormData({ ...formData, waive_for_all_india_permit: !formData.waive_for_all_india_permit })
+                      }
+                    />
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between pt-1">
                   <span className="text-sm font-medium text-gray-700">Active</span>
