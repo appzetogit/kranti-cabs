@@ -196,9 +196,6 @@ export const classifyTrip = async ({ pickup, drop, vehicleClass = '' }) => {
     };
   }
 
-  // A failed state lookup quotes the trip without the tax, never refuses it.
-  const taxFee = await stateTaxFees({ pickup, drop, vehicleClass }).catch(() => null);
-
   const airports = hubs.filter((row) => hubTypeOf(row) === 'airport');
   const pickupAirport = hubAt(airports, pickup);
   const dropAirport = hubAt(airports, drop);
@@ -214,16 +211,26 @@ export const classifyTrip = async ({ pickup, drop, vehicleClass = '' }) => {
   const outstationMinKm = Math.max(0, Number((await getTransportRideSettings())?.outstation_min_distance_km ?? 40) || 0);
   const tripKm = distanceKm(pickup, drop);
 
+  // Outstation by distance or city, airport or not: an airport drop 600 km
+  // away still crosses state borders like any outstation trip.
+  const outstationTrip =
+    !dropZone
+    || serviceLocationOf(dropZone) !== serviceLocationOf(pickupZone)
+    || (outstationMinKm > 0 && tripKm > outstationMinKm);
+
   let category = 'city';
   if (airport) {
     category = 'airport';
-  } else if (
-    !dropZone
-    || serviceLocationOf(dropZone) !== serviceLocationOf(pickupZone)
-    || (outstationMinKm > 0 && tripKm > outstationMinKm)
-  ) {
+  } else if (outstationTrip) {
     category = 'outstation';
   }
+
+  // State tax is for outstation trips only - a city ride across a state line
+  // (Chandigarh to Mohali) never pays it. A failed state lookup quotes the
+  // trip without the tax, never refuses it.
+  const taxFee = outstationTrip
+    ? await stateTaxFees({ pickup, drop, vehicleClass }).catch(() => null)
+    : null;
 
   const module = moduleFor(modules, category);
   const airportSurgeFee = Math.max(0, Number(airport?.row.airport_surge) || 0);
@@ -231,6 +238,7 @@ export const classifyTrip = async ({ pickup, drop, vehicleClass = '' }) => {
 
   return {
     category,
+    outstation_trip: Boolean(outstationTrip),
     module_id: module ? String(module._id) : null,
     module_name: module?.name || null,
     pickup_zone: { id: String(pickupZone._id), name: pickupZone.name || '' },

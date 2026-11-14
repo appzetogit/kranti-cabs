@@ -21,7 +21,7 @@ import { consumeUserSubscriptionRide, resolveApplicableUserSubscription } from '
 import { applyPromoToRideInTransaction } from './promoService.js';
 import { ABSOLUTE_MAX_MULTIPLIER, getSurgeAt, getSurgeProfiles, surgeForVehicle } from './surgeService.js';
 import { classifyTrip, resolveTripHubs } from './tripCategoryService.js';
-import { stateTaxFees } from './stateTaxService.js';
+import { stateTaxFees, stateTaxWaiverForDriver } from './stateTaxService.js';
 import { computeOutstationFare } from './outstationFareService.js';
 import {
   applyHubParkingCharge,
@@ -1280,11 +1280,18 @@ export const createRideRecord = async ({
   // State tax / MCD tax for entering the drop's state, priced for this
   // vehicle's class, so worked out once the vehicle is known. Added like the
   // station fee and, like it, passed to the driver at settlement.
-  const taxFee = await stateTaxFees({
-    pickup: pickupCoords,
-    drop: dropCoords,
-    vehicleClass: primaryVehicle?.category || resolvedVehicleIconType,
-  }).catch(() => null);
+  // Outstation trips only (booked as outstation, or far / another city): a
+  // city ride across a state line never pays it. Quoted as the most it can
+  // be; taken back off at accept if the driver's car need not pay it.
+  const taxApplies =
+    normalizeServiceType(serviceType) === 'intercity' || Boolean(tripClass?.outstation_trip);
+  const taxFee = taxApplies
+    ? await stateTaxFees({
+        pickup: pickupCoords,
+        drop: dropCoords,
+        vehicleClass: primaryVehicle?.category || resolvedVehicleIconType,
+      }).catch(() => null)
+    : null;
   tripCategory.tax_fee = Math.max(0, Number(taxFee?.total_fee) || 0);
   tripCategory.tax_fee_lines = taxFee?.lines || [];
   const locationFees = airportFee + tripCategory.station_fee + tripCategory.tax_fee;
@@ -2310,6 +2317,56 @@ export const acceptRideAssignment = async ({ rideId, driverId, channel = 'socket
   }
 };
 
+/**
+ * Takes the state tax back off a ride its driver's car need not pay.
+ *
+ * Booking quotes the state tax as the most it can be, because the car is not
+ * known yet. Once a driver has the ride, any line for a state the car is
+ * registered in, or holds a permit (or All India Tourist Permit) for, is
+ * removed and the fare lowered by the same amount - it only ever goes down.
+ * Runs once per ride; a failure leaves the ride as booked, never fails the
+ * accept.
+ */
+const applyDriverStateTaxWaiver = async (ride, driver) => {
+  try {
+    const lines = ride?.trip_category?.tax_fee_lines || [];
+    if (!lines.length || !driver || Number(ride.trip_category?.tax_fee_waived) > 0) return ride;
+
+    const { keep, waived } = await stateTaxWaiverForDriver({ lines, driver });
+    if (!waived.length) return ride;
+
+    const round = (value) => Math.round(Math.max(0, Number(value) || 0) * 100) / 100;
+    const total = (rows) => round(rows.reduce((sum, row) => sum + (Number(row.fee) || 0), 0));
+    const waivedTotal = total(waived);
+    const less = (value) => round((Number(value) || 0) - waivedTotal);
+
+    const $set = {
+      'trip_category.tax_fee': total(keep),
+      'trip_category.tax_fee_lines': keep,
+      'trip_category.tax_fee_waived': waivedTotal,
+      'trip_category.tax_fee_waived_lines': waived,
+      fare: less(ride.fare),
+      baseFare: less(ride.baseFare),
+    };
+    if (ride.subscriptionUsage?.covered) {
+      $set['subscriptionUsage.fareCovered'] = less(ride.subscriptionUsage.fareCovered);
+    }
+    if (ride.driverPaymentCollection?.provider === 'subscription') {
+      $set['driverPaymentCollection.amount'] = less(ride.driverPaymentCollection.amount);
+    }
+
+    const updated = await Ride.findOneAndUpdate(
+      { _id: ride._id, driverId: driver._id, 'trip_category.tax_fee_waived': { $not: { $gt: 0 } } },
+      { $set },
+      { new: true },
+    );
+    return updated || ride;
+  } catch (error) {
+    console.error('[state-tax] waiver failed for ride', String(ride?._id || ''), error?.message || error);
+    return ride;
+  }
+};
+
 /// The eligibility checks and the two atomic claims behind an accept.
 const claimRideForDriver = async ({ ride, rideId, driverId }) => {
   const driverVehicleFilter = await buildDriverVehicleAcceptFilter(ride);
@@ -2397,9 +2454,11 @@ const claimRideForDriver = async ({ ride, rideId, driverId }) => {
     throw new ApiError(409, RIDE_UNAVAILABLE_MESSAGE, { code: 'RIDE_UNAVAILABLE' });
   }
 
-  await syncDeliveryWithRide(acceptedRide);
+  const repricedRide = await applyDriverStateTaxWaiver(acceptedRide, claimedDriver);
 
-  return acceptedRide;
+  await syncDeliveryWithRide(repricedRide);
+
+  return repricedRide;
 };
 
 const rideStatusConfig = {
@@ -2983,9 +3042,10 @@ export const acceptRideBidAssignment = async ({ rideId, bidId, userId }) => {
       );
 
       await session.commitTransaction();
-      await syncDeliveryWithRide(ride);
+      const repricedRide = await applyDriverStateTaxWaiver(ride, driver);
+      await syncDeliveryWithRide(repricedRide);
 
-      return ride;
+      return repricedRide;
     } catch (error) {
       lastError = error;
       await session.abortTransaction();

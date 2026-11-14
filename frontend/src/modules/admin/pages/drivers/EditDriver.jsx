@@ -25,6 +25,22 @@ const serviceCategoryOptions = [
   { value: 'pooling', label: 'Pooling' },
 ];
 
+// Named as Google's geocoder names them - the state tax compares by name.
+const INDIAN_STATES = [
+  'Andaman and Nicobar Islands', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chandigarh',
+  'Chhattisgarh', 'Dadra and Nagar Haveli and Daman and Diu', 'Delhi', 'Goa', 'Gujarat', 'Haryana',
+  'Himachal Pradesh', 'Jammu and Kashmir', 'Jharkhand', 'Karnataka', 'Kerala', 'Ladakh', 'Lakshadweep',
+  'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Puducherry',
+  'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand',
+  'West Bengal',
+];
+
+const toDateInput = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10);
+};
+
 const normalizeTransportTypeForSelect = (value, options = []) => {
   const normalizedValue = String(value || '').trim().toLowerCase();
   if (!normalizedValue) return '';
@@ -109,6 +125,12 @@ const EditDriver = () => {
     vehicleColor: '',
     vehicleNumber: ''
   });
+
+  // State tax: where the car is registered and the permits it holds.
+  const [plateState, setPlateState] = useState('');
+  const [registrationOverride, setRegistrationOverride] = useState('');
+  const [permits, setPermits] = useState([]);
+  const [allIndiaPermit, setAllIndiaPermit] = useState({ enabled: false, validTill: '' });
 
   const [error, setError] = useState('');
 
@@ -199,6 +221,18 @@ const EditDriver = () => {
             city: onboardingVehicle.city || '',
             postalCode: onboardingVehicle.postalCode || '',
             taxNumber: onboardingVehicle.taxNumber || '',
+          });
+          setPlateState(d.vehicle_registration_state_from_plate || '');
+          setRegistrationOverride(d.vehicle_registration_state_override || '');
+          setPermits(
+            (Array.isArray(d.interstate_permits) ? d.interstate_permits : []).map((row) => ({
+              state: row.state || '',
+              validTill: toDateInput(row.valid_till),
+            })),
+          );
+          setAllIndiaPermit({
+            enabled: Boolean(d.all_india_permit?.enabled),
+            validTill: toDateInput(d.all_india_permit?.valid_till),
           });
         }
       } catch (err) {
@@ -341,6 +375,14 @@ const EditDriver = () => {
         car_year: formData.vehicleYear,
         car_color: formData.vehicleColor,
         car_number: formData.vehicleNumber,
+        vehicle_registration_state_override: registrationOverride,
+        interstate_permits: permits
+          .filter((row) => row.state)
+          .map((row) => ({ state: row.state, valid_till: row.validTill || null })),
+        all_india_permit: {
+          enabled: allIndiaPermit.enabled,
+          valid_till: allIndiaPermit.validTill || null,
+        },
         car_type: formData.vehicleType,
         vehicle_type_id: formData.vehicleType,
         vehicle_type: selectedVehicleTypeLabel,
@@ -702,6 +744,108 @@ const EditDriver = () => {
                   onChange={handleChange}
                   className={inputClass}
                 />
+              </div>
+            </div>
+          </div>
+
+          {/* Interstate permits - decide the state tax on outstation trips */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="mb-5 pb-4 border-b border-gray-100">
+              <h3 className="text-sm text-gray-900 font-bold">State Tax &amp; Permits</h3>
+              <p className="text-xs text-gray-400">
+                On outstation trips the rider is charged the destination state's tax unless this car is
+                registered there or holds a permit for it.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className={labelClass}>Registered In (from number plate)</label>
+                <div className={`${inputClass} bg-gray-50 text-gray-600`}>
+                  {plateState || 'Not readable from the plate'}
+                </div>
+                <p className="text-[11px] text-gray-400 mt-1">Updates after you save a new vehicle number.</p>
+              </div>
+              <div>
+                <label className={labelClass}>Registered In (override)</label>
+                <select
+                  value={registrationOverride}
+                  onChange={(e) => setRegistrationOverride(e.target.value)}
+                  className={inputClass}
+                >
+                  <option value="">Use the number plate</option>
+                  {INDIAN_STATES.map((state) => (
+                    <option key={state} value={state}>{state}</option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-gray-400 mt-1">For Bharat-series (BH) plates or a wrong plate.</p>
+              </div>
+            </div>
+
+            <div className="mt-5">
+              <label className="flex items-center gap-2 text-sm text-gray-800 font-medium">
+                <input
+                  type="checkbox"
+                  checked={allIndiaPermit.enabled}
+                  onChange={(e) => setAllIndiaPermit((prev) => ({ ...prev, enabled: e.target.checked }))}
+                />
+                All India Tourist Permit
+              </label>
+              {allIndiaPermit.enabled && (
+                <div className="mt-2 max-w-xs">
+                  <label className={labelClass}>Valid till</label>
+                  <input
+                    type="date"
+                    value={allIndiaPermit.validTill}
+                    onChange={(e) => setAllIndiaPermit((prev) => ({ ...prev, validTill: e.target.value }))}
+                    className={inputClass}
+                  />
+                </div>
+              )}
+              <p className="text-[11px] text-gray-400 mt-1">No state tax anywhere. Delhi's MCD tax still applies.</p>
+            </div>
+
+            <div className="mt-5">
+              <div className="flex items-center justify-between mb-2">
+                <label className={labelClass}>State Permits</label>
+                <button
+                  type="button"
+                  onClick={() => setPermits((prev) => [...prev, { state: '', validTill: '' }])}
+                  className="text-xs font-semibold text-yellow-700 hover:text-yellow-800"
+                >
+                  + Add permit
+                </button>
+              </div>
+              {permits.length === 0 && <p className="text-xs text-gray-400">No state permits.</p>}
+              <div className="space-y-2">
+                {permits.map((row, index) => (
+                  <div key={index} className="grid grid-cols-[1fr_auto_auto] gap-2 items-center">
+                    <select
+                      value={row.state}
+                      onChange={(e) => setPermits((prev) => prev.map((p, i) => (i === index ? { ...p, state: e.target.value } : p)))}
+                      className={inputClass}
+                    >
+                      <option value="">Select state</option>
+                      {INDIAN_STATES.map((state) => (
+                        <option key={state} value={state}>{state}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="date"
+                      title="Valid till (blank = no expiry)"
+                      value={row.validTill}
+                      onChange={(e) => setPermits((prev) => prev.map((p, i) => (i === index ? { ...p, validTill: e.target.value } : p)))}
+                      className={inputClass}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setPermits((prev) => prev.filter((_, i) => i !== index))}
+                      className="text-xs text-red-500 hover:text-red-700 px-2"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
               </div>
             </div>
           </div>

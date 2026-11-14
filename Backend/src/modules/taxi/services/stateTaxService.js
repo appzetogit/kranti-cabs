@@ -1,5 +1,6 @@
 import { env } from '../../../config/env.js';
 import { StateTax } from '../admin/models/StateTax.js';
+import { driverRegistrationState, sameStateName, stateForPlateCode } from './vehicleRegistrationState.js';
 
 /**
  * State tax and MCD tax - what a commercial vehicle pays at the border to
@@ -17,6 +18,14 @@ import { StateTax } from '../admin/models/StateTax.js';
  * The tax is added to the fare at booking and passed to the driver at
  * settlement without commission, like the railway station entry fee: it is
  * money the driver hands over at the border.
+ *
+ * Outstation trips only: a city ride across a state line (Chandigarh to
+ * Mohali) never pays it. The callers decide that, not this file.
+ *
+ * Whose car it is is only known once a driver accepts, so booking quotes the
+ * tax as the most it can be and stateTaxWaiverForDriver() takes it back off
+ * when the car does not pay it: registered in that state, or holding its
+ * permit or an All India Tourist Permit. The fare only ever goes down.
  */
 
 export const STATE_TAX_TYPES = Object.freeze(['state_tax', 'mcd_tax']);
@@ -143,6 +152,42 @@ export const stateTaxFees = async ({ pickup, drop, vehicleClass = '' }) => {
   return Object.values(byClass).some(Boolean) ? { by_vehicle_class: byClass } : null;
 };
 
+const permitValid = (validTill, now) => !validTill || new Date(validTill).getTime() >= now;
+
+/**
+ * Which of a booked trip's state tax lines the accepting driver need not pay.
+ *
+ * Returns { keep, waived } - waived lines carry a reason: 'registered' (the
+ * car is from that state), 'state_permit' or 'all_india_permit'. MCD tax is
+ * waived only for a Delhi car: permits do not cover it.
+ */
+export const stateTaxWaiverForDriver = async ({ lines = [], driver, now = Date.now() } = {}) => {
+  const keep = [];
+  const waived = [];
+  if (!lines.length) return { keep, waived };
+
+  const homeState = driverRegistrationState(driver);
+  const permits = (driver?.interstatePermits || []).filter((row) => permitValid(row?.validTill, now));
+  const allIndia = Boolean(driver?.allIndiaPermit?.enabled) && permitValid(driver?.allIndiaPermit?.validTill, now);
+  const rules = allIndia ? await activeRules().catch(() => []) : [];
+  const ruleFor = (id) => rules.find((rule) => String(rule._id) === String(id));
+
+  lines.forEach((raw) => {
+    const line = typeof raw?.toObject === 'function' ? raw.toObject() : { ...raw };
+    let reason = '';
+    if (homeState && sameStateName(homeState, line.state)) {
+      reason = 'registered';
+    } else if (line.tax_type !== 'mcd_tax') {
+      if (permits.some((row) => sameStateName(stateForPlateCode(row.state) || row.state, line.state))) reason = 'state_permit';
+      // A rule switched off since booking still honours the permit.
+      else if (allIndia && ruleFor(line.rule_id)?.waive_for_all_india_permit !== false) reason = 'all_india_permit';
+    }
+    if (reason) waived.push({ ...line, reason });
+    else keep.push(line);
+  });
+  return { keep, waived };
+};
+
 /// Cleans a rule from the admin form.
 export const normalizeStateTaxPayload = (input = {}, { partial = false } = {}) => {
   const out = {};
@@ -153,6 +198,9 @@ export const normalizeStateTaxPayload = (input = {}, { partial = false } = {}) =
   }
   if (!partial || input.fees !== undefined) {
     out.fees = Object.fromEntries(STATE_TAX_CLASSES.map((cls) => [cls, money(input.fees?.[cls])]));
+  }
+  if (!partial || input.waive_for_all_india_permit !== undefined) {
+    out.waive_for_all_india_permit = input.waive_for_all_india_permit !== false;
   }
   if (!partial || input.active !== undefined) out.active = input.active !== false;
   return out;

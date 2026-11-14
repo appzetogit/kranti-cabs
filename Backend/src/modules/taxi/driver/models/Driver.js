@@ -175,6 +175,33 @@ const driverSchema = new mongoose.Schema(
       default: '',
       trim: true,
     },
+    // The state the vehicle is registered in, set by admin only when the
+    // plate cannot tell it (Bharat series, a typo). Empty = read the plate.
+    // Name or plate code ("Punjab" / "PB").
+    vehicleRegistrationState: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    // States this vehicle holds a permit for: no state tax entering them.
+    interstatePermits: {
+      type: [
+        new mongoose.Schema(
+          {
+            state: { type: String, required: true, trim: true },
+            validTill: { type: Date, default: null },
+          },
+          { _id: false },
+        ),
+      ],
+      default: [],
+    },
+    // All India Tourist Permit: no state tax anywhere (Delhi's MCD tax still
+    // applies). validTill null = no expiry recorded.
+    allIndiaPermit: {
+      enabled: { type: Boolean, default: false },
+      validTill: { type: Date, default: null },
+    },
     vehicleColor: {
       type: String,
       default: '',

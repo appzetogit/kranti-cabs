@@ -21,6 +21,7 @@ const present = (row) => ({
     auto: Number(row.fees?.auto || 0),
     car: Number(row.fees?.car || 0),
   },
+  waive_for_all_india_permit: row.waive_for_all_india_permit !== false,
   active: row.active !== false,
 });
 
