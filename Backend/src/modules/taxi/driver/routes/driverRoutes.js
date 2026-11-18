@@ -13,6 +13,7 @@ import {
   updateMyHomeLocation,
 } from "../controllers/destinationModeController.js";
 import { getMyRentalPreference, updateMyRentalPreference } from "../controllers/rentalPreferenceController.js";
+import { getMyPinkRidePreference, updateMyPinkRidePreference } from "../../admin/controllers/pinkRideController.js";
 import { getDriverBanners } from "../../admin/promotions/controllers/promotionsController.js";
 import {
   getDriverKycStatus,
@@ -199,6 +200,9 @@ driverRouter.put("/me/home-location", authenticate(["driver"]), updateMyHomeLoca
 // Hourly rentals: the driver's "Accept rental trips" toggle.
 driverRouter.get("/me/rental-preference", authenticate(["driver"]), getMyRentalPreference);
 driverRouter.put("/me/rental-preference", authenticate(["driver"]), updateMyRentalPreference);
+// Pink Ride: approval status and the "Pink Rides only" switch.
+driverRouter.get("/me/pink-ride", authenticate(["driver"]), getMyPinkRidePreference);
+driverRouter.put("/me/pink-ride", authenticate(["driver"]), updateMyPinkRidePreference);
 // Home-screen promo banners for the driver's zone (`lat`, `lng`).
 driverRouter.get("/banners", asyncHandler(getDriverBanners));
 driverRouter.get(

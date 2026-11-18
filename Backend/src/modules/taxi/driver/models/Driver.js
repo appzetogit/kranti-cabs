@@ -515,6 +515,15 @@ const driverSchema = new mongoose.Schema(
       accepts: { type: Boolean, default: true },
       blockedByAdmin: { type: Boolean, default: false },
     },
+    // Pink Ride (women drivers only). `approved` is the admin's alone, after
+    // checking the driver is a woman; `onlyPink` is the driver's own choice to
+    // take Pink Rides and nothing else. See services/pinkRideService.js.
+    pinkRide: {
+      approved: { type: Boolean, default: false },
+      approvedAt: { type: Date, default: null },
+      approvedBy: { type: mongoose.Schema.Types.ObjectId, default: null },
+      onlyPink: { type: Boolean, default: false },
+    },
     // The driver's saved home, for one-tap "Go Home" destination mode. Kept
     // apart from destinationMode so turning that off never forgets it.
     homeLocation: {

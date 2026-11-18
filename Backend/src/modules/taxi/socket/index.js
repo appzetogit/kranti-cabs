@@ -413,7 +413,7 @@ export const configureTaxiSocketServer = async (httpServer) => {
 
     socket.on(
       'requestRide',
-      onAsync(socket, async ({ pickup, drop, fare, estimatedDistanceMeters, estimatedDurationMinutes, vehicleTypeId, vehicleIconType, paymentMethod, serviceType, intercity, rental }) => {
+      onAsync(socket, async ({ pickup, drop, fare, estimatedDistanceMeters, estimatedDurationMinutes, vehicleTypeId, vehicleIconType, paymentMethod, serviceType, intercity, rental, pinkRide }) => {
         if (identity.role !== 'user') {
           return;
         }
@@ -446,6 +446,7 @@ export const configureTaxiSocketServer = async (httpServer) => {
           serviceType,
           intercity,
           rental,
+          pinkRide: pinkRide === true,
         });
 
         joinRideRoom(socket, ride._id);

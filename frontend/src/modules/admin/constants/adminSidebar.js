@@ -6,6 +6,7 @@ import {
   FileText,
   Gavel,
   Globe,
+  Heart,
   Home,
   IndianRupee,
   Receipt,
@@ -72,6 +73,7 @@ export const ADMIN_SIDEBAR_SECTIONS = [
         ],
       },
       { icon: Gavel, label: 'Bidding', path: '/admin/settings/business/bid-ride', permission: 'settings.view' },
+      { icon: Heart, label: 'Pink Ride', path: '/admin/pricing/pink-ride', permission: 'set_prices.view' },
       {
         icon: IndianRupee,
         label: 'Driver Subscription',

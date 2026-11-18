@@ -37,6 +37,7 @@ import {
 import { cancelScheduledRideByDriver, emitToDriver } from "../../services/dispatchService.js";
 import { notifyLateAvailableDriver } from "../../services/dispatchService.js";
 import { driverTakesRentals, serializeRideRental } from "../../services/rentalPackageService.js";
+import { driverTakesPinkRides, pinkRideFilterForDriver } from "../../services/pinkRideService.js";
 import { assertDriverKycForOnline } from "../../services/userKycService.js";
 import { findZoneByPickup } from "../services/locationService.js";
 import { listDriverServiceLocations } from "../services/serviceLocationService.js";
@@ -3143,7 +3144,7 @@ export const getDriverNotifications = async (req, res) => {
 
 export const getDriverScheduledRides = async (req, res) => {
   const driver = await Driver.findById(req.auth.sub)
-    .select("service_location_id vehicleTypeId rental")
+    .select("service_location_id vehicleTypeId rental gender pinkRide")
     .lean();
 
   if (!driver) {
@@ -3161,6 +3162,9 @@ export const getDriverScheduledRides = async (req, res) => {
     "dispatchTracking.rejectedDriverIds": { $ne: String(req.auth.sub) },
     // Rentals only for a driver who takes them; accepting one is refused anyway.
     ...(driverTakesRentals(driver) ? {} : { serviceType: { $ne: "hourly_rental" } }),
+    // Pink Rides only for approved women drivers; a Pink-only driver sees
+    // nothing else.
+    ...pinkRideFilterForDriver(driver),
   };
 
   if (driver.vehicleTypeId) {

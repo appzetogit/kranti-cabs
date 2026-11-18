@@ -279,6 +279,12 @@ import {
 } from '../controllers/stateTaxController.js';
 import { getAcceptSpeedReview, getDriverAcceptAttempts } from '../controllers/acceptReviewController.js';
 import { getDriverRentalAccess, updateDriverRentalAccess } from '../../driver/controllers/rentalPreferenceController.js';
+import {
+  getPinkRideSettingsAdmin,
+  listPinkRideDrivers,
+  updateDriverPinkRide,
+  updatePinkRideSettingsAdmin,
+} from '../controllers/pinkRideController.js';
 import { promotionsRouter } from '../promotions/routes/index.js';
 import { listSafetyAlerts, resolveSafetyAlert } from '../../safety/controllers/safetyController.js';
 import {
@@ -340,6 +346,11 @@ adminRouter.get('/admin/drivers/accept-review', getAcceptSpeedReview);
 adminRouter.get('/admin/drivers/accept-review/:driverId', getDriverAcceptAttempts);
 adminRouter.get('/admin/drivers/:id/rental-access', getDriverRentalAccess);
 adminRouter.patch('/admin/drivers/:id/rental-access', updateDriverRentalAccess);
+// Pink Ride: settings, the women drivers list, and approving a driver.
+adminRouter.get('/admin/pink-ride/settings', getPinkRideSettingsAdmin);
+adminRouter.put('/admin/pink-ride/settings', updatePinkRideSettingsAdmin);
+adminRouter.get('/admin/pink-ride/drivers', listPinkRideDrivers);
+adminRouter.patch('/admin/drivers/:id/pink-ride', updateDriverPinkRide);
 adminRouter.get('/admin/drivers/delete-requests', authenticate(['admin']), getDriverDeletionRequests);
 adminRouter.patch('/admin/drivers/delete-requests/:id/approve', authenticate(['admin']), approveDriverDeletionRequest);
 adminRouter.patch('/admin/drivers/delete-requests/:id/reject', authenticate(['admin']), rejectDriverDeletionRequest);

@@ -301,7 +301,7 @@ const razorpayRequest = async ({ method, path, body, keyId, keySecret }) => {
 };
 
 export const createRide = async (req, res) => {
-  const { pickup, drop, pickupAddress, dropAddress, fare, estimatedDistanceMeters, estimatedDurationMinutes, vehicleTypeId, vehicleTypeIds, vehicleIconType, vehicleIconUrl, paymentMethod, serviceType, intercity, rental, promo_code, zone_id, service_location_id, transport_type, scheduledAt, bookingMode, userMaxBidFare, bidStepAmount, platformFee, surgeMultiplier, stops } =
+  const { pickup, drop, pickupAddress, dropAddress, fare, estimatedDistanceMeters, estimatedDurationMinutes, vehicleTypeId, vehicleTypeIds, vehicleIconType, vehicleIconUrl, paymentMethod, serviceType, intercity, rental, promo_code, zone_id, service_location_id, transport_type, scheduledAt, bookingMode, userMaxBidFare, bidStepAmount, platformFee, surgeMultiplier, stops, pinkRide, pink_ride } =
     req.body;
 
   if (!pickup || !drop) {
@@ -344,6 +344,7 @@ export const createRide = async (req, res) => {
     platformFee,
     surgeMultiplier,
     stops,
+    pinkRide: pinkRide === true || pink_ride === true || pinkRide === 'true' || pink_ride === 'true',
   });
 
   await startDispatchFlow(ride);
@@ -1367,6 +1368,8 @@ export const listAvailableDrivers = async (req, res) => {
     maxDistance: vehicleTypeId ? requestedDistance : Math.min(requestedDistance, markerRadiusMeters),
     limit: Math.min(Number(limit) || 30, 50),
     ...(vehicleTypeId ? { vehicleTypeId } : {}),
+    // Pink Ride selected: show only the women drivers it would go to.
+    ...(String(req.query?.pink_ride || '') === 'true' ? { pinkRide: true } : {}),
   };
 
   let matchResult = await matchDrivers([longitude, latitude], {

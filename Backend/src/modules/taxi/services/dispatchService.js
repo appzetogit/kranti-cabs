@@ -269,6 +269,8 @@ const matchDispatchDrivers = async ({
     dropCoords: ride.dropLocation?.coordinates || null,
     // Hourly rentals go only to drivers who take them.
     serviceType: ride.serviceType || '',
+    // Pink Rides go only to approved women drivers.
+    pinkRide: Boolean(ride.isPinkRide),
   };
 
   // Only drivers whose wallet lets them take this ride: a cash ride whose
@@ -831,6 +833,8 @@ const emitRideRequestToDrivers = async ({
       rideId: String(ride._id),
       type: ride.serviceType || 'ride',
       serviceType: ride.serviceType || 'ride',
+      // Pink Ride: the app shows a badge on the offer.
+      isPinkRide: Boolean(ride.isPinkRide),
       userId: String(ride.userId),
       user: {
         id: ride.userId?._id ? String(ride.userId._id) : String(ride.userId || ''),
@@ -1007,7 +1011,10 @@ const closeRideAsUnmatched = async (rideId) => {
   emitToRoom(getUserRoom(ride.userId), 'rideCancelled', {
     rideId: String(ride._id),
     room: getRideRoom(ride._id),
-    reason: 'No drivers accepted the ride request',
+    reason: ride.isPinkRide
+      ? 'No woman driver is available right now. You can try again or book a normal ride.'
+      : 'No drivers accepted the ride request',
+    pinkRide: Boolean(ride.isPinkRide),
   });
 
   emitToRoom(getRideRoom(ride._id), 'rideRequestClosed', {
@@ -1791,6 +1798,7 @@ export const announceScheduledRide = async (ride) => {
   const { drivers = [] } = await matchDrivers(coords, {
     vehicleTypeId: ride.vehicleTypeId ? String(ride.vehicleTypeId) : undefined,
     serviceType: ride.serviceType || '',
+    pinkRide: Boolean(ride.isPinkRide),
     maxDistance: SCHEDULED_ANNOUNCE_RADIUS_METERS,
     allowCrossZoneFallback: false,
   });

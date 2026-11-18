@@ -211,6 +211,10 @@ export const adminService = {
   createStateTax: (data) => api.post('/admin/state-taxes', data),
   updateStateTax: (id, data) => api.patch(`/admin/state-taxes/${id}`, data),
   deleteStateTax: (id) => api.delete(`/admin/state-taxes/${id}`),
+  getPinkRideSettings: () => api.get('/admin/pink-ride/settings'),
+  updatePinkRideSettings: (data) => api.put('/admin/pink-ride/settings', data),
+  getPinkRideDrivers: (params = {}) => api.get('/admin/pink-ride/drivers', { params }),
+  setDriverPinkRide: (id, approved) => api.patch(`/admin/drivers/${id}/pink-ride`, { approved }),
   deleteRideRequest: (id) => api.delete(`/admin/ride-requests/${id}`),
   getSafetyAlerts: ({ page = 1, limit = 25, status = 'active' } = {}) =>
     api.get(`/admin/safety/alerts?page=${page}&limit=${limit}&status=${encodeURIComponent(status)}`),

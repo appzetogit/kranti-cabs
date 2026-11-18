@@ -2713,6 +2713,12 @@ const serializeDriver = (driver) => ({
     enabled: Boolean(driver.allIndiaPermit?.enabled),
     valid_till: driver.allIndiaPermit?.validTill || null,
   },
+  // Pink Ride (women drivers only): admin approval and her own Pink-only choice.
+  pink_ride: {
+    approved: Boolean(driver.pinkRide?.approved),
+    approved_at: driver.pinkRide?.approvedAt || null,
+    only_pink: Boolean(driver.pinkRide?.onlyPink),
+  },
   vehicle_color: driver.vehicleColor || '',
   rating:
     Number(driver.ratingCount || 0) > 0

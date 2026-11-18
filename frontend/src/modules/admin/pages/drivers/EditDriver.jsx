@@ -131,6 +131,9 @@ const EditDriver = () => {
   const [registrationOverride, setRegistrationOverride] = useState('');
   const [permits, setPermits] = useState([]);
   const [allIndiaPermit, setAllIndiaPermit] = useState({ enabled: false, validTill: '' });
+  // Pink Ride approval: its own endpoint, which refuses anyone not Female.
+  const [pinkRide, setPinkRide] = useState({ approved: false, onlyPink: false });
+  const [pinkBusy, setPinkBusy] = useState(false);
 
   const [error, setError] = useState('');
 
@@ -234,6 +237,7 @@ const EditDriver = () => {
             enabled: Boolean(d.all_india_permit?.enabled),
             validTill: toDateInput(d.all_india_permit?.valid_till),
           });
+          setPinkRide({ approved: Boolean(d.pink_ride?.approved), onlyPink: Boolean(d.pink_ride?.only_pink) });
         }
       } catch (err) {
         console.error('Fetch error:', err);
@@ -847,6 +851,41 @@ const EditDriver = () => {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+
+          {/* Pink Ride - women drivers only; saved at once, not with the form */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h3 className="text-sm text-gray-900 font-bold">Pink Ride Driver</h3>
+                <p className="text-xs text-gray-400">
+                  {String(formData.gender || '').toLowerCase().startsWith('f')
+                    ? 'Approve after checking her licence and Aadhaar. She will be offered Pink Rides (women riders).'
+                    : 'Only women drivers can be approved. Set gender to Female and save first.'}
+                  {pinkRide.onlyPink && ' She has chosen Pink Rides only.'}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={pinkBusy || (!pinkRide.approved && !String(formData.gender || '').toLowerCase().startsWith('f'))}
+                onClick={async () => {
+                  try {
+                    setPinkBusy(true);
+                    const res = await adminService.setDriverPinkRide(id, !pinkRide.approved);
+                    const body = res?.data ?? res;
+                    const data = body && body.success !== undefined ? body.data : body;
+                    setPinkRide({ approved: Boolean(data?.approved), onlyPink: Boolean(data?.only_pink) });
+                  } catch (err) {
+                    setError(err?.response?.data?.message || 'Could not update Pink Ride approval');
+                  } finally {
+                    setPinkBusy(false);
+                  }
+                }}
+                className={`text-xs font-semibold px-4 py-2 rounded-lg disabled:opacity-50 ${pinkRide.approved ? 'border border-gray-200 text-gray-600 hover:text-red-600' : 'bg-pink-600 text-white hover:bg-pink-700'}`}
+              >
+                {pinkRide.approved ? 'Remove approval' : 'Approve for Pink Ride'}
+              </button>
             </div>
           </div>
         </div>

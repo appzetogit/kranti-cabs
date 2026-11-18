@@ -9,6 +9,7 @@ import { resolveDriverSubscriptionSettings } from '../driver/services/driverSubs
 import { getDriverIdsBlockedByUpcomingScheduledRides } from './rideService.js';
 import { filterDriversOnRoute } from './destinationModeService.js';
 import { driverTakesRentals } from './rentalPackageService.js';
+import { pinkRideDriverFilter } from './pinkRideService.js';
 
 const EARTH_RADIUS_METERS = 6371000;
 
@@ -372,8 +373,13 @@ const findDriversForZone = async ({
   vehicleTypeKeys,
   strictZoneOnly = false,
   driverId = null,
+  pinkRide = false,
 }) => {
   const commonFilters = {
+    // Pink Ride: approved women drivers only. Any other ride: everyone but
+    // drivers who take Pink Rides only. In the query, not after it, so the
+    // nearest-N cut never hides the drivers a Pink Ride needs.
+    ...pinkRideDriverFilter(pinkRide),
     ...buildDriverMatchFilters({
       zoneId,
       serviceLocationId,
@@ -438,6 +444,8 @@ export const matchDrivers = async (pickupCoords, options = {}) => {
     // The ride's service type. An hourly rental goes only to drivers who take
     // rentals (their app toggle, and not blocked by admin).
     serviceType = '',
+    // A Pink Ride: offered only to women drivers approved for it.
+    pinkRide = false,
   } = options;
   const rentalOnly = serviceType === 'hourly_rental'
     ? (list) => list.filter(driverTakesRentals)
@@ -464,6 +472,7 @@ export const matchDrivers = async (pickupCoords, options = {}) => {
     vehicleTypeKeys,
     strictZoneOnly,
     driverId,
+    pinkRide,
   });
   drivers = filterDriversForMatchedZone({
     drivers,
@@ -489,6 +498,7 @@ export const matchDrivers = async (pickupCoords, options = {}) => {
       vehicleTypeKeys,
       strictZoneOnly,
       driverId,
+      pinkRide,
     });
     drivers = filterDriversForMatchedZone({
       drivers,

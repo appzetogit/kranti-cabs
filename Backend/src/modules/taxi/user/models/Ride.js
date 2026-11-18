@@ -682,6 +682,17 @@ const rideSchema = new mongoose.Schema(
       default: 'taxi',
       trim: true,
     },
+    // Pink Ride: offered only to women drivers approved for it. The extra
+    // charge (admin's, often 0) is already in the fare.
+    isPinkRide: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    pinkRideFee: {
+      type: Number,
+      default: 0,
+    },
     // City, airport or outstation, from the pickup and drop at booking. The
     // airport fee is added to the fare by the server at booking, on top of the
     // trip fare the app quoted.

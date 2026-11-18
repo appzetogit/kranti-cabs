@@ -129,6 +129,7 @@ import {
   AdminRideVoiceSettings,
   AdminCancellationReasons,
   AdminStateTax,
+  AdminPinkRide,
   AdminTransportRideSettings,
   AdminTrips,
   AdminUserBulkUpload,
@@ -353,6 +354,7 @@ const adminRoutes = (
         <Route path="airport/create" element={<AdminAirportManagement mode="create" />} />
         <Route path="airport/edit/:id" element={<AdminAirportManagement mode="edit" />} />
         <Route path="state-tax" element={<AdminStateTax />} />
+        <Route path="pink-ride" element={<AdminPinkRide />} />
         <Route path="vehicle-type" element={<AdminVehicleType />} />
         <Route path="vehicle-type/create" element={<AdminVehicleType mode="create" />} />
         <Route path="vehicle-type/edit/:id" element={<AdminVehicleType mode="edit" />} />

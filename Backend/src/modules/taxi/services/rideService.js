@@ -22,6 +22,7 @@ import { applyPromoToRideInTransaction } from './promoService.js';
 import { ABSOLUTE_MAX_MULTIPLIER, getSurgeAt, getSurgeProfiles, surgeForVehicle } from './surgeService.js';
 import { classifyTrip, resolveTripHubs } from './tripCategoryService.js';
 import { stateTaxFees, stateTaxWaiverForDriver } from './stateTaxService.js';
+import { assertPinkRideBooking, pinkRideDriverFilter, pinkRideFee } from './pinkRideService.js';
 import { computeOutstationFare } from './outstationFareService.js';
 import {
   applyHubParkingCharge,
@@ -990,10 +991,20 @@ const explainWhyDriverCannotAccept = async ({ driverId, ride }) => {
     return 'This ride is for a different vehicle type than yours';
   }
 
+  if (ride?.isPinkRide) {
+    return 'This is a Pink Ride, for women drivers approved for Pink Ride only';
+  }
+
   return 'Driver is unavailable to accept this ride';
 };
 
-const buildDriverVehicleAcceptFilter = async (ride) => {
+/// Who may accept or bid on a ride: the right vehicle and, for a Pink Ride,
+/// an approved woman driver (and no Pink-only driver on any other ride).
+const buildDriverVehicleAcceptFilter = async (ride) => ({
+  $and: [await buildVehicleOnlyAcceptFilter(ride), pinkRideDriverFilter(Boolean(ride?.isPinkRide))],
+});
+
+const buildVehicleOnlyAcceptFilter = async (ride) => {
   const vehicleTypeIds = normalizeVehicleTypeIds(ride.dispatchVehicleTypeIds || [], ride.vehicleTypeId);
 
   if (vehicleTypeIds.length === 0) {
@@ -1176,6 +1187,7 @@ export const createRideRecord = async ({
   platformFee,
   surgeMultiplier,
   stops,
+  pinkRide = false,
 }) => {
   const user = await User.findById(userId);
 
@@ -1260,6 +1272,18 @@ export const createRideRecord = async ({
   }
 
   const primaryVehicleTypeId = dispatchVehicleTypeIds[0] || null;
+
+  // Pink Ride: offered here, on this vehicle, to this rider? Throws when not.
+  const wantsPinkRide = pinkRide === true || pinkRide === 'true';
+  const pinkSettings = wantsPinkRide
+    ? await assertPinkRideBooking({
+        userId,
+        pickup: pickupCoords,
+        vehicleTypeIds: dispatchVehicleTypeIds,
+        serviceType: normalizeServiceType(serviceType),
+      })
+    : null;
+
   const primaryVehicle = primaryVehicleTypeId
     ? await Vehicle.findById(primaryVehicleTypeId).select('name icon_types category vehicle_type icon map_icon image dispatch_type admin_commission_type_from_driver admin_commission_from_driver admin_commission_type_for_owner admin_commission_for_owner').lean()
     : null;
@@ -1294,7 +1318,9 @@ export const createRideRecord = async ({
     : null;
   tripCategory.tax_fee = Math.max(0, Number(taxFee?.total_fee) || 0);
   tripCategory.tax_fee_lines = taxFee?.lines || [];
-  const locationFees = airportFee + tripCategory.station_fee + tripCategory.tax_fee;
+  // The admin's Pink Ride charge (0 unless set), added like the other fees.
+  const pinkFee = pinkSettings ? pinkRideFee(pinkSettings, quotedFare) : 0;
+  const locationFees = airportFee + tripCategory.station_fee + tripCategory.tax_fee + pinkFee;
   // `let`: an outstation trip is re-priced from the tariff below, once it is known.
   let safeFare = Math.round((quotedFare + locationFees) * 100) / 100;
 
@@ -1616,6 +1642,8 @@ export const createRideRecord = async ({
       vehicleIconUrl: resolvedVehicleIconUrl,
       ...(routeDocument ? { route: routeDocument } : {}),
       serviceType: normalizedServiceType,
+      isPinkRide: Boolean(pinkSettings),
+      pinkRideFee: pinkFee,
       pickupLocation: toPoint(pickupCoords, 'pickup'),
       pickupAddress: normalizeAddress(pickupAddress),
       dropLocation: toPoint(dropCoords, 'drop'),
@@ -1687,6 +1715,8 @@ export const createRideRecord = async ({
             vehicleIconUrl: resolvedVehicleIconUrl,
             ...(routeDocument ? { route: routeDocument } : {}),
             serviceType: normalizedServiceType,
+            isPinkRide: Boolean(pinkSettings),
+            pinkRideFee: pinkFee,
             pickupLocation: toPoint(pickupCoords, 'pickup'),
             pickupAddress: normalizeAddress(pickupAddress),
             dropLocation: toPoint(dropCoords, 'drop'),
@@ -1819,6 +1849,8 @@ export const serializeRideRealtime = (ride) => ({
   deliveryId: ride.deliveryId?._id ? String(ride.deliveryId._id) : ride.deliveryId ? String(ride.deliveryId) : null,
   type: ride.serviceType || 'ride',
   serviceType: ride.serviceType || 'ride',
+  isPinkRide: Boolean(ride.isPinkRide),
+  pinkRideFee: Number(ride.pinkRideFee || 0),
   status: ride.status,
   liveStatus: ride.liveStatus,
   fare: ride.fare,
@@ -2131,6 +2163,7 @@ export const listRideHistoryForIdentity = async ({ role, entityId, limit = 50, p
     deliveryId: ride.deliveryId?._id ? String(ride.deliveryId._id) : ride.deliveryId ? String(ride.deliveryId) : null,
     type: ride.serviceType || 'ride',
     serviceType: ride.serviceType || 'ride',
+    isPinkRide: Boolean(ride.isPinkRide),
     status: ride.status,
     liveStatus: ride.liveStatus,
     fare: ride.fare,
@@ -2792,7 +2825,7 @@ export const listRideBidsForUser = async ({ rideId, userId }) => {
 
 export const submitRideBid = async ({ rideId, driverId, bidFare }) => {
   const ride = await Ride.findById(rideId).select(
-    '_id userId driverId vehicleTypeId dispatchVehicleTypeIds status liveStatus fare baseFare bookingMode pricingNegotiationMode biddingStatus bidStepAmount bidFloorFare userMaxBidFare bidCeilingMaxFare',
+    '_id userId driverId vehicleTypeId dispatchVehicleTypeIds isPinkRide status liveStatus fare baseFare bookingMode pricingNegotiationMode biddingStatus bidStepAmount bidFloorFare userMaxBidFare bidCeilingMaxFare',
   );
 
   if (!ride) {
